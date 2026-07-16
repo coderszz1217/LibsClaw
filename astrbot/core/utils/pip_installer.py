@@ -471,7 +471,7 @@ def _classify_pip_failure(output_lines: list[str]) -> DependencyConflictError | 
 
     if is_core_conflict:
         message = (
-            f"检测到核心依赖版本保护冲突。{detail}插件要求的依赖版本与 AstrBot 核心不兼容，"
+            f"检测到核心依赖版本保护冲突。{detail}插件要求的依赖版本与 LibsClaw 核心不兼容，"
             "为了系统稳定，已阻止该降级行为。请联系插件作者或调整 requirements.txt。"
         )
     else:
@@ -930,7 +930,7 @@ class PipInstaller:
         self,
         pip_install_arg: str,
         pypi_index_url: str | None = None,
-        core_dist_name: str | None = "AstrBot",
+        core_dist_name: str | None = "LibsClaw",
     ) -> None:
         self.pip_install_arg = pip_install_arg
         self.pypi_index_url = pypi_index_url

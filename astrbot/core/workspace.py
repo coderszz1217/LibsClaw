@@ -94,14 +94,14 @@ def workspace_path_to_root(path: str) -> Path:
     """Resolve a custom workspace path.
 
     Args:
-        path: Stored workspace path. Relative values are rooted under AstrBot
+        path: Stored workspace path. Relative values are rooted under LibsClaw
             workspaces. Absolute values are allowed and resolved as provided.
 
     Returns:
         Absolute resolved path.
 
     Raises:
-        ValueError: If a relative path escapes or targets the AstrBot workspaces
+        ValueError: If a relative path escapes or targets the LibsClaw workspaces
             root.
     """
     workspaces_root = Path(get_astrbot_workspaces_path()).resolve(strict=False)
@@ -112,7 +112,7 @@ def workspace_path_to_root(path: str) -> Path:
     resolved = (workspaces_root / candidate).resolve(strict=False)
     if resolved == workspaces_root or not resolved.is_relative_to(workspaces_root):
         raise ValueError(
-            "Relative workspace path must stay within a subdirectory of AstrBot workspaces"
+            "Relative workspace path must stay within a subdirectory of LibsClaw workspaces"
         )
     return resolved
 

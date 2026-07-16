@@ -30,17 +30,17 @@
       "subtitle": "Review changes in the current and previous versions."
     },
     "documentation": {
-      "subtitle": "Open the official AstrBot documentation."
+      "subtitle": "Open the official LibsClaw documentation."
     },
     "faq": {
       "subtitle": "Read common questions and troubleshooting notes."
     },
     "github": {
-      "subtitle": "Visit the AstrBot GitHub repository."
+      "subtitle": "Visit the LibsClaw GitHub repository."
     }
   },
   "systemConfig": {
-    "restartRequired": "System config saved. Some changes only take effect after restarting AstrBot.",
+    "restartRequired": "System config saved. Some changes only take effect after restarting LibsClaw.",
     "groups": {
       "runtime": {
         "title": "Runtime Basics",
@@ -77,7 +77,7 @@
     "title": "Network",
     "githubProxy": {
       "title": "GitHub Proxy Address",
-      "subtitle": "Set the GitHub proxy address used when downloading plugins or updating AstrBot. This is effective in mainland China's network environment. Can be customized, input takes effect in real time. All addresses do not guarantee stability. If errors occur when updating plugins/projects, please first check if the proxy address is working properly.",
+      "subtitle": "Set the GitHub proxy address used when downloading plugins or updating LibsClaw. This is effective in mainland China's network environment. Can be customized, input takes effect in real time. All addresses do not guarantee stability. If errors occur when updating plugins/projects, please first check if the proxy address is working properly.",
       "label": "Select GitHub Proxy Address"
     },
     "proxySelector": {
@@ -104,13 +104,13 @@
     "title": "System",
     "restart": {
       "title": "Restart",
-      "subtitle": "Restart AstrBot",
-      "confirm": "Restart AstrBot now? The WebUI may be temporarily unavailable during restart.",
+      "subtitle": "Restart LibsClaw",
+      "confirm": "Restart LibsClaw now? The WebUI may be temporarily unavailable during restart.",
       "button": "Restart"
     },
     "backup": {
       "title": "Backup & Restore",
-      "subtitle": "Export or import all AstrBot data for easy migration to a new server",
+      "subtitle": "Export or import all LibsClaw data for easy migration to a new server",
       "button": "Backup Manager"
     },
     "cleanup": {
@@ -202,7 +202,7 @@
       "processing": "Importing...",
       "wait": "Please wait, restoring data...",
       "completed": "Import Completed!",
-      "restartRequired": "Data has been successfully imported. It is recommended to restart AstrBot immediately for all changes to take effect.",
+      "restartRequired": "Data has been successfully imported. It is recommended to restart LibsClaw immediately for all changes to take effect.",
       "restartNow": "Restart Now",
       "failed": "Import Failed",
       "retry": "Retry",
@@ -215,7 +215,7 @@
         "minorDiffTitle": "⚠️ Version Difference Warning",
         "minorDiffMessage": "Minor version differences can usually be imported, but there may be some data structure changes.\nImport will clear and overwrite all existing data!\n\nDo you want to continue?",
         "majorDiffTitle": "⛔ Cannot Import",
-        "majorDiffMessage": "Major version numbers are different. Cross-major-version import may cause data corruption.\nPlease use the same major version of AstrBot for import."
+        "majorDiffMessage": "Major version numbers are different. Cross-major-version import may cause data corruption.\nPlease use the same major version of LibsClaw for import."
       }
     },
     "list": {

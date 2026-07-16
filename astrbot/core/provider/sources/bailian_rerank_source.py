@@ -71,7 +71,7 @@ class BailianRerankProvider(RerankProvider):
         # 设置模型名称
         self.set_model(self.model)
 
-        logger.info(f"AstrBot 百炼 Rerank 初始化完成。模型: {self.model}")
+        logger.info(f"LibsClaw 百炼 Rerank 初始化完成。模型: {self.model}")
 
     def _build_payload(
         self, query: str, documents: list[str], top_n: int | None

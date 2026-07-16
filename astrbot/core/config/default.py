@@ -238,10 +238,10 @@ DEFAULT_CONFIG = {
         "internal_keywords": {"enable": True, "extra_keywords": []},
         "baidu_aip": {"enable": False, "app_id": "", "api_key": "", "secret_key": ""},
     },
-    "admins_id": ["astrbot"],
+    "admins_id": ["LibsClaw"],
     "t2i": False,
     "t2i_word_threshold": 150,
-    "t2i_strategy": "remote",
+    "t2i_strategy": "local",
     "t2i_endpoint": "",
     "t2i_use_file_service": False,
     "t2i_active_template": "base",
@@ -249,7 +249,7 @@ DEFAULT_CONFIG = {
     "no_proxy": ["localhost", "127.0.0.1", "::1", "10.*", "192.168.*"],
     "dashboard": {
         "enable": True,
-        "username": "astrbot",
+        "username": "LibsClaw",
         "password": "",
         "pbkdf2_password": "",
         "password_storage_upgraded": False,
@@ -316,7 +316,7 @@ DEFAULT_CONFIG = {
 
 
 """
-AstrBot v3 时代的配置元数据，目前仅承担以下功能：
+LibsClaw v3 时代的配置元数据，目前仅承担以下功能：
 
 1. 保存配置时，配置项的类型验证
 2. WebUI 展示提供商和平台适配器模版
@@ -448,7 +448,7 @@ CONFIG_METADATA_2 = {
                         "type": "telegram",
                         "enable": True,
                         "telegram_token": "your_bot_token",
-                        "start_message": "Hello, I'm AstrBot!",
+                        "start_message": "Hello, I'm LibsClaw!",
                         "telegram_api_base_url": "https://api.telegram.org/bot",
                         "telegram_file_base_url": "https://api.telegram.org/file/bot",
                         "telegram_command_register": True,
@@ -656,7 +656,7 @@ CONFIG_METADATA_2 = {
                     "wpp_active_message_poll": {
                         "description": "是否启用主动消息轮询",
                         "type": "bool",
-                        "hint": "只有当你发现微信消息没有按时同步到 AstrBot 时，才需要启用这个功能，默认不启用。",
+                        "hint": "只有当你发现微信消息没有按时同步到 LibsClaw 时，才需要启用这个功能，默认不启用。",
                     },
                     "wpp_active_message_poll_interval": {
                         "description": "主动消息轮询间隔",
@@ -757,12 +757,12 @@ CONFIG_METADATA_2 = {
                     "telegram_command_register": {
                         "description": "Telegram 命令注册",
                         "type": "bool",
-                        "hint": "启用后，AstrBot 将会自动注册 Telegram 命令。",
+                        "hint": "启用后，LibsClaw 将会自动注册 Telegram 命令。",
                     },
                     "telegram_command_auto_refresh": {
                         "description": "Telegram 命令自动刷新",
                         "type": "bool",
-                        "hint": "启用后，AstrBot 将会在运行时自动刷新 Telegram 命令。(单独设置此项无效)",
+                        "hint": "启用后，LibsClaw 将会在运行时自动刷新 Telegram 命令。(单独设置此项无效)",
                     },
                     "telegram_command_register_interval": {
                         "description": "Telegram 命令自动刷新间隔",
@@ -812,7 +812,7 @@ CONFIG_METADATA_2 = {
                     "ws_reverse_host": {
                         "description": "反向 Websocket 主机",
                         "type": "string",
-                        "hint": "AstrBot 将作为服务器端。",
+                        "hint": "LibsClaw 将作为服务器端。",
                     },
                     "ws_reverse_port": {
                         "description": "反向 Websocket 端口",
@@ -928,7 +928,7 @@ CONFIG_METADATA_2 = {
                     "discord_allow_bot_messages": {
                         "description": "允许接收机器人消息",
                         "type": "bool",
-                        "hint": "启用后，AstrBot 将接收来自其他 Discord 机器人的消息。适用于机器人间通信场景（如消息转发）。默认关闭。",
+                        "hint": "启用后，LibsClaw 将接收来自其他 Discord 机器人的消息。适用于机器人间通信场景（如消息转发）。默认关闭。",
                     },
                     "port": {
                         "description": "回调服务器端口",
@@ -949,7 +949,7 @@ CONFIG_METADATA_2 = {
                     "unified_webhook_mode": {
                         "description": "统一 Webhook 模式",
                         "type": "bool",
-                        "hint": "Webhook 模式下使用 AstrBot 统一 Webhook 入口，无需单独开启端口。回调地址为 /api/platform/webhook/{webhook_uuid}。",
+                        "hint": "Webhook 模式下使用 LibsClaw 统一 Webhook 入口，无需单独开启端口。回调地址为 /api/platform/webhook/{webhook_uuid}。",
                     },
                     **PERSONAL_WECHAT_CONFIG_METADATA,
                     "webhook_uuid": {
@@ -1108,7 +1108,7 @@ CONFIG_METADATA_2 = {
                     "path_mapping": {
                         "type": "list",
                         "items": {"type": "string"},
-                        "hint": "此功能解决由于文件系统不一致导致路径不存在的问题。格式为 <原路径>:<映射路径>。如 `/app/.config/QQ:/var/lib/docker/volumes/xxxx/_data`。这样，当消息平台下发的事件中图片和语音路径以 `/app/.config/QQ` 开头时，开头被替换为 `/var/lib/docker/volumes/xxxx/_data`。这在 AstrBot 或者平台协议端使用 Docker 部署时特别有用。",
+                        "hint": "此功能解决由于文件系统不一致导致路径不存在的问题。格式为 <原路径>:<映射路径>。如 `/app/.config/QQ:/var/lib/docker/volumes/xxxx/_data`。这样，当消息平台下发的事件中图片和语音路径以 `/app/.config/QQ` 开头时，开头被替换为 `/var/lib/docker/volumes/xxxx/_data`。这在 LibsClaw 或者平台协议端使用 Docker 部署时特别有用。",
                     },
                 },
             },
@@ -2825,7 +2825,7 @@ CONFIG_METADATA_2 = {
                     "auto_save_history": {
                         "description": "由 Coze 管理对话记录",
                         "type": "bool",
-                        "hint": "启用后，将由 Coze 进行对话历史记录管理, 此时 AstrBot 本地保存的上下文不会生效(仅供浏览), 对 AstrBot 的上下文进行的操作也不会生效。如果为禁用, 则使用 AstrBot 管理上下文。",
+                        "hint": "启用后，将由 Coze 进行对话历史记录管理, 此时 LibsClaw 本地保存的上下文不会生效(仅供浏览), 对 LibsClaw 的上下文进行的操作也不会生效。如果为禁用, 则使用 LibsClaw 管理上下文。",
                     },
                 },
             },
@@ -3047,7 +3047,7 @@ CONFIG_METADATA_2 = {
             "disable_metrics": {
                 "description": "禁用匿名使用统计",
                 "type": "bool",
-                "hint": "禁用后，AstrBot 将不再上传匿名使用统计数据。",
+                "hint": "禁用后，LibsClaw 将不再上传匿名使用统计数据。",
             },
             "log_level": {
                 "type": "string",
@@ -3125,7 +3125,7 @@ CONFIG_METADATA_3 = {
         "metadata": {
             "agent_runner": {
                 "description": "Agent 执行方式",
-                "hint": "选择 AI 对话的执行器，默认为 AstrBot 内置 Agent 执行器，可使用 AstrBot 内的知识库、人格、工具调用功能。如果不打算接入 Dify、Coze、DeerFlow 等第三方 Agent 执行器，不需要修改此节。",
+                "hint": "选择 AI 对话的执行器，默认为 LibsClaw 内置 Agent 执行器，可使用 LibsClaw 内的知识库、人格、工具调用功能。如果不打算接入 Dify、Coze、DeerFlow 等第三方 Agent 执行器，不需要修改此节。",
                 "type": "object",
                 "items": {
                     "provider_settings.enable": {
@@ -3417,9 +3417,9 @@ CONFIG_METADATA_3 = {
                         "hint": "选择 Computer Use 运行环境。",
                     },
                     "provider_settings.computer_use_require_admin": {
-                        "description": "需要 AstrBot 管理员权限",
+                        "description": "需要 LibsClaw 管理员权限",
                         "type": "bool",
-                        "hint": "开启后，需要 AstrBot 管理员权限才能调用使用电脑能力。在平台配置->管理员中可添加管理员。使用 /sid 指令查看管理员 ID。",
+                        "hint": "开启后，需要 LibsClaw 管理员权限才能调用使用电脑能力。在平台配置->管理员中可添加管理员。使用 /sid 指令查看管理员 ID。",
                     },
                     "provider_settings.sandbox.booter": {
                         "description": "沙箱环境驱动器",
@@ -3489,7 +3489,7 @@ CONFIG_METADATA_3 = {
                     "provider_settings.sandbox.cua_idle_timeout": {
                         "description": "CUA Idle Timeout",
                         "type": "int",
-                        "hint": "Idle timeout for CUA sandbox sessions in seconds. When greater than 0, AstrBot proactively shuts down an idle CUA sandbox after that amount of inactivity; 0 disables it.",
+                        "hint": "Idle timeout for CUA sandbox sessions in seconds. When greater than 0, LibsClaw proactively shuts down an idle CUA sandbox after that amount of inactivity; 0 disables it.",
                         "condition": {
                             "provider_settings.computer_use_runtime": "sandbox",
                             "provider_settings.sandbox.booter": "cua",
@@ -3599,13 +3599,13 @@ CONFIG_METADATA_3 = {
             # },
             "proactive_capability": {
                 "description": "主动型 Agent",
-                "hint": "https://docs.astrbot.app/use/proactive-agent.html",
+                "hint": "让 Agent 在设定时间自动唤醒并执行任务。",
                 "type": "object",
                 "items": {
                     "provider_settings.proactive_capability.add_cron_tools": {
                         "description": "启用",
                         "type": "bool",
-                        "hint": "启用后，将会传递给 Agent 相关工具来实现主动型 Agent。你可以告诉 AstrBot 未来某个时间要做的事情，它将被定时触发然后执行任务。",
+                        "hint": "启用后，将会传递给 Agent 相关工具来实现主动型 Agent。你可以告诉 LibsClaw 未来某个时间要做的事情，它将被定时触发然后执行任务。",
                     },
                 },
                 "condition": {
@@ -3947,7 +3947,7 @@ CONFIG_METADATA_3 = {
                     "disable_builtin_commands": {
                         "description": "禁用自带指令",
                         "type": "bool",
-                        "hint": "禁用所有 AstrBot 的自带指令，如 help, sid, new 等。",
+                        "hint": "禁用所有 LibsClaw 的自带指令，如 help, sid, new 等。",
                     },
                 },
             },
@@ -4286,7 +4286,7 @@ CONFIG_METADATA_3_SYSTEM = {
                     "t2i_endpoint": {
                         "description": "文本转图像服务 API 地址",
                         "type": "string",
-                        "hint": "为空时使用 AstrBot API 服务",
+                        "hint": "必须填写自建 t2i 服务地址，远程渲染才可用",
                         "condition": {
                             "t2i_strategy": "remote",
                         },
@@ -4411,7 +4411,7 @@ CONFIG_METADATA_3_SYSTEM = {
                     "callback_api_base": {
                         "description": "对外可达的回调接口地址",
                         "type": "string",
-                        "hint": "外部服务可能会通过 AstrBot 生成的回调链接（如文件下载链接）访问 AstrBot 后端。由于 AstrBot 无法自动判断部署环境中对外可达的主机地址（host），因此需要通过此配置项显式指定 “外部服务如何访问 AstrBot” 的地址。如 http://localhost:6185，https://example.com 等。",
+                        "hint": "外部服务可能会通过 LibsClaw 生成的回调链接（如文件下载链接）访问 LibsClaw 后端。由于 LibsClaw 无法自动判断部署环境中对外可达的主机地址（host），因此需要通过此配置项显式指定 “外部服务如何访问 LibsClaw” 的地址。如 http://localhost:6185，https://example.com 等。",
                     },
                     "timezone": {
                         "description": "时区",

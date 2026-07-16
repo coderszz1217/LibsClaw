@@ -877,7 +877,7 @@ def fake_core_lifecycle():
         version="1.0.0",
         reserved=False,
         activated=True,
-        display_name="AstrBot Plugin Demo",
+        display_name="LibsClaw Plugin Demo",
         logo=None,
         logo_path=None,
         support_platforms=[],

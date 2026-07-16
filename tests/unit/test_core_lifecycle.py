@@ -27,7 +27,7 @@ def mock_db():
 
 @pytest.fixture
 def mock_astrbot_config():
-    """Create a mock AstrBot config."""
+    """Create a mock LibsClaw config."""
     config = MagicMock()
     config.get = MagicMock(return_value="")
     config.__getitem__ = MagicMock(return_value={})

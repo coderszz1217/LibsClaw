@@ -1,5 +1,5 @@
 """
-AstrBot 测试配置
+LibsClaw 测试配置
 
 提供共享的 pytest fixtures 和测试工具。
 """

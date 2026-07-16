@@ -668,7 +668,7 @@ async def test_run_pip_in_process_classifies_nonstandard_conflict_output(monkeyp
         )
         print("The conflict is caused by:")
         print("    demo-package depends on shared-lib>=3.0")
-        print("    AstrBot (constraint) depends on shared-lib==2.0")
+        print("    LibsClaw (constraint) depends on shared-lib==2.0")
         return 1
 
     monkeypatch.setattr(
@@ -683,7 +683,7 @@ async def test_run_pip_in_process_classifies_nonstandard_conflict_output(monkeyp
     assert exc_info.value.is_core_conflict is True
     assert "demo-package" in str(exc_info.value)
     assert "demo-package depends on shared-lib>=3.0" in str(exc_info.value)
-    assert "AstrBot (constraint) depends on shared-lib==2.0" in str(exc_info.value)
+    assert "LibsClaw (constraint) depends on shared-lib==2.0" in str(exc_info.value)
     assert "The conflict is caused by:" in exc_info.value.errors
 
 
@@ -731,7 +731,7 @@ async def test_run_pip_in_process_bounds_retained_conflict_lines(monkeypatch):
         )
         print("The conflict is caused by:")
         print("    demo-package depends on shared-lib>=3.0")
-        print("    AstrBot (constraint) depends on shared-lib==2.0")
+        print("    LibsClaw (constraint) depends on shared-lib==2.0")
         return 1
 
     monkeypatch.setattr(
@@ -748,7 +748,7 @@ async def test_run_pip_in_process_bounds_retained_conflict_lines(monkeypatch):
     assert exc_info.value.errors[0].startswith("Cannot install demo-package")
     assert (
         exc_info.value.errors[-1]
-        == "    AstrBot (constraint) depends on shared-lib==2.0"
+        == "    LibsClaw (constraint) depends on shared-lib==2.0"
     )
 
 
@@ -931,7 +931,7 @@ def test_get_core_constraints_caches_fallback_resolution(monkeypatch):
 
     def mock_distribution(name):
         distribution_calls.append(name)
-        if name == "AstrBot":
+        if name == "LibsClaw":
             raise pip_installer_module.importlib_metadata.PackageNotFoundError
         if name == "AstrBot-App":
             return fake_distribution
@@ -967,7 +967,7 @@ def test_get_core_constraints_caches_fallback_resolution(monkeypatch):
 
     assert first == ("shared-lib==2.0",)
     assert second == ("shared-lib==2.0",)
-    assert distribution_calls == ["AstrBot", "AstrBot-App"]
+    assert distribution_calls == ["LibsClaw", "AstrBot-App"]
     assert distributions_calls == ["scan"]
 
 
@@ -996,7 +996,7 @@ def test_get_core_constraints_skips_distributions_with_unreadable_top_level(
     fake_distribution = FakeFallbackDistribution()
 
     def mock_distribution(name):
-        if name == "AstrBot":
+        if name == "LibsClaw":
             raise pip_installer_module.importlib_metadata.PackageNotFoundError
         if name == "AstrBot-App":
             return fake_distribution
@@ -1055,7 +1055,7 @@ def test_core_constraints_file_propagates_inner_conflict_without_fake_warning(
         pip_installer_module.DependencyConflictError,
         match="core conflict",
     ):
-        provider = core_constraints_module.CoreConstraintsProvider("AstrBot")
+        provider = core_constraints_module.CoreConstraintsProvider("LibsClaw")
         with provider.constraints_file() as constraints_path:
             assert constraints_path is not None
             raise conflict

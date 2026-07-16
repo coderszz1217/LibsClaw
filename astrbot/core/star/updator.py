@@ -77,7 +77,7 @@ class PluginUpdator(RepoZipUpdator):
 
     @classmethod
     def find_plugin_metadata_entry(cls, entries: list[str]) -> str | None:
-        """Find AstrBot plugin metadata in archive entries.
+        """Find LibsClaw plugin metadata in archive entries.
 
         Args:
             entries: Zip archive member names.
@@ -112,7 +112,7 @@ class PluginUpdator(RepoZipUpdator):
 
     @staticmethod
     def validate_plugin_metadata(metadata: object, metadata_label: str) -> None:
-        """Validate AstrBot plugin metadata content.
+        """Validate LibsClaw plugin metadata content.
 
         Args:
             metadata: Parsed metadata YAML content.
@@ -151,7 +151,7 @@ class PluginUpdator(RepoZipUpdator):
 
     @classmethod
     def inspect_plugin_archive(cls, zip_path: str) -> dict[str, object]:
-        """Inspect plugin metadata in an AstrBot plugin archive.
+        """Inspect plugin metadata in an LibsClaw plugin archive.
 
         Args:
             zip_path: Path to the plugin archive.
@@ -160,14 +160,14 @@ class PluginUpdator(RepoZipUpdator):
             A dict containing the metadata entry and parsed metadata.
 
         Raises:
-            ValueError: If the archive is not a valid AstrBot plugin.
+            ValueError: If the archive is not a valid LibsClaw plugin.
         """
         try:
             with zipfile.ZipFile(zip_path, "r") as z:
                 metadata_entry = cls.find_plugin_metadata_entry(z.namelist())
                 if metadata_entry is None:
                     raise ValueError(
-                        "压缩包不是合法的 AstrBot 插件：未找到 metadata.yaml 或 metadata.yml。"
+                        "压缩包不是合法的 LibsClaw 插件：未找到 metadata.yaml 或 metadata.yml。"
                     )
 
                 try:
@@ -188,7 +188,7 @@ class PluginUpdator(RepoZipUpdator):
 
     @classmethod
     def validate_plugin_archive(cls, zip_path: str) -> str:
-        """Validate that an archive contains a valid AstrBot plugin.
+        """Validate that an archive contains a valid LibsClaw plugin.
 
         Args:
             zip_path: Path to the plugin archive.
@@ -197,7 +197,7 @@ class PluginUpdator(RepoZipUpdator):
             The archive entry name of the plugin metadata file.
 
         Raises:
-            ValueError: If the archive is not a valid AstrBot plugin.
+            ValueError: If the archive is not a valid LibsClaw plugin.
         """
         inspection = cls.inspect_plugin_archive(zip_path)
         return str(inspection["metadata_entry"])

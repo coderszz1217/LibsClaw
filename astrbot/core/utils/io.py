@@ -409,7 +409,7 @@ def is_dashboard_version_compatible(
 
     Args:
         dashboard_version: Version read from the WebUI assets/version file.
-        current_version: Current AstrBot core version.
+        current_version: Current LibsClaw core version.
 
     Returns:
         True when both versions are valid SemVer values and compare equal.
@@ -434,7 +434,7 @@ def is_dashboard_dist_compatible(dist_dir: str | Path, current_version: str) -> 
 
     Args:
         dist_dir: Dashboard dist directory path.
-        current_version: Current AstrBot core version.
+        current_version: Current LibsClaw core version.
 
     Returns:
         True when the dist has an index file and a compatible assets/version.
@@ -454,7 +454,7 @@ def should_use_bundled_dashboard_dist(
 
     Args:
         user_dist: Runtime dashboard dist directory under data/.
-        current_version: Current AstrBot core version.
+        current_version: Current LibsClaw core version.
 
     Returns:
         True when user_dist exists but is missing or mismatched against the
@@ -518,7 +518,7 @@ async def download_dashboard(
     """Download dashboard assets and optionally extract them.
 
     Args:
-        path: Destination zip path. Defaults to the AstrBot data directory.
+        path: Destination zip path. Defaults to the LibsClaw data directory.
         extract_path: Directory where assets should be extracted.
         latest: Whether to download the latest dashboard build.
         version: Specific release tag or commit hash to download.
@@ -531,6 +531,12 @@ async def download_dashboard(
     Returns:
         None.
     """
+    # WebUI 在线下载已在此发行版中禁用：面板由本地构建产物提供
+    # （随包内置的 astrbot/dashboard/dist，或手动构建 dashboard/dist 后放入 data/dist）。
+    raise RuntimeError(
+        "WebUI 在线下载已禁用。请在 dashboard/ 目录执行 `pnpm install && pnpm build`，"
+        "并将 dashboard/dist 复制到 data/dist。"
+    )
     if path is None:
         zip_path = Path(get_astrbot_data_path()).absolute() / "dashboard.zip"
     else:
@@ -541,7 +547,7 @@ async def download_dashboard(
         ver_name = "latest" if latest else version
         dashboard_release_url = f"https://astrbot-registry.soulter.top/download/astrbot-dashboard/{ver_name}/dist.zip"
         logger.info(
-            f"Downloading AstrBot WebUI from {dashboard_release_url}",
+            f"Downloading LibsClaw WebUI from {dashboard_release_url}",
         )
         try:
             await download_file(
@@ -589,7 +595,7 @@ async def download_dashboard(
                 )
     else:
         url = f"https://github.com/AstrBotDevs/astrbot-release-harbour/releases/download/release-{version}/dist.zip"
-        logger.info(f"Downloading AstrBot WebUI from {url}")
+        logger.info(f"Downloading LibsClaw WebUI from {url}")
         if proxy:
             url = f"{proxy}/{url}"
         await download_file(

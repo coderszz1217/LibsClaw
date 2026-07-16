@@ -86,7 +86,7 @@ class _KeyRotator:
         keys = provider_settings.get(self.setting_name, [])
         if not keys:
             raise ValueError(
-                f"Error: {self.provider_name} API key is not configured in AstrBot."
+                f"Error: {self.provider_name} API key is not configured in LibsClaw."
             )
 
         async with self.lock:
@@ -194,7 +194,7 @@ async def _tavily_search(
     """
     keys = provider_settings.get("websearch_tavily_key", [])
     if not keys:
-        raise ValueError("Error: Tavily API key is not configured in AstrBot.")
+        raise ValueError("Error: Tavily API key is not configured in LibsClaw.")
 
     # Retry key-specific failures with the next key, but fail fast for
     # non-retryable errors such as server-side 5xx responses.
@@ -256,7 +256,7 @@ async def _tavily_extract(provider_settings: dict, payload: dict) -> list[dict]:
     """
     keys = provider_settings.get("websearch_tavily_key", [])
     if not keys:
-        raise ValueError("Error: Tavily API key is not configured in AstrBot.")
+        raise ValueError("Error: Tavily API key is not configured in LibsClaw.")
 
     last_error = None
     for _ in range(len(keys)):
@@ -314,7 +314,7 @@ async def _bocha_search(
     """
     keys = provider_settings.get("websearch_bocha_key", [])
     if not keys:
-        raise ValueError("Error: BoCha API key is not configured in AstrBot.")
+        raise ValueError("Error: BoCha API key is not configured in LibsClaw.")
 
     last_error = None
     for _ in range(len(keys)):
@@ -380,7 +380,7 @@ async def _brave_search(
     """
     keys = provider_settings.get("websearch_brave_key", [])
     if not keys:
-        raise ValueError("Error: Brave API key is not configured in AstrBot.")
+        raise ValueError("Error: Brave API key is not configured in LibsClaw.")
 
     last_error = None
     for _ in range(len(keys)):
@@ -441,7 +441,7 @@ async def _firecrawl_search(
     """
     keys = provider_settings.get("websearch_firecrawl_key", [])
     if not keys:
-        raise ValueError("Error: Firecrawl API key is not configured in AstrBot.")
+        raise ValueError("Error: Firecrawl API key is not configured in LibsClaw.")
 
     last_error = None
     for _ in range(len(keys)):
@@ -508,7 +508,7 @@ async def _firecrawl_scrape(provider_settings: dict, payload: dict) -> dict:
     """
     keys = provider_settings.get("websearch_firecrawl_key", [])
     if not keys:
-        raise ValueError("Error: Firecrawl API key is not configured in AstrBot.")
+        raise ValueError("Error: Firecrawl API key is not configured in LibsClaw.")
 
     last_error = None
     for _ in range(len(keys)):
@@ -552,7 +552,7 @@ async def _baidu_search(
 ) -> list[SearchResult]:
     api_key = provider_settings.get("websearch_baidu_app_builder_key", "")
     if not api_key:
-        raise ValueError("Error: Baidu AI Search API key is not configured in AstrBot.")
+        raise ValueError("Error: Baidu AI Search API key is not configured in LibsClaw.")
 
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -633,7 +633,7 @@ class TavilyWebSearchTool(FunctionTool[AstrAgentContext]):
     async def call(self, context, **kwargs) -> ToolExecResult:
         _, provider_settings, _ = _get_runtime(context)
         if not provider_settings.get("websearch_tavily_key", []):
-            return "Error: Tavily API key is not configured in AstrBot."
+            return "Error: Tavily API key is not configured in LibsClaw."
 
         search_depth = kwargs.get("search_depth", "basic")
         if search_depth not in ["basic", "advanced"]:
@@ -692,7 +692,7 @@ class TavilyExtractWebPageTool(FunctionTool[AstrAgentContext]):
     async def call(self, context, **kwargs) -> ToolExecResult:
         _, provider_settings, _ = _get_runtime(context)
         if not provider_settings.get("websearch_tavily_key", []):
-            return "Error: Tavily API key is not configured in AstrBot."
+            return "Error: Tavily API key is not configured in LibsClaw."
 
         url = str(kwargs.get("url", "")).strip()
         if not url:
@@ -758,7 +758,7 @@ class BochaWebSearchTool(FunctionTool[AstrAgentContext]):
     async def call(self, context, **kwargs) -> ToolExecResult:
         _, provider_settings, _ = _get_runtime(context)
         if not provider_settings.get("websearch_bocha_key", []):
-            return "Error: BoCha API key is not configured in AstrBot."
+            return "Error: BoCha API key is not configured in LibsClaw."
 
         payload = {
             "query": kwargs["query"],
@@ -812,7 +812,7 @@ class BraveWebSearchTool(FunctionTool[AstrAgentContext]):
     async def call(self, context, **kwargs) -> ToolExecResult:
         _, provider_settings, _ = _get_runtime(context)
         if not provider_settings.get("websearch_brave_key", []):
-            return "Error: Brave API key is not configured in AstrBot."
+            return "Error: Brave API key is not configured in LibsClaw."
 
         count = int(kwargs.get("count", 10))
         if count < 1:
@@ -873,7 +873,7 @@ class FirecrawlWebSearchTool(FunctionTool[AstrAgentContext]):
     async def call(self, context, **kwargs) -> ToolExecResult:
         _, provider_settings, _ = _get_runtime(context)
         if not provider_settings.get("websearch_firecrawl_key", []):
-            return "Error: Firecrawl API key is not configured in AstrBot."
+            return "Error: Firecrawl API key is not configured in LibsClaw."
 
         payload = {
             "query": kwargs["query"],
@@ -927,7 +927,7 @@ class FirecrawlExtractWebPageTool(FunctionTool[AstrAgentContext]):
     async def call(self, context, **kwargs) -> ToolExecResult:
         _, provider_settings, _ = _get_runtime(context)
         if not provider_settings.get("websearch_firecrawl_key", []):
-            return "Error: Firecrawl API key is not configured in AstrBot."
+            return "Error: Firecrawl API key is not configured in LibsClaw."
 
         url = str(kwargs.get("url", "")).strip()
         if not url:
@@ -987,7 +987,7 @@ class BaiduWebSearchTool(FunctionTool[AstrAgentContext]):
     async def call(self, context, **kwargs) -> ToolExecResult:
         _, provider_settings, _ = _get_runtime(context)
         if not provider_settings.get("websearch_baidu_app_builder_key", ""):
-            return "Error: Baidu AI Search API key is not configured in AstrBot."
+            return "Error: Baidu AI Search API key is not configured in LibsClaw."
 
         top_k = int(kwargs.get("top_k", 10))
         if top_k < 1:
@@ -1137,7 +1137,7 @@ class ExaWebSearchTool(FunctionTool[AstrAgentContext]):
     async def call(self, context, **kwargs) -> ToolExecResult:
         _, provider_settings, _ = _get_runtime(context)
         if not provider_settings.get("websearch_exa_key", []):
-            return "Error: Exa API key is not configured in AstrBot."
+            return "Error: Exa API key is not configured in LibsClaw."
 
         try:
             num_results = int(kwargs.get("num_results", 10))
@@ -1211,7 +1211,7 @@ class ExaGetContentsTool(FunctionTool[AstrAgentContext]):
     async def call(self, context, **kwargs) -> ToolExecResult:
         _, provider_settings, _ = _get_runtime(context)
         if not provider_settings.get("websearch_exa_key", []):
-            return "Error: Exa API key is not configured in AstrBot."
+            return "Error: Exa API key is not configured in LibsClaw."
 
         url = str(kwargs.get("url", "")).strip()
         if not url:

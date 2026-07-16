@@ -329,7 +329,7 @@ def register_permission_type(
 
 
 def register_on_astrbot_loaded(**kwargs):
-    """当 AstrBot 加载完成时"""
+    """当 LibsClaw 加载完成时"""
 
     def decorator(awaitable):
         _ = get_handler_or_create(awaitable, EventType.OnAstrBotLoadedEvent, **kwargs)
@@ -580,7 +580,7 @@ def register_on_llm_tool_respond(**kwargs):
 def register_llm_tool(name: str | None = None, **kwargs):
     """为函数调用（function-calling / tools-use）添加工具。
 
-    请务必按照以下格式编写一个工具（包括函数注释，AstrBot 会尝试解析该函数注释）
+    请务必按照以下格式编写一个工具（包括函数注释，LibsClaw 会尝试解析该函数注释）
 
     ```
     @llm_tool(name="get_weather") # 如果 name 不填，将使用函数名

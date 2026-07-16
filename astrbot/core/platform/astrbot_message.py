@@ -48,7 +48,7 @@ class Group:
 
 
 class AstrBotMessage:
-    """AstrBot 的消息对象"""
+    """LibsClaw 的消息对象"""
 
     type: MessageType  # 消息类型
     self_id: str  # 机器人的识别id

@@ -224,7 +224,7 @@ def file_uri_to_path(file_uri: MediaRefStr) -> str:
     if len(path) >= 4 and path[0] == "/" and path[2] == ":" and path[1].isalpha():
         path = path[1:]
     elif os.name != "nt" and path.startswith("//"):
-        # Older AstrBot builds generated file:////path for POSIX absolute paths.
+        # Older LibsClaw builds generated file:////path for POSIX absolute paths.
         path = "/" + path.lstrip("/")
     return str(Path(path))
 
@@ -242,7 +242,7 @@ def _extension_from_mime_type(mime_type: str | None) -> str | None:
 
 
 def _temp_media_path(media_type: str, suffix: str) -> Path:
-    """Create a unique path under AstrBot's temp directory for materialized media."""
+    """Create a unique path under LibsClaw's temp directory for materialized media."""
     temp_dir = Path(get_astrbot_temp_path())
     temp_dir.mkdir(parents=True, exist_ok=True)
     safe_media_type = "".join(
@@ -1008,7 +1008,7 @@ async def convert_audio_to_opus(audio_path: str, output_path: str | None = None)
     Args:
         audio_path: Source audio file path.
         output_path: Optional output file path. When omitted, a temporary path is
-            created under AstrBot's temp directory.
+            created under LibsClaw's temp directory.
 
     Returns:
         The converted Opus file path.
@@ -1029,7 +1029,7 @@ async def convert_video_format(
         video_path: Source video file path.
         output_format: Target format, such as ``mp4``.
         output_path: Optional output file path. When omitted, a temporary path is
-            created under AstrBot's temp directory.
+            created under LibsClaw's temp directory.
 
     Returns:
         The converted video file path.
@@ -1119,7 +1119,7 @@ async def convert_audio_format(
         output_format: Target format, such as ``amr``, ``ogg``, ``opus``, or
             ``wav``.
         output_path: Optional output file path. When omitted, a temporary path is
-            created under AstrBot's temp directory.
+            created under LibsClaw's temp directory.
 
     Returns:
         The converted audio file path.
@@ -1195,7 +1195,7 @@ async def convert_audio_to_amr(audio_path: str, output_path: str | None = None) 
     Args:
         audio_path: Source audio file path.
         output_path: Optional output file path. When omitted, a temporary path is
-            created under AstrBot's temp directory.
+            created under LibsClaw's temp directory.
 
     Returns:
         The converted AMR file path.
@@ -1213,7 +1213,7 @@ async def convert_audio_to_wav(audio_path: str, output_path: str | None = None) 
     Args:
         audio_path: Source audio file path.
         output_path: Optional output file path. When omitted, a temporary path is
-            created under AstrBot's temp directory.
+            created under LibsClaw's temp directory.
 
     Returns:
         The converted WAV file path.
@@ -1235,7 +1235,7 @@ async def ensure_wav(audio_path: str, output_path: str | None = None) -> str:
     Args:
         audio_path: Local audio path to inspect and convert when needed.
         output_path: Optional destination path. When omitted, conversion helpers
-            create a temporary file under AstrBot's temp directory.
+            create a temporary file under LibsClaw's temp directory.
 
     Returns:
         The original path when it is already WAV or unavailable; otherwise the
@@ -1274,7 +1274,7 @@ async def ensure_jpeg(image_path: str, output_path: str | None = None) -> str:
     Args:
         image_path: Local image path to inspect and convert when needed.
         output_path: Optional destination path. When omitted, a temporary file under
-            AstrBot's temp directory is created for converted JPEG output.
+            LibsClaw's temp directory is created for converted JPEG output.
 
     Returns:
         The original path when the source is already a JPEG file with a jpg/jpeg
@@ -1437,7 +1437,7 @@ async def extract_video_cover(
     Args:
         video_path: Source video file path.
         output_path: Optional output image path. When omitted, a temporary JPEG
-            path is created under AstrBot's temp directory.
+            path is created under LibsClaw's temp directory.
 
     Returns:
         The extracted JPEG cover path.

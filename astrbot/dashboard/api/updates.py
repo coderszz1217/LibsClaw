@@ -59,11 +59,16 @@ def _service_response(result: UpdateServiceResult) -> JSONResponse:
 
 def _service_error(exc: UpdateServiceError) -> JSONResponse:
     logger.error(f"Dashboard update operation failed: {exc}", exc_info=True)
-    if exc.code == "desktop_managed":
+    if exc.code in ("desktop_managed", "update_disabled"):
+        message = (
+            DESKTOP_MANAGED_RESTART_MESSAGE
+            if exc.code == "desktop_managed"
+            else str(exc)
+        )
         return JSONResponse(
             {
                 "status": "error",
-                "message": DESKTOP_MANAGED_RESTART_MESSAGE,
+                "message": message,
                 "data": None,
             },
             status_code=200,

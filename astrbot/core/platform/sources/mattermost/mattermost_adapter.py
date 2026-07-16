@@ -309,7 +309,7 @@ class MattermostPlatformAdapter(Platform):
         """Creates a Mattermost message event.
 
         Args:
-            message: AstrBot message object to wrap.
+            message: LibsClaw message object to wrap.
 
         Returns:
             Created Mattermost message event.

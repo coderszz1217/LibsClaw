@@ -283,7 +283,7 @@ class DiscordPlatformAdapter(Platform):
         """Creates a Discord message event.
 
         Args:
-            message: AstrBot message object to wrap.
+            message: LibsClaw message object to wrap.
             followup_webhook: Optional slash-command follow-up webhook.
 
         Returns:

@@ -166,10 +166,10 @@ function startSidebarResize(event) {
         <img
           class="sidebar-brand-logo"
           src="@/assets/images/plugin_icon.png"
-          alt="AstrBot logo"
+          alt="LibsClaw logo"
         >
         <div class="sidebar-brand-copy">
-          <span class="sidebar-brand-title">AstrBot</span>
+          <span class="sidebar-brand-title">LibsClaw</span>
           <span class="sidebar-brand-subtitle">WebUI</span>
         </div>
       </div>

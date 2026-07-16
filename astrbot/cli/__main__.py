@@ -1,4 +1,4 @@
-"""AstrBot CLI entry point"""
+"""LibsClaw CLI entry point"""
 
 import sys
 
@@ -18,12 +18,12 @@ logo_tmpl = r"""
 
 
 @click.group()
-@click.version_option(__version__, prog_name="AstrBot")
+@click.version_option(__version__, prog_name="LibsClaw")
 def cli() -> None:
-    """The AstrBot CLI"""
+    """The LibsClaw CLI"""
     click.echo(logo_tmpl)
-    click.echo("Welcome to AstrBot CLI!")
-    click.echo(f"AstrBot CLI version: {__version__}")
+    click.echo("Welcome to LibsClaw CLI!")
+    click.echo(f"LibsClaw CLI version: {__version__}")
 
 
 @click.command()

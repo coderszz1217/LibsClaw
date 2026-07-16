@@ -165,7 +165,7 @@ onMounted(async () => {
     <v-card class="login-card" elevation="1">
       <v-card-title>
         <div class="d-flex justify-space-between align-center w-100">
-          <img width="80" src="@/assets/images/icon-no-shadow.svg" alt="AstrBot Logo">
+          <img width="80" src="@/assets/images/icon-no-shadow.svg" alt="LibsClaw Logo">
           <div class="d-flex align-center gap-1">
             <LanguageSwitcher />
             <v-divider vertical class="mx-1"
@@ -265,15 +265,6 @@ onMounted(async () => {
           </div>
         </v-card-text>
         <v-card-actions class="version-dialog-actions">
-          <v-btn
-            href="https://docs.astrbot.app/faq.html"
-            target="_blank"
-            rel="noopener noreferrer"
-            variant="text"
-            prepend-icon="mdi-help-circle-outline"
-          >
-            {{ t('versions.faq') }}
-          </v-btn>
           <v-spacer />
           <v-btn color="primary" variant="text" @click="versionDialogVisible = false">
             {{ t('versions.close') }}

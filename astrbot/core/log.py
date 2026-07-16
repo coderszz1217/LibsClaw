@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 
 class _RecordEnricherFilter(logging.Filter):
-    """为 logging.LogRecord 注入 AstrBot 日志字段。"""
+    """为 logging.LogRecord 注入 LibsClaw 日志字段。"""
 
     def filter(self, record: logging.LogRecord) -> bool:
         record.plugin_tag = "[Plug]" if _is_plugin_path(record.pathname) else "[Core]"

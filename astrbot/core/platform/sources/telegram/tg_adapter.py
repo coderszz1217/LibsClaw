@@ -740,7 +740,7 @@ class TelegramPlatformAdapter(Platform):
         """Creates a Telegram message event.
 
         Args:
-            message: AstrBot message object to wrap.
+            message: LibsClaw message object to wrap.
 
         Returns:
             Created Telegram message event.

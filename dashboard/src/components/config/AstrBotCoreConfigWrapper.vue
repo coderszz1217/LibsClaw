@@ -23,16 +23,6 @@
                 </v-container>
             </v-tabs-window-item>
 
-
-            <div style="margin-left: 16px; padding-bottom: 16px">
-                <small>{{ tm('help.helpPrefix') }}
-                    <a href="https://docs.astrbot.app/" target="_blank">{{ tm('help.documentation') }}</a>
-                    {{ tm('help.helpMiddle') }}
-                    <a href="https://qm.qq.com/cgi-bin/qm/qr?k=EYGsuUTfe00_iOu9JTXS7_TEpMkXOvwv&jump_from=webapi&authKey=uUEMKCROfsseS+8IzqPjzV3y1tzy4AkykwTib2jNkOFdzezF9s9XknqnIaf3CDft"
-                        target="_blank">{{ tm('help.support') }}</a>{{ tm('help.helpSuffix') }}
-                </small>
-            </div>
-
         </v-tabs-window>
     </div>
     <v-container v-if="visibleSections.length === 0" fluid class="px-0">

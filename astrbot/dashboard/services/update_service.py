@@ -112,44 +112,41 @@ class UpdateService:
             )
         return UpdateServiceResult(data=progress)
 
+    UPDATE_DISABLED_MESSAGE = "在线更新功能已在此发行版中禁用。"
+
     async def check_update(self, update_type: str | None) -> UpdateServiceResult:
+        # 在线更新已禁用：始终报告当前即为最新版本，不请求任何外部服务
+        dashboard_version = None
         try:
             dashboard_version = await self.get_dashboard_version()
-            if update_type == "dashboard":
-                return UpdateServiceResult(
-                    data={
-                        "has_new_version": dashboard_version != f"v{VERSION}",
-                        "current_version": dashboard_version,
-                    }
-                )
-            update_result = await self.astrbot_updator.check_update(None, None, False)
+        except Exception:
+            pass
+        if update_type == "dashboard":
             return UpdateServiceResult(
-                status="success",
-                message=str(update_result)
-                if update_result is not None
-                else "已经是最新版本了。",
                 data={
-                    "version": f"v{VERSION}",
-                    "has_new_version": update_result is not None,
-                    "dashboard_version": dashboard_version,
-                    "dashboard_has_new_version": bool(
-                        dashboard_version and dashboard_version != f"v{VERSION}"
-                    ),
-                },
+                    "has_new_version": False,
+                    "current_version": dashboard_version,
+                }
             )
-        except Exception as exc:
-            logger.warning(f"检查更新失败: {exc!s} (不影响除项目更新外的正常使用)")
-            raise UpdateServiceError(exc.__str__()) from exc
+        return UpdateServiceResult(
+            status="success",
+            message="已经是最新版本了。",
+            data={
+                "version": f"v{VERSION}",
+                "has_new_version": False,
+                "dashboard_version": dashboard_version,
+                "dashboard_has_new_version": False,
+            },
+        )
 
     async def get_releases(self) -> UpdateServiceResult:
-        try:
-            releases = await self.astrbot_updator.get_releases()
-            return UpdateServiceResult(data=releases)
-        except Exception as exc:
-            logger.error(f"/api/update/releases: {traceback.format_exc()}")
-            raise UpdateServiceError(exc.__str__()) from exc
+        # 在线更新已禁用：不再请求外部发布源
+        return UpdateServiceResult(data=[])
 
     async def update_project(self, data: object) -> UpdateServiceResult:
+        raise UpdateServiceError(self.UPDATE_DISABLED_MESSAGE, code="update_disabled")
+
+    async def _legacy_update_project(self, data: object) -> UpdateServiceResult:
         if is_desktop_managed_backend():
             raise UpdateServiceError(
                 DESKTOP_MANAGED_RESTART_MESSAGE,
@@ -204,7 +201,7 @@ class UpdateService:
             progress_id: Progress record id reported to the frontend.
             version: Target version without the latest sentinel.
             latest: Whether to install the latest release.
-            reboot: Whether to restart AstrBot after applying files.
+            reboot: Whether to restart LibsClaw after applying files.
             proxy: Optional GitHub proxy URL.
         """
         update_temp_parent = Path(get_astrbot_temp_path()) / "updates"
@@ -253,7 +250,7 @@ class UpdateService:
                     progress_id,
                     "core",
                     "running",
-                    "正在下载 AstrBot 项目代码...",
+                    "正在下载 LibsClaw 项目代码...",
                     45,
                 )
                 core_zip_path = Path(
@@ -356,9 +353,9 @@ class UpdateService:
                         98,
                     )
                     await self.core_lifecycle.restart()
-                    message = "更新成功，AstrBot 将在 2 秒内全量重启以应用新的代码。"
+                    message = "更新成功，LibsClaw 将在 2 秒内全量重启以应用新的代码。"
                 else:
-                    message = "更新成功，AstrBot 将在下次启动时应用新的代码。"
+                    message = "更新成功，LibsClaw 将在下次启动时应用新的代码。"
 
                 self.update_progress[progress_id].update(
                     {
@@ -389,6 +386,9 @@ class UpdateService:
             logger.debug(f"Update task failed: {exc!s}")
 
     async def update_dashboard(self) -> UpdateServiceResult:
+        raise UpdateServiceError(self.UPDATE_DISABLED_MESSAGE, code="update_disabled")
+
+    async def _legacy_update_dashboard(self) -> UpdateServiceResult:
         try:
             try:
                 await self.download_dashboard(version=f"v{VERSION}", latest=False)

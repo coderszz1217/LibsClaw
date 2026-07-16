@@ -1,4 +1,4 @@
-"""AstrBot 启动器，负责初始化和启动核心组件和仪表板服务器。
+"""LibsClaw 启动器，负责初始化和启动核心组件和仪表板服务器。
 
 工作流程:
 1. 初始化核心生命周期, 传递数据库和日志代理实例到核心生命周期
@@ -15,7 +15,7 @@ from astrbot.dashboard.server import AstrBotDashboard
 
 
 class InitialLoader:
-    """AstrBot 启动器，负责初始化和启动核心组件和仪表板服务器。"""
+    """LibsClaw 启动器，负责初始化和启动核心组件和仪表板服务器。"""
 
     def __init__(self, db: BaseDatabase, log_broker: LogBroker) -> None:
         self.db = db
@@ -30,7 +30,7 @@ class InitialLoader:
             await core_lifecycle.initialize()
         except Exception as e:
             logger.critical(traceback.format_exc())
-            logger.critical(f"😭 初始化 AstrBot 失败：{e} !!!")
+            logger.critical(f"😭 初始化 LibsClaw 失败：{e} !!!")
             return
 
         core_task = core_lifecycle.start()
@@ -53,5 +53,5 @@ class InitialLoader:
         try:
             await task  # 整个AstrBot在这里运行
         except asyncio.CancelledError:
-            logger.info("🌈 正在关闭 AstrBot...")
+            logger.info("🌈 正在关闭 LibsClaw...")
             await core_lifecycle.stop()

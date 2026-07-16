@@ -31,7 +31,8 @@ os.makedirs(get_astrbot_data_path(), exist_ok=True)
 DEMO_MODE = os.getenv("DEMO_MODE", "False").strip().lower() in ("true", "1", "t")
 
 astrbot_config = AstrBotConfig()
-t2i_base_url = astrbot_config.get("t2i_endpoint", "https://t2i.soulter.top/text2img")
+# 远程 t2i 官方端点已禁用：仅当用户显式配置 t2i_endpoint 时才使用远程渲染
+t2i_base_url = astrbot_config.get("t2i_endpoint", "")
 html_renderer = HtmlRenderer(t2i_base_url)
 logger = LogManager.GetLogger(log_name="astrbot")
 LogManager.configure_logger(logger, astrbot_config)

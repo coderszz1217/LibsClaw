@@ -17,7 +17,7 @@ edge_tts 方式，能够免费、快速生成语音，使用需要先安装edge-
 ```
 pip install edge_tts
 ```
-Windows 如果提示找不到指定文件，以管理员身份运行命令行窗口，然后再次运行 AstrBot
+Windows 如果提示找不到指定文件，以管理员身份运行命令行窗口，然后再次运行 LibsClaw
 """
 
 

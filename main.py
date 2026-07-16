@@ -179,7 +179,8 @@ async def check_dashboard_files(webui_dir: str | None = None):
         return str(bundled_dist)
 
     logger.info(
-        "Downloading WebUI. If it fails, download dist.zip from https://github.com/AstrBotDevs/AstrBot/releases/latest and extract dist to data/.",
+        "WebUI 在线下载已禁用。请在 dashboard/ 目录执行 `pnpm install && pnpm build`，"
+        "并将 dashboard/dist 复制到 data/dist。",
     )
 
     try:
@@ -217,7 +218,7 @@ async def main_async(webui_dir_arg: str | None) -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="AstrBot")
+    parser = argparse.ArgumentParser(description="LibsClaw")
     parser.add_argument(
         "--webui-dir",
         type=str,

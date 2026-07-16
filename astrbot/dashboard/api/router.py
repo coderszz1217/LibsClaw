@@ -1,4 +1,4 @@
-"""FastAPI HTTP API surface for the AstrBot dashboard."""
+"""FastAPI HTTP API surface for the LibsClaw dashboard."""
 
 from fastapi import APIRouter
 

@@ -167,7 +167,7 @@ class QQOfficialWebhookPlatformAdapter(Platform):
         """Creates a QQ Official webhook message event.
 
         Args:
-            message: AstrBot message object to wrap.
+            message: LibsClaw message object to wrap.
 
         Returns:
             Created QQ Official webhook message event.

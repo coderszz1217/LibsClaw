@@ -14,7 +14,6 @@ from astrbot.core.utils.t2i.template_manager import TemplateManager
 
 from . import RenderStrategy
 
-ASTRBOT_T2I_DEFAULT_ENDPOINT = "https://t2i.soulter.top/text2img"
 SHIKI_RUNTIME_SCRIPT_ID = "astrbot-t2i-shiki-runtime"
 SHIKI_RUNTIME_TEMPLATE_PATTERN = re.compile(r"\{\{\s*shiki_runtime\s*\|\s*safe\s*\}\}")
 JINJA_SYNTAX_PATTERN = re.compile(r"\{[{%#]")
@@ -94,45 +93,28 @@ def inject_shiki_runtime(tmpl_str: str) -> str:
 class NetworkRenderStrategy(RenderStrategy):
     def __init__(self, base_url: str | None = None) -> None:
         super().__init__()
+        # 官方远程渲染端点已在此发行版中禁用；仅当用户显式配置
+        # t2i_endpoint 时才使用远程渲染。
         if not base_url:
-            self.BASE_RENDER_URL = ASTRBOT_T2I_DEFAULT_ENDPOINT
+            self.BASE_RENDER_URL = ""
         else:
             self.BASE_RENDER_URL = self._clean_url(base_url)
 
-        self.endpoints = [self.BASE_RENDER_URL]
+        self.endpoints = [self.BASE_RENDER_URL] if self.BASE_RENDER_URL else []
         self.template_manager = TemplateManager()
 
     async def initialize(self) -> None:
-        if self.BASE_RENDER_URL == ASTRBOT_T2I_DEFAULT_ENDPOINT:
-            asyncio.create_task(self.get_official_endpoints())
+        return None
 
     async def get_template(self, name: str = "base") -> str:
         """通过名称获取文转图 HTML 模板"""
         return self.template_manager.get_template(name)
 
-    async def get_official_endpoints(self) -> None:
-        """获取官方的 t2i 端点列表。"""
-        try:
-            async with aiohttp.ClientSession(
-                trust_env=True,
-                connector=build_tls_connector(),
-            ) as session:
-                async with session.get(
-                    "https://api.soulter.top/astrbot/t2i-endpoints",
-                ) as resp:
-                    if resp.status == 200:
-                        data = await resp.json()
-                        all_endpoints: list[dict] = data.get("data", [])
-                        self.endpoints = [
-                            ep.get("url")
-                            for ep in all_endpoints
-                            if ep.get("active") and ep.get("url")
-                        ]
-                        logger.info(
-                            f"Successfully got {len(self.endpoints)} official T2I endpoints.",
-                        )
-        except Exception as e:
-            logger.error(f"Failed to get official endpoints: {e}")
+    def _ensure_endpoint_configured(self) -> None:
+        if not self.BASE_RENDER_URL:
+            raise RuntimeError(
+                "远程 t2i 渲染未配置。请在配置中填写 t2i_endpoint，或将 t2i_strategy 设为 local。"
+            )
 
     def _clean_url(self, url: str):
         url = url.removesuffix("/")
@@ -148,6 +130,7 @@ class NetworkRenderStrategy(RenderStrategy):
         options: dict | None = None,
     ) -> str:
         """使用自定义文转图模板"""
+        self._ensure_endpoint_configured()
         default_options = {
             "full_page": True,
             "type": "jpeg",

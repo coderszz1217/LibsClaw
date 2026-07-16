@@ -331,7 +331,7 @@ const openWebui = () => {
               label
               size="small"
             >
-              AstrBot: {{ astrbotVersionRequirement }}
+              LibsClaw: {{ astrbotVersionRequirement }}
             </v-chip>
           </div>
 

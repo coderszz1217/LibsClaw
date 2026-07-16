@@ -167,12 +167,12 @@ def test_build_skills_prompt_quotes_windows_paths_with_spaces(monkeypatch):
         SkillInfo(
             name="foo",
             description="do foo",
-            path="C:/AstrBot/My Skills/foo/SKILL.md",
+            path="C:/LibsClaw/My Skills/foo/SKILL.md",
             active=True,
         ),
     ]
     prompt = build_skills_prompt(skills)
-    assert 'type "C:/AstrBot/My Skills/foo/SKILL.md"' in prompt
+    assert 'type "C:/LibsClaw/My Skills/foo/SKILL.md"' in prompt
 
 
 def test_build_skills_prompt_normalizes_windows_backslashes_in_example(monkeypatch):
@@ -181,12 +181,12 @@ def test_build_skills_prompt_normalizes_windows_backslashes_in_example(monkeypat
         SkillInfo(
             name="foo",
             description="do foo",
-            path=r"C:\AstrBot\My Skills\foo\SKILL.md",
+            path=r"C:\LibsClaw\My Skills\foo\SKILL.md",
             active=True,
         ),
     ]
     prompt = build_skills_prompt(skills)
-    assert 'type "C:/AstrBot/My Skills/foo/SKILL.md"' in prompt
+    assert 'type "C:/LibsClaw/My Skills/foo/SKILL.md"' in prompt
 
 
 def test_build_skills_prompt_uses_windows_command_for_unc_paths(monkeypatch):

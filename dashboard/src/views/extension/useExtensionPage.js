@@ -1925,7 +1925,7 @@ export const useExtensionPage = () => {
         return {
           checked: true,
           supported: false,
-          message: `AstrBot ${currentVersion} does not satisfy plugin astrbot_version: ${normalizedSpec}`,
+          message: `LibsClaw ${currentVersion} does not satisfy plugin astrbot_version: ${normalizedSpec}`,
         };
       }
     }

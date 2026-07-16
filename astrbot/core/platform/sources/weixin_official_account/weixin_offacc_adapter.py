@@ -514,7 +514,7 @@ class WeixinOfficialAccountPlatformAdapter(Platform):
         """Creates a Weixin Official Account message event.
 
         Args:
-            message: AstrBot message object to wrap.
+            message: LibsClaw message object to wrap.
 
         Returns:
             Created Weixin Official Account message event.

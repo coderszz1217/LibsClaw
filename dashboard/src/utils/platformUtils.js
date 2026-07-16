@@ -46,36 +46,6 @@ export function getPlatformIcon(name) {
 }
 
 /**
- * 获取平台教程链接
- * @param {string} platformType - 平台类型
- * @returns {string} 教程链接
- */
-export function getTutorialLink(platformType) {
-  const tutorialMap = {
-    "qq_official_webhook": "https://docs.astrbot.app/platform/qqofficial/webhook.html",
-    "qq_official": "https://docs.astrbot.app/platform/qqofficial/websockets.html",
-    "aiocqhttp": "https://docs.astrbot.app/platform/aiocqhttp.html",
-    "wecom": "https://docs.astrbot.app/platform/wecom.html",
-    "weixin_oc": "https://docs.astrbot.app/platform/weixin_oc.html",
-    "wecom_ai_bot": "https://docs.astrbot.app/platform/wecom_ai_bot.html",
-    "lark": "https://docs.astrbot.app/platform/lark.html",
-    "telegram": "https://docs.astrbot.app/platform/telegram.html",
-    "dingtalk": "https://docs.astrbot.app/platform/dingtalk.html",
-    "weixin_official_account": "https://docs.astrbot.app/platform/weixin-official-account.html",
-    "discord": "https://docs.astrbot.app/platform/discord.html",
-    "slack": "https://docs.astrbot.app/platform/slack.html",
-    "kook": "https://docs.astrbot.app/platform/kook.html",
-    "vocechat": "https://docs.astrbot.app/platform/vocechat.html",
-    "satori": "https://docs.astrbot.app/platform/satori/guide.html",
-    "misskey": "https://docs.astrbot.app/platform/misskey.html",
-    "line": "https://docs.astrbot.app/platform/line.html",
-    "matrix": "https://docs.astrbot.app/platform/matrix.html",
-    "mattermost": "https://docs.astrbot.app/platform/mattermost.html",
-  }
-  return tutorialMap[platformType] || "https://docs.astrbot.app";
-}
-
-/**
  * 获取平台描述
  * @param {Object} template - 平台模板
  * @param {string} name - 平台名称

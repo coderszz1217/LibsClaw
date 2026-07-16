@@ -1,12 +1,12 @@
 [project]
-name = "AstrBot"
+name = "LibsClaw"
 version = "4.26.6"
 description = "Easy-to-use multi-platform LLM chatbot and development framework"
 readme = "README.md"
 license = { text = "AGPL-3.0-or-later" }
 requires-python = ">=3.12"
 
-keywords = ["AstrBot", "Agent", "Chatbot", "IM"]
+keywords = ["LibsClaw", "Agent", "Chatbot", "IM"]
 
 dependencies = [
   "aiocqhttp>=1.4.4",
@@ -79,10 +79,8 @@ dev = [
 ]
 
 [project.scripts]
-astrbot = "astrbot.cli.__main__:cli"
+libsclaw = "astrbot.cli.__main__:cli"
 
-[project.urls]
-Repository = "https://github.com/AstrBotDevs/AstrBot"
 
 [tool.ruff]
 exclude = ["astrbot/core/utils/t2i/local_strategy.py", "astrbot/api/all.py", "tests"]
@@ -123,6 +121,10 @@ allow-direct-references = true
 # Include bundled dashboard dist even though it is not tracked by VCS.
 [tool.hatch.build]
 artifacts = ["astrbot/dashboard/dist/**"]
+
+# 包名 LibsClaw 与模块目录 astrbot 不同名，需显式声明
+[tool.hatch.build.targets.wheel]
+packages = ["astrbot"]
 
 # Custom build hook: builds the Vue dashboard and copies dist into the package.
 [tool.hatch.build.hooks.custom]

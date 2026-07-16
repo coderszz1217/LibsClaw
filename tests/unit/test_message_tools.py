@@ -337,7 +337,7 @@ async def test_non_admin_can_send_workspace_file(tmp_path, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_non_admin_can_send_temp_file(tmp_path, monkeypatch):
-    """Non-admin users can send generated files under AstrBot temp."""
+    """Non-admin users can send generated files under LibsClaw temp."""
     tool = SendMessageToUserTool()
     ctx = _make_context(role="member", require_admin=True)
     temp_root = tmp_path / "temp"
@@ -397,7 +397,7 @@ async def test_send_message_downloads_windows_sandbox_file_with_original_name(
 
     result = await tool.call(
         ctx,
-        messages=[{"type": "file", "path": r"C:\Users\AstrBot\report.txt"}],
+        messages=[{"type": "file", "path": r"C:\Users\LibsClaw\report.txt"}],
     )
 
     assert "Message sent to session" in result

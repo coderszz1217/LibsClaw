@@ -1,12 +1,12 @@
 {
-  "name": "astrbot-dashboard",
+  "name": "libsclaw-dashboard",
   "version": "1.0.0",
   "private": true,
   "author": "CodedThemes",
   "scripts": {
     "dev": "node scripts/subset-mdi-font.mjs && vite --host",
     "build:t2i-shiki-runtime": "node scripts/build-t2i-shiki-runtime.mjs",
-    "build": "node scripts/subset-mdi-font.mjs && vue-tsc --noEmit && vite build",
+    "build": "node scripts/subset-mdi-font.mjs && vue-tsc --noEmit && vite build && node scripts/write-dist-version.mjs",
     "build-stage": "node scripts/subset-mdi-font.mjs && vue-tsc --noEmit && vite build --base=/vue/free/stage/",
     "build-prod": "node scripts/subset-mdi-font.mjs && vue-tsc --noEmit && vite build --base=/vue/free/",
     "preview": "vite preview --port 5050",

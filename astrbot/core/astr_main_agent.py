@@ -550,7 +550,7 @@ async def _ensure_persona_and_skills(
                 req.system_prompt += (
                     "User has not enabled the Computer Use feature. "
                     "You cannot use shell or Python to perform skills. "
-                    "If you need to use these capabilities, ask the user to enable Computer Use in the AstrBot WebUI -> Config."
+                    "If you need to use these capabilities, ask the user to enable Computer Use in the LibsClaw WebUI -> Config."
                 )
     tmgr = plugin_context.get_llm_tool_manager()
 

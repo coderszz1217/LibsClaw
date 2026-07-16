@@ -239,7 +239,7 @@ class WebChatAdapter(Platform):
         """Creates a WebChat message event.
 
         Args:
-            message: AstrBot message object to wrap.
+            message: LibsClaw message object to wrap.
 
         Returns:
             Created WebChat message event.

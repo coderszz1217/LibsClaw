@@ -580,7 +580,7 @@ class DingtalkPlatformAdapter(Platform):
                 await send_message(
                     msg_key="sampleMarkdown",
                     msg_param={
-                        "title": "AstrBot",
+                        "title": "LibsClaw",
                         "text": f"{at_str} {text}".strip(),
                     },
                 )
@@ -757,7 +757,7 @@ class DingtalkPlatformAdapter(Platform):
         """Creates a Dingtalk message event.
 
         Args:
-            message: AstrBot message object to wrap.
+            message: LibsClaw message object to wrap.
 
         Returns:
             Created Dingtalk message event.

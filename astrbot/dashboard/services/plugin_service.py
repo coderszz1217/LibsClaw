@@ -1598,11 +1598,11 @@ class PluginService:
                     "warning_type": "astrbot_version_unsupported",
                     "can_ignore": True,
                 },
-                public_message="当前 AstrBot 版本不满足插件要求",
+                public_message="当前 LibsClaw 版本不满足插件要求",
             ) from exc
 
     async def validate_plugin_repo(self, data: object) -> tuple[dict[str, Any], str]:
-        """Validate whether a GitHub repository contains AstrBot plugin metadata.
+        """Validate whether a GitHub repository contains LibsClaw plugin metadata.
 
         Args:
             data: Dashboard request payload containing repository or url.
@@ -1611,7 +1611,7 @@ class PluginService:
             Plugin metadata fetched from the GitHub repository and a success message.
 
         Raises:
-            PluginServiceError: If the repository is not a valid AstrBot plugin.
+            PluginServiceError: If the repository is not a valid LibsClaw plugin.
         """
         payload = self._payload(data)
         repo_url = str(payload.get("url") or payload.get("repository") or "").strip()
@@ -1761,7 +1761,7 @@ class PluginService:
                     "warning_type": "astrbot_version_unsupported",
                     "can_ignore": True,
                 },
-                public_message="当前 AstrBot 版本不满足插件要求",
+                public_message="当前 LibsClaw 版本不满足插件要求",
             ) from exc
 
     async def install_plugin_upload_from_dashboard_form(

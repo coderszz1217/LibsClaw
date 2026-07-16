@@ -734,7 +734,7 @@ class SatoriPlatformAdapter(Platform):
         """Creates a Satori message event.
 
         Args:
-            message: AstrBot message object to wrap.
+            message: LibsClaw message object to wrap.
 
         Returns:
             Created Satori message event.

@@ -3,17 +3,17 @@ version: '3.8'
 # 当接入 QQ NapCat 时，请使用这个 compose 文件一键部署: https://github.com/NapNeko/NapCat-Docker/blob/main/compose/astrbot.yml
 
 services:
-  astrbot:
-    image: soulter/astrbot:latest
-    container_name: astrbot
+  libsclaw:
+    image: libsclaw:latest  # 本地构建: docker build -t libsclaw:latest .
+    container_name: libsclaw
     restart: always
-    ports: # mappings description: https://github.com/AstrBotDevs/AstrBot/issues/497
-      - "6185:6185" # 必选，AstrBot WebUI 端口
+    ports: # mappings description: https://github.com/AstrBotDevs/LibsClaw/issues/497
+      - "6185:6185" # 必选，LibsClaw WebUI 端口
       - "6199:6199" # 可选, QQ 个人号 WebSocket 端口
     environment:
       - TZ=Asia/Shanghai
     volumes:
-      - ${PWD}/data:/AstrBot/data
+      - ${PWD}/data:/LibsClaw/data
       # - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
     networks:
@@ -21,7 +21,7 @@ services:
 
   shipyard:
     image: soulter/shipyard-bay:latest
-    container_name: astrbot_shipyard
+    container_name: libsclaw_shipyard
     # ports:
     #   - "8156:8156"
     environment:
@@ -37,7 +37,7 @@ services:
       - DEFAULT_SHIP_MEMORY=512m
     volumes:
       - ${PWD}/data/shipyard/bay_data:/app/data
-      - ${PWD}/data/temp:/AstrBot/data/temp           # Bind the local temp directory to the sandbox so that the uploaded file can be accessed in the sandbox
+      - ${PWD}/data/temp:/LibsClaw/data/temp           # Bind the local temp directory to the sandbox so that the uploaded file can be accessed in the sandbox
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - astrbot_network

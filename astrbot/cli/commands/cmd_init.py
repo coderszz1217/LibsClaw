@@ -12,7 +12,7 @@ async def check_dashboard(astrbot_root: Path) -> None:
     """Check whether dashboard assets are available.
 
     Args:
-        astrbot_root: AstrBot data directory path.
+        astrbot_root: LibsClaw data directory path.
     """
     from ..utils import check_dashboard as _check_dashboard
 
@@ -30,12 +30,12 @@ def _initialize_config_from_env(astrbot_root: Path) -> None:
 
 
 async def initialize_astrbot(astrbot_root: Path) -> None:
-    """Execute AstrBot initialization logic"""
+    """Execute LibsClaw initialization logic"""
     dot_astrbot = astrbot_root / ".astrbot"
 
     if not dot_astrbot.exists():
         if click.confirm(
-            f"Install AstrBot to this directory? {astrbot_root}",
+            f"Install LibsClaw to this directory? {astrbot_root}",
             default=True,
             abort=True,
         ):
@@ -60,10 +60,10 @@ async def initialize_astrbot(astrbot_root: Path) -> None:
 
 @click.command()
 def init() -> None:
-    """Initialize AstrBot"""
+    """Initialize LibsClaw"""
     from ..utils import get_astrbot_root
 
-    click.echo("Initializing AstrBot...")
+    click.echo("Initializing LibsClaw...")
 
     astrbot_root = get_astrbot_root()
     lock_file = astrbot_root / "astrbot.lock"
@@ -72,7 +72,7 @@ def init() -> None:
     try:
         with lock.acquire():
             asyncio.run(initialize_astrbot(astrbot_root))
-            click.echo("Done! You can now run 'astrbot run' to start AstrBot")
+            click.echo("Done! You can now run 'libsclaw run' to start LibsClaw")
     except Timeout:
         raise click.ClickException(
             "Cannot acquire lock file. Please check if another instance is running"

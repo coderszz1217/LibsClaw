@@ -1,10 +1,10 @@
 openapi: 3.1.0
 info:
-  title: AstrBot OpenAPI v1
+  title: LibsClaw OpenAPI v1
   version: 0.1.0
   description: >
-    Target REST contract for migrating AstrBot HTTP APIs to /api/v1.
-    Dynamic AstrBot configuration payloads are intentionally modeled as open
+    Target REST contract for migrating LibsClaw HTTP APIs to /api/v1.
+    Dynamic LibsClaw configuration payloads are intentionally modeled as open
     JSON objects because their schemas are provided at runtime by template
     endpoints.
     Developer API keys currently support these scopes only: bot, provider,
@@ -12,7 +12,7 @@ info:
     grants bot and provider access.
 servers:
   - url: http://localhost:6185
-    description: Local AstrBot server
+    description: Local LibsClaw server
 
 security:
   - ApiKeyAuth: []
@@ -4184,7 +4184,7 @@ paths:
   /api/v1/stats/version:
     get:
       tags: [Stats]
-      summary: Get AstrBot version
+      summary: Get LibsClaw version
       operationId: getVersion
       x-astrbot-scope: system
       responses:
@@ -4194,7 +4194,7 @@ paths:
   /api/v1/stats/versions:
     get:
       tags: [Stats]
-      summary: Get public WebUI and AstrBot versions
+      summary: Get public WebUI and LibsClaw versions
       operationId: getPublicVersions
       security: []
       responses:
@@ -4299,7 +4299,7 @@ paths:
   /api/v1/system/restart:
     post:
       tags: [Stats]
-      summary: Restart AstrBot core
+      summary: Restart LibsClaw core
       operationId: restartCore
       x-astrbot-scope: system
       responses:
@@ -4526,7 +4526,7 @@ paths:
   /api/v1/updates/core:
     post:
       tags: [Updates]
-      summary: Update AstrBot core
+      summary: Update LibsClaw core
       operationId: updateCore
       x-astrbot-scope: system
       requestBody:
@@ -4887,13 +4887,13 @@ components:
 
   responses:
     Ok:
-      description: Standard AstrBot success response
+      description: Standard LibsClaw success response
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/SuccessEnvelope"
     Error:
-      description: Standard AstrBot error response
+      description: Standard LibsClaw error response
       content:
         application/json:
           schema:

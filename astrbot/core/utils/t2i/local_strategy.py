@@ -881,13 +881,13 @@ class MarkdownRenderer:
         # 灰色
         grey_color = (130, 130, 130)
 
-        # 绘制"Powered by AstrBot"文本
+        # 绘制"Powered by LibsClaw"文本
         footer_font_size = 20
         footer_font = FontManager.get_font(footer_font_size)
 
-        # 获取"Powered by "和"AstrBot"的宽度以便居中
+        # 获取"Powered by "和"LibsClaw"的宽度以便居中
         powered_by_text = "Powered by "
-        astrbot_text = f"AstrBot v{VERSION}"
+        astrbot_text = f"LibsClaw v{VERSION}"
 
         powered_by_width, _ = TextMeasurer.get_text_size(powered_by_text, footer_font)
         astrbot_width, _ = TextMeasurer.get_text_size(astrbot_text, footer_font)
@@ -902,7 +902,7 @@ class MarkdownRenderer:
             (x_start, footer_y), powered_by_text, font=footer_font, fill=grey_color
         )
 
-        # 绘制"AstrBot"（克莱因蓝）
+        # 绘制"LibsClaw"（克莱因蓝）
         draw.text(
             (x_start + powered_by_width, footer_y),
             astrbot_text,

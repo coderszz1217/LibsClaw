@@ -10,8 +10,6 @@
             <div v-if="!installed" class="d-flex align-center justify-center flex-column"
                 style="flex-grow: 1; width: 100%; height: 100%;">
                 <h2>{{ tm('notInstalled.title') }}
-                    <v-icon class="ml-2" size="small" color="grey"
-                        @click="openUrl('https://docs.astrbot.app/use/knowledge-base.html')">mdi-information-outline</v-icon>
                 </h2>
                 <v-btn style="margin-top: 16px;" variant="tonal" color="primary" @click="installPlugin"
                     :loading="installing">
@@ -30,8 +28,6 @@
             </div>
             <div v-else>
                 <h2 class="mb-4">{{ tm('list.title') }}
-                    <v-icon class="ml-2" size="x-small" color="grey"
-                        @click="openUrl('https://docs.astrbot.app/use/knowledge-base.html')">mdi-information-outline</v-icon>
                 </h2>
                 <v-btn class="mb-4" prepend-icon="mdi-plus" variant="tonal" color="primary"
                     @click="showCreateDialog = true">

@@ -1572,15 +1572,6 @@ onMounted(async () => {
                   {{
                     t("core.header.updateDialog.preReleaseWarning.description")
                   }}
-                  <a
-                    href="https://github.com/AstrBotDevs/AstrBot/issues"
-                    target="_blank"
-                    class="text-decoration-none"
-                  >
-                    {{
-                      t("core.header.updateDialog.preReleaseWarning.issueLink")
-                    }}
-                  </a>
                 </div>
               </v-alert>
 

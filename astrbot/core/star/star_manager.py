@@ -62,7 +62,7 @@ except ImportError:
 
 
 class PluginVersionUnsupportedError(Exception):
-    """Raised when plugin astrbot_version is not supported by current AstrBot."""
+    """Raised when plugin astrbot_version is not supported by current LibsClaw."""
 
 
 class PluginDependencyInstallError(Exception):
@@ -646,13 +646,13 @@ class PluginManager:
         except InvalidVersion:
             return (
                 False,
-                f"Invalid current AstrBot version: {VERSION}. Cannot check plugin version range.",
+                f"Invalid current LibsClaw version: {VERSION}. Cannot check plugin version range.",
             )
 
         if not specifier.contains(current_version, prereleases=True):
             return (
                 False,
-                f"AstrBot {VERSION} does not satisfy plugin astrbot_version: {normalized_spec}",
+                f"LibsClaw {VERSION} does not satisfy plugin astrbot_version: {normalized_spec}",
             )
         return True, None
 
@@ -1156,7 +1156,7 @@ class PluginManager:
                         if not is_valid:
                             raise PluginVersionUnsupportedError(
                                 error_message
-                                or "The plugin does not support the current AstrBot version."
+                                or "The plugin does not support the current LibsClaw version."
                             )
 
                     logger.info(metadata)
@@ -1281,7 +1281,7 @@ class PluginManager:
                         if not is_valid:
                             raise PluginVersionUnsupportedError(
                                 error_message
-                                or "The plugin does not support the current AstrBot version."
+                                or "The plugin does not support the current LibsClaw version."
                             )
 
                     metadata.star_cls = obj
@@ -1669,7 +1669,7 @@ class PluginManager:
             if not plugin:
                 raise Exception("插件不存在。")
             if plugin.reserved:
-                raise Exception("该插件是 AstrBot 保留插件，无法卸载。")
+                raise Exception("该插件是 LibsClaw 保留插件，无法卸载。")
             root_dir_name = plugin.root_dir_name
             ppath = self.plugin_store_path
 
@@ -1836,7 +1836,7 @@ class PluginManager:
         if not plugin:
             raise Exception("插件不存在。")
         if plugin.reserved:
-            raise Exception("该插件是 AstrBot 保留插件，无法更新。")
+            raise Exception("该插件是 LibsClaw 保留插件，无法更新。")
 
         await self.updator.update(plugin, proxy=proxy, download_url=download_url)
         if plugin.root_dir_name:

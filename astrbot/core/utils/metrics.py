@@ -1,15 +1,10 @@
 import asyncio
 import os
-import socket
-import sys
 import uuid
 from contextlib import suppress
 from typing import Any
 
-import aiohttp
-
 from astrbot.core import db_helper, logger
-from astrbot.core.config import VERSION
 
 
 class Metric:
@@ -185,39 +180,13 @@ class Metric:
 
     @staticmethod
     async def _post_metrics(metrics_data: dict[str, Any]) -> None:
-        if Metric._is_disabled():
-            return
-
-        base_url = "https://tickstats.soulter.top/api/metric/90a6c2a1"
-        payload_metrics = dict(metrics_data)
-        payload_metrics["v"] = VERSION
-        payload_metrics["os"] = sys.platform
-        try:
-            payload_metrics["hn"] = socket.gethostname()
-        except Exception:
-            pass
-        try:
-            payload_metrics["iid"] = Metric.get_installation_id()
-        except Exception:
-            pass
-        payload = {"metrics_data": payload_metrics}
-
-        try:
-            async with aiohttp.ClientSession(trust_env=True) as session:
-                async with session.post(base_url, json=payload, timeout=3) as response:
-                    if response.status != 200:
-                        pass
-        except Exception:
-            pass
+        # 遥测上报已在此发行版中禁用，不向任何外部服务器发送数据。
+        return None
 
     @staticmethod
     async def upload(**kwargs) -> None:
-        """上传相关非敏感的指标以更好地了解 AstrBot 的使用情况。上传的指标不会包含任何有关消息文本、用户信息等敏感信息。
+        """记录本地统计指标（供仪表盘图表使用）。
 
-        Powered by TickStats.
+        遥测上报已在此发行版中禁用，不会向外部服务器发送任何数据。
         """
-        if Metric._is_disabled():
-            return
-
         await Metric._save_platform_stats(kwargs)
-        await Metric._add_pending_metrics(dict(kwargs))

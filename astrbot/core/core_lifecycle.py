@@ -1,4 +1,4 @@
-"""Astrbot 核心生命周期管理类, 负责管理 AstrBot 的启动、停止、重启等操作.
+"""LibsClaw 核心生命周期管理类, 负责管理 LibsClaw 的启动、停止、重启等操作.
 
 该类负责初始化各个组件, 包括 ProviderManager、PlatformManager、ConversationManager、PluginManager、PipelineScheduler、EventBus等。
 该类还负责加载和执行插件, 以及处理事件总线的分发。
@@ -47,7 +47,7 @@ from .event_bus import EventBus
 
 
 class AstrBotCoreLifecycle:
-    """AstrBot 核心生命周期管理类, 负责管理 AstrBot 的启动、停止、重启等操作.
+    """LibsClaw 核心生命周期管理类, 负责管理 LibsClaw 的启动、停止、重启等操作.
 
     该类负责初始化各个组件, 包括 ProviderManager、PlatformManager、ConversationManager、PluginManager、PipelineScheduler、
     EventBus 等。
@@ -124,7 +124,7 @@ class AstrBotCoreLifecycle:
             self._default_chat_provider_warning_emitted = True
             logger.warning(
                 "Detected %d enabled chat providers but `provider_settings.default_provider_id` is empty. "
-                "AstrBot will use `%s` as the startup fallback chat provider. "
+                "LibsClaw will use `%s` as the startup fallback chat provider. "
                 "Set a default chat model in the WebUI configuration page to avoid unexpected provider switching.",
                 len(providers),
                 fallback_id,
@@ -136,19 +136,19 @@ class AstrBotCoreLifecycle:
             self._default_chat_provider_warning_emitted = True
             logger.warning(
                 "Configured `default_provider_id` is `%s` but no enabled provider matches that ID. "
-                "AstrBot will use `%s` as the fallback chat provider. "
+                "LibsClaw will use `%s` as the fallback chat provider. "
                 "Please check the WebUI configuration page.",
                 default_id,
                 fallback_id,
             )
 
     async def initialize(self) -> None:
-        """初始化 AstrBot 核心生命周期管理类.
+        """初始化 LibsClaw 核心生命周期管理类.
 
         负责初始化各个组件, 包括 ProviderManager、PlatformManager、ConversationManager、PluginManager、PipelineScheduler、EventBus、AstrBotUpdator等。
         """
         # 初始化日志代理
-        logger.info("AstrBot v" + VERSION)
+        logger.info("LibsClaw v" + VERSION)
         if os.environ.get("TESTING", ""):
             LogManager.configure_logger(
                 logger, self.astrbot_config, override_level="DEBUG"
@@ -166,7 +166,7 @@ class AstrBotCoreLifecycle:
         self.umop_config_router = UmopConfigRouter(sp=sp)
         await self.umop_config_router.initialize()
 
-        # 初始化 AstrBot 配置管理器
+        # 初始化 LibsClaw 配置管理器
         self.astrbot_config_mgr = AstrBotConfigManager(
             default_config=self.astrbot_config,
             ucr=self.umop_config_router,
@@ -188,7 +188,7 @@ class AstrBotCoreLifecycle:
                 self.astrbot_config_mgr,
             )
         except Exception as e:
-            logger.error(f"AstrBot migration failed: {e!s}")
+            logger.error(f"LibsClaw migration failed: {e!s}")
             logger.error(traceback.format_exc())
 
         # 初始化事件队列
@@ -341,12 +341,12 @@ class AstrBotCoreLifecycle:
             logger.error("-------")
 
     async def start(self) -> None:
-        """启动 AstrBot 核心生命周期管理类.
+        """启动 LibsClaw 核心生命周期管理类.
 
         用load加载事件总线和任务并初始化, 执行启动完成事件钩子
         """
         self._load()
-        logger.info("AstrBot started.")
+        logger.info("LibsClaw started.")
 
         # 执行启动完成事件钩子
         handlers = star_handlers_registry.get_handlers_by_event_type(
@@ -365,7 +365,7 @@ class AstrBotCoreLifecycle:
         await asyncio.gather(*self.curr_tasks, return_exceptions=True)
 
     async def stop(self) -> None:
-        """停止 AstrBot 核心生命周期管理类, 取消所有当前任务并终止各个管理器."""
+        """停止 LibsClaw 核心生命周期管理类, 取消所有当前任务并终止各个管理器."""
         if self.temp_dir_cleaner:
             await self.temp_dir_cleaner.stop()
 
@@ -406,7 +406,7 @@ class AstrBotCoreLifecycle:
             logger.warning(f"释放数据库引擎失败: {e}")
 
     async def restart(self) -> None:
-        """重启 AstrBot 核心生命周期管理类, 终止各个管理器并重新加载平台实例"""
+        """重启 LibsClaw 核心生命周期管理类, 终止各个管理器并重新加载平台实例"""
         await self.provider_manager.terminate()
         await self.platform_manager.terminate()
         await self.kb_manager.terminate()

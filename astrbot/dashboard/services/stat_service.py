@@ -123,11 +123,11 @@ class StatService:
                 the dashboard, when available.
 
         Returns:
-            Public WebUI and AstrBot version information.
+            Public WebUI and LibsClaw version information.
         """
 
         def read_code_version() -> str | None:
-            """Read the AstrBot code version from the package file.
+            """Read the LibsClaw code version from the package file.
 
             Returns:
                 The version string from disk, or None when it is unavailable.
@@ -166,7 +166,7 @@ class StatService:
         try:
             code_version = await asyncio.to_thread(read_code_version)
         except Exception as exc:
-            logger.warning("Failed to read AstrBot code version from disk: %s", exc)
+            logger.warning("Failed to read LibsClaw code version from disk: %s", exc)
 
         return {
             "webui_version": dashboard_version,

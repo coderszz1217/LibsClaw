@@ -110,15 +110,6 @@
 
                     <div v-else-if="larkCreationMode === 'manual'" class="mt-2">
                       <div class="platform-action-row">
-                        <v-btn
-                          color="info"
-                          variant="tonal"
-                          @click="openTutorial"
-                          class="mt-2"
-                        >
-                          <v-icon start>mdi-book-open-variant</v-icon>
-                          {{ tm("dialog.viewTutorial") }}
-                        </v-btn>
                       </div>
                       <AstrBotConfig
                         :iterable="selectedPlatformConfig"
@@ -176,15 +167,6 @@
                       class="mt-2"
                     >
                       <div class="platform-action-row">
-                        <v-btn
-                          color="info"
-                          variant="tonal"
-                          @click="openTutorial"
-                          class="mt-2"
-                        >
-                          <v-icon start>mdi-book-open-variant</v-icon>
-                          {{ tm("dialog.viewTutorial") }}
-                        </v-btn>
                       </div>
                       <AstrBotConfig
                         :iterable="selectedPlatformConfig"
@@ -242,15 +224,6 @@
                       class="mt-2"
                     >
                       <div class="platform-action-row">
-                        <v-btn
-                          color="info"
-                          variant="tonal"
-                          @click="openTutorial"
-                          class="mt-2"
-                        >
-                          <v-icon start>mdi-book-open-variant</v-icon>
-                          {{ tm("dialog.viewTutorial") }}
-                        </v-btn>
                       </div>
                       <AstrBotConfig
                         :iterable="selectedPlatformConfig"
@@ -286,15 +259,6 @@
 
                   <div v-else class="mt-2">
                     <div class="platform-action-row">
-                      <v-btn
-                        color="info"
-                        variant="tonal"
-                        @click="openTutorial"
-                        class="mt-2"
-                      >
-                        <v-icon start>mdi-book-open-variant</v-icon>
-                        {{ tm("dialog.viewTutorial") }}
-                      </v-btn>
                     </div>
                     <AstrBotConfig
                       :iterable="selectedPlatformConfig"
@@ -768,13 +732,6 @@
       </v-card-title>
       <v-card-text class="py-4">
         <p>{{ tm("dialog.securityWarning.aiocqhttpTokenMissing") }}</p>
-        <span
-          ><a
-            href="https://docs.astrbot.app/platform/aiocqhttp.html"
-            target="_blank"
-            >{{ tm("dialog.securityWarning.learnMore") }}</a
-          ></span
-        >
       </v-card-text>
       <v-card-actions class="px-4 pb-4">
         <v-spacer></v-spacer>
@@ -836,7 +793,6 @@ import { useModuleI18n } from "@/i18n/composables";
 import {
   getPlatformIcon,
   getPlatformDescription,
-  getTutorialLink,
 } from "@/utils/platformUtils";
 import AstrBotConfig from "@/components/shared/AstrBotConfig.vue";
 import AstrBotCoreConfigWrapper from "@/components/config/AstrBotCoreConfigWrapper.vue";
@@ -1287,10 +1243,6 @@ export default {
       } finally {
         this.newConfigLoading = false;
       }
-    },
-    openTutorial() {
-      const tutorialUrl = getTutorialLink(this.selectedPlatformConfig.type);
-      window.open(tutorialUrl, "_blank");
     },
     openConfigDrawer(configId) {
       const targetId = configId || "default";
