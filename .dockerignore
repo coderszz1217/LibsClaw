@@ -15,12 +15,17 @@ env/
 venv*/
 ENV/
 .conda/
-dashboard/
+# dashboard 源码要进构建上下文(镜像内自动构建 WebUI),只排除产物与依赖
+dashboard/node_modules/
+dashboard/dist/
+dashboard/tests/
 !astrbot/dashboard/
 !astrbot/dashboard/dist/
 !astrbot/dashboard/dist/**
 data/
 tests/
+deploy/customers/
+deploy/chrome-cdp/chromium-config/
 .ruff_cache/
 .astrbot
 astrbot.lock
