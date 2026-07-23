@@ -45,7 +45,7 @@ docker compose up -d
 SKIP_INSTALL=1 ./scripts/dev.sh
 ```
 
-脚本默认分别从后端端口 `6185` 和前端端口 `3000` 开始查找空闲端口，并将 Vite API 代理指向实际后端端口。请以启动日志输出的访问地址为准；按 `Ctrl+C` 会同时停止前后端。也可以自定义起始端口：
+脚本默认分别从后端端口 `6185` 和前端端口 `3007` 开始查找空闲端口，并将 Vite API 代理指向实际后端端口。请以启动日志输出的访问地址为准；按 `Ctrl+C` 会同时停止前后端。也可以自定义起始端口：
 
 ```bash
 DEV_BACKEND_PORT=7000 DEV_FRONTEND_PORT=4000 ./scripts/dev.sh

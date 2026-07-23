@@ -11,7 +11,7 @@ const t2iShikiRuntimePath = fileURLToPath(
   new URL('../astrbot/core/utils/t2i/template/shiki_runtime.iife.js', import.meta.url)
 );
 const devBackendPort = Number(process.env.LIBSCLAW_DEV_BACKEND_PORT ?? 6185);
-const devFrontendPort = Number(process.env.LIBSCLAW_DEV_FRONTEND_PORT ?? 3000);
+const devFrontendPort = Number(process.env.LIBSCLAW_DEV_FRONTEND_PORT ?? 3007);
 
 // Vite plugin: run MDI icon font subsetting (build only)
 function mdiSubset() {
