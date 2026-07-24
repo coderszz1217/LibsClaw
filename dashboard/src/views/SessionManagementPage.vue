@@ -1,11 +1,27 @@
 ﻿<template>
   <div class="session-management-page">
-    <v-container fluid class="pa-0">
-      <v-card flat>
-        <v-card-title class="d-flex align-center py-3 px-4">
-          <span class="text-h4">{{ tm('customRules.title') }}</span>
-          <v-chip size="small" class="ml-1">{{ totalItems }} {{ tm('customRules.rulesCount') }}</v-chip>
-          <v-row class="me-4 ms-4" dense>
+    <v-container fluid class="session-management-shell">
+      <div class="session-page-head">
+        <div class="session-title-block">
+          <span class="session-page-title">{{ tm('customRules.title') }}</span>
+          <v-chip size="small" variant="tonal" color="primary" class="session-count-chip">{{ totalItems }} {{ tm('customRules.rulesCount') }}</v-chip>
+        </div>
+        <div class="session-head-actions">
+          <v-btn v-if="selectedItems.length > 0" color="error" prepend-icon="mdi-delete" variant="tonal" @click="confirmBatchDelete" class="session-action-btn" size="small">
+            {{ tm('buttons.batchDelete') }} ({{ selectedItems.length }})
+          </v-btn>
+          <v-btn color="success" prepend-icon="mdi-plus" variant="tonal" @click="openAddRuleDialog" class="session-action-btn" size="small">
+            {{ tm('buttons.addRule') }}
+          </v-btn>
+          <v-btn color="primary" prepend-icon="mdi-refresh" variant="tonal" @click="refreshData" :loading="loading" size="small" class="session-action-btn">
+            {{ tm('buttons.refresh') }}
+          </v-btn>
+        </div>
+      </div>
+
+      <section class="session-filter-bar">
+        <v-row dense>
+          <v-col cols="12" md="8">
             <v-text-field
               v-model="searchQuery"
               prepend-inner-icon="mdi-magnify"
@@ -14,23 +30,14 @@
               clearable
               variant="solo-filled"
               flat
-              class="me-4"
+              class="session-search-field"
               density="compact"
             ></v-text-field>
-          </v-row>
-          <v-btn v-if="selectedItems.length > 0" color="error" prepend-icon="mdi-delete" variant="tonal" @click="confirmBatchDelete" class="mr-2" size="small">
-            {{ tm('buttons.batchDelete') }} ({{ selectedItems.length }})
-          </v-btn>
-          <v-btn color="success" prepend-icon="mdi-plus" variant="tonal" @click="openAddRuleDialog" class="mr-2" size="small">
-            {{ tm('buttons.addRule') }}
-          </v-btn>
-          <v-btn color="primary" prepend-icon="mdi-refresh" variant="tonal" @click="refreshData" :loading="loading" size="small">
-            {{ tm('buttons.refresh') }}
-          </v-btn>
-        </v-card-title>
+          </v-col>
+        </v-row>
+      </section>
 
-        <v-divider></v-divider>
-
+      <v-card flat class="session-table-card">
         <v-card-text class="pa-0">
           <v-data-table-server
             :headers="headers"
@@ -40,7 +47,7 @@
             v-model:items-per-page="itemsPerPage"
             v-model:page="currentPage"
             @update:options="onTableOptionsUpdate"
-            class="elevation-0"
+            class="session-rules-table elevation-0"
             style="font-size: 12px"
             v-model="selectedItems"
             show-select
@@ -95,7 +102,7 @@
 
             <!-- 空状态 -->
             <template v-slot:no-data>
-              <div class="text-center py-8">
+              <div class="session-empty-state">
                 <v-icon size="64" color="grey-400">mdi-file-document-edit-outline</v-icon>
                 <div class="text-h6 mt-4 text-grey-600">
                   {{ tm('customRules.noRules') }}
@@ -113,14 +120,14 @@
         </v-card-text>
       </v-card>
       <!-- 批量操作面板 -->
-      <v-card flat class="mt-4">
-        <v-card-title class="d-flex align-center py-3 px-4">
-          <span class="text-h6">{{ tm('batchOperations.title') }}</span>
-          <v-chip size="small" class="ml-2" color="info" variant="outlined">
+      <v-card flat class="session-section-card">
+        <v-card-title class="session-section-title">
+          <span>{{ tm('batchOperations.title') }}</span>
+          <v-chip size="small" color="info" variant="tonal" class="session-section-chip">
             {{ tm('batchOperations.hint') }}
           </v-chip>
         </v-card-title>
-        <v-card-text>
+        <v-card-text class="session-section-body">
           <v-row dense>
             <v-col cols="12" md="6" lg="3">
               <v-select
@@ -184,7 +191,7 @@
           </v-row>
           <v-row dense class="mt-3">
             <v-col cols="12" class="d-flex justify-end">
-              <v-btn color="primary" variant="tonal" size="large" @click="applyBatchChanges" :disabled="!canApplyBatch" :loading="batchUpdating" prepend-icon="mdi-check-all">
+              <v-btn color="primary" variant="tonal" size="large" class="session-apply-btn" @click="applyBatchChanges" :disabled="!canApplyBatch" :loading="batchUpdating" prepend-icon="mdi-check-all">
                 {{ tm('batchOperations.apply') }}
               </v-btn>
             </v-col>
@@ -193,14 +200,14 @@
       </v-card>
 
       <!-- 分组管理面板 -->
-      <v-card flat class="mt-4">
-        <v-card-title class="d-flex align-center py-3 px-4">
-          <span class="text-h6">{{ tm('groups.title') }}</span>
-          <v-chip size="small" class="ml-2" color="secondary" variant="outlined">
+      <v-card flat class="session-section-card">
+        <v-card-title class="session-section-title">
+          <span>{{ tm('groups.title') }}</span>
+          <v-chip size="small" color="secondary" variant="tonal" class="session-section-chip">
             {{ tm('groups.count', { count: groups.length }) }}
           </v-chip>
           <v-spacer></v-spacer>
-          <v-btn v-if="selectedItems.length > 0 && groups.length > 0" color="info" variant="tonal" size="small" class="mr-2">
+          <v-btn v-if="selectedItems.length > 0 && groups.length > 0" color="info" variant="tonal" size="small" class="session-action-btn">
             <v-icon start>mdi-folder-plus</v-icon>
             {{ tm('groups.addToGroup') }}
             <v-menu activator="parent">
@@ -216,14 +223,14 @@
               </v-list>
             </v-menu>
           </v-btn>
-          <v-btn color="success" variant="tonal" size="small" @click="openCreateGroupDialog" prepend-icon="mdi-folder-plus">
+          <v-btn color="success" variant="tonal" size="small" class="session-action-btn" @click="openCreateGroupDialog" prepend-icon="mdi-folder-plus">
             {{ tm('groups.create') }}
           </v-btn>
         </v-card-title>
-        <v-card-text v-if="groups.length > 0">
+        <v-card-text v-if="groups.length > 0" class="session-section-body">
           <v-row dense>
             <v-col v-for="group in groups" :key="group.id" cols="12" sm="6" md="4" lg="3">
-              <v-card variant="outlined" class="pa-3">
+              <v-card variant="outlined" class="session-group-card">
                 <div class="d-flex align-center justify-space-between">
                   <div>
                     <div class="font-weight-bold">{{ group.name }}</div>
@@ -244,7 +251,7 @@
             </v-col>
           </v-row>
         </v-card-text>
-        <v-card-text v-else class="text-center text-grey py-6">
+        <v-card-text v-else class="session-empty-inline">
           {{ tm('groups.empty') }}
         </v-card-text>
       </v-card>
@@ -358,28 +365,28 @@
 
       <!-- 添加规则对话框 - 选择 UMO -->
       <v-dialog v-model="addRuleDialog" max-width="600">
-        <v-card>
-          <v-card-title class="text-h3 pa-4 pb-0 pl-6 d-flex align-center">
+        <v-card class="add-rule-dialog-card">
+          <v-card-title class="text-h3 pa-4 pb-0 pl-6 d-flex align-center add-rule-dialog-title">
             <span>{{ tm('addRule.title') }}</span>
             <v-spacer></v-spacer>
-            <v-btn icon variant="text" @click="addRuleDialog = false">
+            <v-btn icon variant="text" class="add-rule-dialog-close" @click="addRuleDialog = false">
               <v-icon>mdi-close</v-icon>
             </v-btn>
           </v-card-title>
 
-          <v-card-text class="pa-4">
-            <v-alert type="info" variant="tonal" class="mb-4">
+          <v-card-text class="add-rule-dialog-body">
+            <v-alert type="info" variant="tonal" class="add-rule-alert">
               {{ tm('addRule.description') }}
             </v-alert>
 
-            <v-autocomplete v-model="selectedNewUmo" :items="availableUmos" :loading="loadingUmos" :label="tm('addRule.selectUmo')" variant="outlined" clearable :no-data-text="tm('addRule.noUmos')">
+            <v-autocomplete v-model="selectedNewUmo" :items="availableUmos" :loading="loadingUmos" :label="tm('addRule.selectUmo')" variant="outlined" clearable :no-data-text="tm('addRule.noUmos')" :menu-props="{ contentClass: 'add-rule-umo-menu' }" class="add-rule-select">
               <template v-slot:item="{ props, item }">
                 <v-list-item v-bind="props">
                   <template v-slot:title>
                     <UmoDisplay v-bind="getAvailableUmoDisplayProps(item.raw)" compact :show-info="false" :show-platform="false" />
                   </template>
                   <template v-slot:append>
-                    <v-chip v-if="getAvailableUmoInfo(item.raw).platform" size="x-small" :color="getPlatformColor(getAvailableUmoInfo(item.raw).platform)" class="umo-list-platform">
+                    <v-chip v-if="getAvailableUmoInfo(item.raw).platform" size="x-small" variant="flat" class="umo-list-platform">
                       {{ getAvailableUmoInfo(item.raw).platform }}
                     </v-chip>
                   </template>
@@ -393,10 +400,10 @@
             </v-autocomplete>
           </v-card-text>
 
-          <v-card-actions class="px-4 pb-4">
+          <v-card-actions class="add-rule-dialog-actions">
             <v-spacer></v-spacer>
-            <v-btn variant="text" @click="addRuleDialog = false">{{ tm('buttons.cancel') }}</v-btn>
-            <v-btn color="primary" variant="tonal" @click="createNewRule" :disabled="!selectedNewUmo">
+            <v-btn variant="tonal" class="add-rule-secondary-btn" @click="addRuleDialog = false">{{ tm('buttons.cancel') }}</v-btn>
+            <v-btn color="primary" variant="flat" class="add-rule-primary-btn" @click="createNewRule" :disabled="!selectedNewUmo">
               {{ tm('buttons.next') }}
             </v-btn>
           </v-card-actions>
@@ -404,11 +411,11 @@
       </v-dialog>
 
       <!-- 规则编辑对话框 -->
-      <v-dialog v-model="ruleDialog" max-width="550" scrollable>
-        <v-card v-if="selectedUmo" class="d-flex flex-column" height="600">
+      <v-dialog v-model="ruleDialog" max-width="840" scrollable>
+        <v-card v-if="selectedUmo" class="d-flex flex-column rule-editor-dialog-card" height="720">
           <v-card-title class="text-h3 pa-4 pb-0 pl-6 d-flex align-center border-b">
             <span>{{ tm('ruleEditor.title') }}</span>
-            <v-chip size="x-small" class="ml-2 font-weight-regular" variant="outlined">
+            <v-chip size="x-small" class="ml-2 font-weight-regular rule-editor-umo-chip" variant="outlined">
               {{ selectedUmo.umo }}
             </v-chip>
             <v-spacer></v-spacer>
@@ -1829,6 +1836,319 @@ export default {
 </script>
 
 <style scoped>
+.session-management-page {
+  min-height: 100%;
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-primary), 0.05), transparent 260px),
+    rgb(var(--v-theme-background));
+}
+
+.session-management-shell {
+  max-width: 1420px;
+  padding: 22px 32px 32px !important;
+}
+
+.session-page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+  padding: 0 2px;
+}
+
+.session-title-block,
+.session-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.session-page-title {
+  color: rgb(var(--v-theme-primaryText));
+  font-size: 21px;
+  font-weight: 720;
+  line-height: 1.25;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.session-count-chip {
+  border-radius: 999px;
+  background: rgba(var(--v-theme-primary), 0.09) !important;
+  font-weight: 650;
+}
+
+.session-filter-bar,
+.session-table-card,
+.session-section-card {
+  border: 1px solid rgba(var(--v-theme-border), 0.54);
+  border-radius: 12px !important;
+  background: rgb(var(--v-theme-surface)) !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+}
+
+.session-filter-bar {
+  margin-bottom: 12px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 251, 255, 0.86)),
+    rgb(var(--v-theme-surface)) !important;
+  padding: 12px 14px;
+}
+
+.session-section-card {
+  margin-top: 16px;
+}
+
+.session-search-field {
+  width: 100%;
+}
+
+.session-search-field :deep(.v-field),
+.session-section-body :deep(.v-field) {
+  min-height: 44px;
+  border: 1px solid rgba(var(--v-theme-border), 0.48);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.92) !important;
+  box-shadow: none !important;
+}
+
+.session-search-field :deep(.v-field__input),
+.session-section-body :deep(.v-field__input) {
+  min-height: 44px;
+  padding-top: 10px;
+  padding-bottom: 6px;
+}
+
+.session-search-field :deep(.v-field__prepend-inner) {
+  color: rgba(var(--v-theme-primary), 0.72);
+}
+
+.session-section-body :deep(.v-field-label--floating) {
+  display: none;
+}
+
+.session-action-btn,
+.session-apply-btn {
+  height: 38px !important;
+  max-height: 38px;
+  border-radius: 8px !important;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.session-rules-table :deep(.v-data-table__th) {
+  height: 44px !important;
+  border-bottom: 1px solid rgba(var(--v-theme-border), 0.56) !important;
+  background: rgba(248, 250, 252, 0.72) !important;
+  color: rgba(var(--v-theme-on-surface), 0.68);
+  font-size: 12px;
+  font-weight: 720 !important;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.session-rules-table :deep(tbody tr) {
+  transition: background-color 0.16s ease;
+}
+
+.session-rules-table :deep(tbody tr:hover) {
+  background: rgba(var(--v-theme-primary), 0.035) !important;
+}
+
+.session-rules-table :deep(.v-data-table-footer) {
+  min-height: 56px;
+  border-top: 1px solid rgba(var(--v-theme-border), 0.44);
+  background: rgba(250, 251, 253, 0.84);
+}
+
+.session-empty-state {
+  display: flex;
+  min-height: 180px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 16px;
+}
+
+.session-section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 54px;
+  padding: 14px 18px !important;
+  border-bottom: 1px solid rgba(var(--v-theme-border), 0.52);
+  background: rgba(250, 252, 255, 0.8);
+  color: rgb(var(--v-theme-primaryText));
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.session-section-chip {
+  border-radius: 999px;
+  font-weight: 620;
+}
+
+.session-section-body {
+  padding: 16px 18px !important;
+}
+
+.session-group-card {
+  border-color: rgba(var(--v-theme-border), 0.58) !important;
+  border-radius: 10px !important;
+  background: rgba(248, 250, 252, 0.58);
+  padding: 14px;
+}
+
+.session-empty-inline {
+  padding: 34px 18px !important;
+  color: rgba(var(--v-theme-on-surface), 0.56);
+  text-align: center;
+}
+
+.add-rule-dialog-card {
+  border: 1px solid rgba(var(--v-theme-border), 0.68);
+  border-radius: 16px !important;
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-primary), 0.035), transparent 160px),
+    rgb(var(--v-theme-surface));
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.18) !important;
+  overflow: hidden;
+}
+
+.add-rule-dialog-title {
+  position: relative;
+  min-height: 62px;
+  padding: 20px 22px 14px 30px !important;
+  border-bottom: 1px solid rgba(var(--v-theme-border), 0.56);
+  background: rgba(255, 255, 255, 0.78);
+  color: rgb(var(--v-theme-primaryText));
+  font-size: 1.18rem !important;
+  font-weight: 720 !important;
+  letter-spacing: 0;
+}
+
+.add-rule-dialog-title::before {
+  content: "";
+  position: absolute;
+  left: 18px;
+  top: 21px;
+  bottom: 17px;
+  width: 3px;
+  border-radius: 999px;
+  background: rgb(var(--v-theme-primary));
+}
+
+.add-rule-dialog-close {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 8px !important;
+  color: rgba(var(--v-theme-on-surface), 0.68);
+}
+
+.add-rule-dialog-body {
+  padding: 18px 20px 8px !important;
+  background: rgba(248, 250, 252, 0.64);
+}
+
+.add-rule-alert {
+  margin-bottom: 16px !important;
+  border: 1px solid rgba(var(--v-theme-primary), 0.14);
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-primary), 0.055), rgba(248, 250, 252, 0.86)),
+    rgb(var(--v-theme-surface)) !important;
+  color: rgba(var(--v-theme-on-surface), 0.72);
+}
+
+.add-rule-alert :deep(.v-alert__prepend) {
+  color: rgba(var(--v-theme-primary), 0.86);
+}
+
+.add-rule-alert :deep(.v-alert__content) {
+  color: rgba(var(--v-theme-on-surface), 0.72);
+  font-size: 14px;
+  line-height: 1.62;
+}
+
+.add-rule-select :deep(.v-field) {
+  min-height: 48px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.add-rule-select :deep(.v-field__outline) {
+  --v-field-border-opacity: 0.18;
+}
+
+.add-rule-select :deep(.v-field--focused .v-field__outline) {
+  --v-field-border-opacity: 0.48;
+}
+
+.add-rule-select :deep(.v-list-item) {
+  min-height: 48px;
+}
+
+.add-rule-select :deep(.v-list-item:hover) {
+  background: rgba(var(--v-theme-primary), 0.04);
+}
+
+.add-rule-select :deep(.umo-list-platform),
+.add-rule-select :deep(.v-chip.umo-list-platform) {
+  border: 1px solid rgba(56, 143, 196, 0.16) !important;
+  background: rgba(239, 247, 252, 0.9) !important;
+  color: #2d6f9f !important;
+  font-weight: 650;
+}
+
+.add-rule-select :deep(.umo-selection-chip) {
+  border: 1px solid rgba(56, 143, 196, 0.18) !important;
+  background: rgba(239, 247, 252, 0.92) !important;
+  color: #2d6f9f !important;
+}
+
+.add-rule-dialog-actions {
+  gap: 10px;
+  padding: 14px 20px 18px !important;
+  border-top: 1px solid rgba(var(--v-theme-border), 0.54);
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.add-rule-primary-btn,
+.add-rule-secondary-btn {
+  height: 40px !important;
+  max-height: 40px;
+  border-radius: 8px !important;
+  padding: 0 18px;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.add-rule-secondary-btn {
+  border: 1px solid rgba(var(--v-theme-border), 0.76);
+  background: rgba(255, 255, 255, 0.9);
+  color: rgba(var(--v-theme-on-surface), 0.74);
+}
+
+.rule-editor-dialog-card {
+  border: 1px solid rgba(var(--v-theme-border), 0.68);
+  border-radius: 16px !important;
+  overflow: hidden;
+}
+
+.rule-editor-umo-chip {
+  max-width: min(520px, 58vw);
+}
+
+.rule-editor-umo-chip :deep(.v-chip__content) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .v-data-table :deep(.v-data-table__td) {
   padding: 8px 16px !important;
   vertical-align: middle !important;
@@ -1893,5 +2213,33 @@ code {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .session-management-shell {
+    padding: 12px 14px 18px !important;
+  }
+
+  .session-page-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .session-head-actions {
+    flex-wrap: wrap;
+  }
+}
+</style>
+
+<style>
+.add-rule-umo-menu .umo-list-platform {
+  border: 1px solid rgba(56, 143, 196, 0.16) !important;
+  background: rgba(239, 247, 252, 0.94) !important;
+  color: #2d6f9f !important;
+  font-weight: 650;
+}
+
+.add-rule-umo-menu .v-list-item:hover {
+  background: rgba(56, 143, 196, 0.045) !important;
 }
 </style>
