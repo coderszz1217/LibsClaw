@@ -1,16 +1,44 @@
 <template>
     <div class="conversation-page">
-        <v-container fluid class="pa-0">
+        <v-container fluid class="conversation-shell">
             <!-- 对话列表部分 -->
-            <v-card flat>
-                <v-card-title class="d-flex align-center py-3 px-4">
-                    <span class="text-h4">{{ tm('history.title') }}</span>
-                    <v-chip size="small" class="ml-2">{{ pagination.total || 0 }}</v-chip>
-                    <v-row class="me-4 ms-4" dense>
-                        <v-col cols="12" sm="6" md="4">
+            <div class="conversation-page-head">
+                <div class="conversation-title-block">
+                    <span class="conversation-toolbar-title">{{ tm('history.title') }}</span>
+                    <v-chip size="small" variant="tonal" color="primary" class="conversation-count-chip">
+                        {{ pagination.total || 0 }}
+                    </v-chip>
+                </div>
+                <div v-if="selectedItems.length > 0" class="conversation-batch-actions">
+                    <v-btn
+                        color="success"
+                        prepend-icon="mdi-download"
+                        variant="tonal"
+                        @click="exportConversations"
+                        :disabled="loading"
+                        size="small"
+                        class="conversation-toolbar-btn">
+                        {{ tm('batch.exportSelected', { count: selectedItems.length }) }}
+                    </v-btn>
+                    <v-btn
+                        color="error"
+                        prepend-icon="mdi-delete"
+                        variant="tonal"
+                        @click="confirmBatchDelete"
+                        :disabled="loading"
+                        size="small"
+                        class="conversation-toolbar-btn">
+                        {{ tm('batch.deleteSelected', { count: selectedItems.length }) }}
+                    </v-btn>
+                </div>
+            </div>
+
+            <section class="conversation-filter-bar">
+                    <v-row class="conversation-filter-grid" dense>
+                        <v-col cols="12" sm="6" md="3">
                             <v-combobox v-model="platformFilter" :label="tm('filters.platform')"
                                 :items="availablePlatforms" chips multiple clearable variant="solo-filled" flat
-                                density="compact" hide-details>
+                                density="compact" hide-details class="conversation-filter-control">
                                 <template v-slot:selection="{ item }">
                                     <v-chip size="small" label>
                                         {{ item.title }}
@@ -19,9 +47,10 @@
                             </v-combobox>
                         </v-col>
 
-                        <v-col cols="12" sm="6" md="4">
+                        <v-col cols="12" sm="6" md="3">
                             <v-select v-model="messageTypeFilter" :label="tm('filters.type')" :items="messageTypeItems"
-                                chips multiple clearable variant="solo-filled" density="compact" hide-details flat>
+                                chips multiple clearable variant="solo-filled" density="compact" hide-details flat
+                                class="conversation-filter-control">
                                 <template v-slot:selection="{ item }">
                                     <v-chip size="small" variant="solo-filled" label>
                                         {{ item.title }}
@@ -30,68 +59,48 @@
                             </v-select>
                         </v-col>
 
-                        <v-col cols="12" sm="12" md="4">
+                        <v-col cols="12" sm="12" md="3">
                             <v-text-field v-model="search" prepend-inner-icon="mdi-magnify"
                                 :label="tm('filters.search')" hide-details density="compact" variant="solo-filled" flat
-                                clearable></v-text-field>
+                                clearable class="conversation-filter-control"></v-text-field>
+                        </v-col>
+
+                        <v-col cols="12" md="3" class="conversation-filter-actions-col">
+                            <div class="conversation-toolbar-actions">
+                                <div class="conversation-display-toggle">
+                                    <span class="conversation-display-label">{{ tm('table.headers.umo') }}</span>
+                                    <v-btn-toggle
+                                        v-model="umoDisplayMode"
+                                        mandatory
+                                        density="compact"
+                                        divided
+                                        variant="outlined"
+                                        class="umo-header-toggle"
+                                    >
+                                        <v-btn value="parsed" size="x-small">
+                                            {{ tm('table.umoDisplay.parsed') }}
+                                        </v-btn>
+                                        <v-btn value="raw" size="x-small">
+                                            {{ tm('table.umoDisplay.raw') }}
+                                        </v-btn>
+                                    </v-btn-toggle>
+                                </div>
+                                <v-btn color="primary" prepend-icon="mdi-refresh" variant="tonal" @click="fetchConversations"
+                                    :loading="loading" size="small" class="conversation-toolbar-btn">
+                                    {{ tm('history.refresh') }}
+                                </v-btn>
+                            </div>
                         </v-col>
                     </v-row>
-                    <v-btn color="primary" prepend-icon="mdi-refresh" variant="tonal" @click="fetchConversations"
-                        :loading="loading" size="small" class="mr-2">
-                        {{ tm('history.refresh') }}
-                    </v-btn>
-                    <v-btn 
-                        v-if="selectedItems.length > 0" 
-                        color="success" 
-                        prepend-icon="mdi-download"
-                        variant="tonal" 
-                        @click="exportConversations" 
-                        :disabled="loading"
-                        size="small"
-                        class="mr-2">
-                        {{ tm('batch.exportSelected', { count: selectedItems.length }) }}
-                    </v-btn>
-                    <v-btn 
-                        v-if="selectedItems.length > 0" 
-                        color="error" 
-                        prepend-icon="mdi-delete"
-                        variant="tonal" 
-                        @click="confirmBatchDelete" 
-                        :disabled="loading"
-                        size="small">
-                        {{ tm('batch.deleteSelected', { count: selectedItems.length }) }}
-                    </v-btn>
-                </v-card-title>
+            </section>
 
-                <v-divider></v-divider>
-
-                <v-card-text class="pa-0">
+            <v-card flat class="conversation-table-card">
+                <v-card-text class="conversation-table-panel">
                     <v-data-table v-model="selectedItems" :headers="tableHeaders" :items="conversations"
                         :loading="loading" style="font-size: 12px;" density="comfortable" hide-default-footer
-                        class="elevation-0" :items-per-page="pagination.page_size"
+                        class="conversation-table elevation-0" :items-per-page="pagination.page_size"
                         :items-per-page-options="pageSizeOptions" show-select return-object
                         :disabled="loading" @update:options="handleTableOptions">
-                        <template v-slot:header.umo_source>
-                            <div class="umo-header-cell">
-                                <span>{{ tm('table.headers.umo') }}</span>
-                                <v-btn-toggle
-                                    v-model="umoDisplayMode"
-                                    mandatory
-                                    density="compact"
-                                    divided
-                                    variant="outlined"
-                                    class="umo-header-toggle"
-                                >
-                                    <v-btn value="parsed" size="x-small">
-                                        {{ tm('table.umoDisplay.parsed') }}
-                                    </v-btn>
-                                    <v-btn value="raw" size="x-small">
-                                        {{ tm('table.umoDisplay.raw') }}
-                                    </v-btn>
-                                </v-btn-toggle>
-                            </div>
-                        </template>
-
                         <template v-slot:item.title="{ item }">
                             <div class="conversation-title-cell">
                                 <div class="conversation-title-row">
@@ -179,9 +188,9 @@
                     </v-data-table>
 
                     <!-- 分页控制 -->
-                    <div class="d-flex justify-center py-3">
+                    <div class="conversation-pagination">
                         <!-- 每页大小选择器 -->
-                        <div class="d-flex justify-between align-center px-4 py-2 bg-grey-lighten-5">
+                        <div class="conversation-pagination-size">
                             <div class="d-flex align-center">
                                 <span class="text-caption mr-2">{{ tm('pagination.itemsPerPage') }}:</span>
                                 <v-select v-model="pagination.page_size" :items="pageSizeOptions" variant="outlined"
@@ -1236,6 +1245,249 @@ export default {
 </script>
 
 <style>
+.conversation-page {
+    min-height: 100%;
+    background:
+        linear-gradient(180deg, rgba(var(--v-theme-primary), 0.05), transparent 260px),
+        rgb(var(--v-theme-background));
+}
+
+.conversation-shell {
+    max-width: 1420px;
+    padding: 22px 32px 32px !important;
+}
+
+.conversation-page-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 14px;
+    padding: 0 2px;
+}
+
+.conversation-title-block {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.conversation-batch-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.conversation-filter-bar {
+    margin-bottom: 12px;
+    border: 1px solid rgba(var(--v-theme-border), 0.52);
+    border-radius: 12px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 251, 255, 0.86)),
+        rgb(var(--v-theme-surface));
+    padding: 12px 14px;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
+}
+
+.conversation-table-card {
+    border: 1px solid rgba(var(--v-theme-border), 0.54);
+    border-radius: 12px !important;
+    background: rgb(var(--v-theme-surface)) !important;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.045);
+    overflow: hidden;
+}
+
+.conversation-toolbar-title {
+    color: rgb(var(--v-theme-primaryText));
+    font-size: 21px;
+    font-weight: 720;
+    line-height: 1.25;
+    letter-spacing: 0;
+    white-space: nowrap;
+}
+
+.conversation-count-chip {
+    min-width: 32px;
+    justify-content: center;
+    font-weight: 650;
+    border-radius: 999px;
+    background: rgba(var(--v-theme-primary), 0.09) !important;
+}
+
+.conversation-filter-grid {
+    min-width: 0;
+    margin: 0 !important;
+}
+
+.conversation-filter-grid .v-col {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+.conversation-filter-control .v-field {
+    min-height: 42px;
+    border: 1px solid rgba(var(--v-theme-border), 0.48);
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.92) !important;
+    box-shadow: none !important;
+}
+
+.conversation-filter-control .v-field__input {
+    min-height: 42px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+
+.conversation-filter-control .v-field__prepend-inner {
+    color: rgba(var(--v-theme-primary), 0.72);
+}
+
+.conversation-filter-control .v-field-label--floating {
+    display: none;
+}
+
+.conversation-selected-text {
+    min-width: 0;
+    overflow: hidden;
+    color: rgba(var(--v-theme-on-surface), 0.82);
+    font-size: 13px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.conversation-selected-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 20px;
+    margin-left: 6px;
+    border-radius: 999px;
+    background: rgba(var(--v-theme-primary), 0.09);
+    color: rgb(var(--v-theme-primary));
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.conversation-toolbar-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    width: 100%;
+}
+
+.conversation-filter-actions-col {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.conversation-display-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 42px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
+}
+
+.conversation-display-label {
+    color: rgba(var(--v-theme-on-surface), 0.52);
+    font-size: 12px;
+    font-weight: 650;
+    white-space: nowrap;
+}
+
+.conversation-toolbar-btn {
+    height: 42px !important;
+    max-height: 42px;
+    border-radius: 8px !important;
+    font-weight: 650;
+    letter-spacing: 0;
+}
+
+.conversation-table-panel {
+    padding: 0 !important;
+    background: rgb(var(--v-theme-surface));
+}
+
+.conversation-table {
+    border-bottom: 1px solid rgba(var(--v-theme-border), 0.52);
+}
+
+.conversation-table .v-data-table__th {
+    height: 42px !important;
+    border-bottom: 1px solid rgba(var(--v-theme-border), 0.56) !important;
+    background: rgba(248, 250, 252, 0.72) !important;
+    color: rgba(var(--v-theme-on-surface), 0.68);
+    font-size: 12px;
+    font-weight: 720 !important;
+    letter-spacing: 0;
+    white-space: nowrap;
+}
+
+.conversation-table tbody tr {
+    transition: background-color 0.16s ease;
+}
+
+.conversation-table tbody tr:hover {
+    background: rgba(var(--v-theme-primary), 0.035) !important;
+}
+
+.conversation-table td {
+    border-bottom: 1px solid rgba(var(--v-theme-border), 0.44) !important;
+    color: rgba(var(--v-theme-on-surface), 0.82);
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+}
+
+.conversation-pagination {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px;
+    min-height: 56px;
+    padding: 8px 18px;
+    border-top: 1px solid rgba(var(--v-theme-border), 0.44);
+    background: rgba(250, 251, 253, 0.84);
+}
+
+.conversation-pagination-size {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
+}
+
+.conversation-pagination-size .v-field {
+    min-height: 32px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.conversation-pagination-size .v-field__input {
+    min-height: 32px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+}
+
+.conversation-pagination .v-pagination__item,
+.conversation-pagination .v-pagination__prev,
+.conversation-pagination .v-pagination__next {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+}
+
 .actions-wrapper {
     display: flex;
     justify-content: flex-end;
@@ -1245,6 +1497,11 @@ export default {
 .action-button {
     border-radius: 8px;
     font-weight: 500;
+    opacity: 0.78;
+}
+
+.action-button:hover {
+    opacity: 1;
 }
 
 .monaco-editor-container {
@@ -1309,9 +1566,9 @@ export default {
 }
 
 .conversation-title-cell {
-    padding: 6px 0px;
-    min-width: 100px;
-    max-width: 145px;
+    padding: 4px 0;
+    min-width: 120px;
+    max-width: 190px;
 }
 
 .conversation-title-row {
@@ -1328,6 +1585,8 @@ export default {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    color: rgba(var(--v-theme-on-surface), 0.9);
+    font-weight: 650;
 }
 
 .conversation-inline-edit {
@@ -1335,6 +1594,12 @@ export default {
     height: 18px;
     min-width: 18px;
     flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.16s ease;
+}
+
+.conversation-table tbody tr:hover .conversation-inline-edit {
+    opacity: 0.72;
 }
 
 .conversation-title-meta {
@@ -1344,6 +1609,7 @@ export default {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    margin-top: 3px;
 }
 
 .umo-header-cell {
@@ -1355,6 +1621,31 @@ export default {
 
 .umo-header-toggle {
     flex-shrink: 0;
+    border-radius: 8px;
+    border: 1px solid rgba(var(--v-theme-border), 0.46) !important;
+    background: rgba(255, 255, 255, 0.92);
+    overflow: hidden;
+    box-shadow: none !important;
+}
+
+.umo-header-toggle .v-btn {
+    min-width: 42px;
+    height: 32px !important;
+    border-radius: 0 !important;
+    color: rgba(var(--v-theme-on-surface), 0.62);
+    font-size: 11px;
+    font-weight: 650;
+    letter-spacing: 0;
+}
+
+.umo-header-toggle .v-btn--active {
+    background: rgb(var(--v-theme-surface)) !important;
+    color: rgb(var(--v-theme-primary)) !important;
+    box-shadow: inset 0 0 0 1px rgba(var(--v-theme-primary), 0.14);
+}
+
+.umo-header-toggle .v-btn:not(.v-btn--active):hover {
+    background: rgba(var(--v-theme-primary), 0.045) !important;
 }
 
 .umo-source-cell {
@@ -1380,7 +1671,7 @@ export default {
 .conversation-umo-stack {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 5px;
     min-width: 0;
     width: 100%;
 }
@@ -1388,10 +1679,20 @@ export default {
 .conversation-umo-parsed {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 5px;
     min-width: 0;
     color: rgba(var(--v-theme-on-surface), 0.62);
     font-size: 12px;
+}
+
+.conversation-umo-parsed .v-chip {
+    height: 22px;
+    border: 1px solid rgba(var(--v-theme-border), 0.56);
+    border-radius: 6px;
+    background: rgba(248, 250, 252, 0.92) !important;
+    color: rgba(var(--v-theme-on-surface), 0.68);
+    font-size: 11px;
+    font-weight: 600;
 }
 
 .conversation-detail-umo-parsed {
@@ -1413,6 +1714,57 @@ export default {
 
 .umo-copy-button {
     flex-shrink: 0;
+    opacity: 0.54;
+}
+
+.umo-copy-button:hover {
+    opacity: 1;
+}
+
+@media (max-width: 1200px) {
+    .conversation-filter-actions-col {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+
+    .conversation-filter-actions-col {
+        justify-content: flex-start;
+    }
+
+    .conversation-toolbar-actions {
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 767px) {
+    .conversation-shell {
+        padding: 12px 14px 18px !important;
+    }
+
+    .conversation-page-head {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .conversation-batch-actions {
+        flex-wrap: wrap;
+    }
+
+    .conversation-toolbar-actions {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        min-width: 0;
+    }
+
+    .conversation-pagination {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .conversation-pagination-size {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
 }
 
 /* 动画 */
