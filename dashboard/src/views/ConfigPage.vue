@@ -7,7 +7,7 @@
         <div class="config-toolbar-controls">
           <v-select class="config-select" :model-value="selectedConfigID" :items="configSelectItems" item-title="name" :disabled="initialConfigId !== null"
             v-if="!isSystemConfig" item-value="id" :label="tm('configSelection.selectConfig')" hide-details density="compact" rounded="md"
-            variant="outlined" @update:model-value="onConfigSelect">
+            prepend-inner-icon="mdi-file-cog-outline" variant="outlined" @update:model-value="onConfigSelect">
           </v-select>
           <v-text-field
             class="config-search-input"
@@ -966,9 +966,11 @@ export default {
 
 .config-page {
   display: flex;
-  min-height: 100%;
+  height: calc(100vh - var(--v-layout-top, 64px));
+  min-height: 0;
   flex-direction: column;
   align-items: center;
+  overflow: hidden;
   background:
     linear-gradient(180deg, rgba(var(--v-theme-primary), 0.08), transparent 280px),
     rgb(var(--v-theme-background));
@@ -977,6 +979,8 @@ export default {
 .config-panel {
   display: flex;
   width: 100%;
+  height: 100%;
+  min-height: 0;
   max-width: 980px;
   flex-direction: column;
   align-items: stretch;
@@ -985,31 +989,70 @@ export default {
 
 .config-toolbar {
   display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 24;
   width: 100%;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 16px;
-  padding-right: 16px;
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border: 1px solid rgba(var(--v-theme-border), 0.5);
+  border-radius: 14px;
+  background: rgba(248, 251, 255, 0.9);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.045);
+  backdrop-filter: blur(12px);
 }
 
 .config-toolbar-controls {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
 }
 
 .config-select {
-  min-width: 130px;
+  min-width: 280px;
+  flex: 0 0 42%;
 }
 
 .config-search-input {
   min-width: 280px;
+  flex: 1 1 auto;
+}
+
+.config-toolbar .v-field {
+  min-height: 40px;
+  border-radius: 10px;
+  background: rgba(248, 250, 252, 0.78);
+  box-shadow: none;
+}
+
+.config-toolbar .v-field__input {
+  min-height: 40px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.config-toolbar .v-field__outline {
+  --v-field-border-opacity: 0.22;
+}
+
+.config-toolbar .v-field--focused .v-field__outline {
+  --v-field-border-opacity: 0.48;
+}
+
+.config-toolbar .v-field__prepend-inner {
+  color: rgba(var(--v-theme-primary), 0.78);
 }
 
 .config-content {
+  flex: 1 1 auto;
   width: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 24px;
 }
 
 .config-fab {
@@ -1231,7 +1274,7 @@ export default {
   .config-toolbar {
     align-items: stretch;
     flex-direction: column;
-    padding-right: 0 !important;
+    padding: 10px !important;
   }
 
   .config-toolbar-controls {

@@ -191,7 +191,7 @@ export default {
     flex: 0 0 150px;
     margin: 0;
     position: sticky;
-    top: calc(var(--v-layout-top, 64px) + 24px);
+    top: 0;
   }
 
   .config-tabs-window {
