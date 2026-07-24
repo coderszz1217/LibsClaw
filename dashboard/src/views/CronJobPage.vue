@@ -47,7 +47,7 @@
             color="primary"
           />
 
-          <div v-else-if="!jobs.length" class="text-center pa-8">
+          <div v-else-if="!jobs.length" class="cron-empty-state">
             <v-icon size="64" color="grey-lighten-1">
               mdi-calendar-blank-outline
             </v-icon>
@@ -80,7 +80,7 @@
               />
             </div>
 
-            <div v-if="!sortedJobs.length" class="text-center pa-8">
+            <div v-if="!sortedJobs.length" class="cron-empty-state">
               <v-icon size="64" color="grey-lighten-1">
                 mdi-file-search-outline
               </v-icon>
@@ -91,6 +91,7 @@
               <OutlinedActionListItem
                 v-for="item in sortedJobs"
                 :key="item.job_id"
+                :class="`task-item--${readScheduleFromJob(item).schedule_mode}`"
                 :title="item.name || tm('table.notAvailable')"
                 clickable
                 @click="openEdit(item)"
@@ -98,18 +99,18 @@
                 <template #title-extra>
                   <v-chip
                     size="x-small"
-                    :color="item.run_once ? 'orange' : 'primary'"
-                    variant="tonal"
+                    variant="flat"
+                    class="schedule-type-chip"
                   >
                     {{ scheduleProductLabel(item) }}
                   </v-chip>
                 </template>
 
-                <div class="task-description text-body-2 text-medium-emphasis">
+                <div class="task-description">
                   {{ taskPreview(item) }}
                 </div>
 
-                <div class="task-meta text-caption text-medium-emphasis">
+                <div class="task-meta">
                   <span class="task-meta-item">
                     <v-icon size="small" class="me-1">mdi-send-outline</v-icon>
                     {{ deliveryTargetText(item) }}
@@ -127,47 +128,36 @@
                 </div>
 
                 <template #actions>
-                  <StyledMenu location="bottom end" offset="8">
-                    <template #activator="{ props: menuProps }">
-                      <v-btn
-                        v-bind="menuProps"
-                        icon="mdi-dots-horizontal"
-                        variant="text"
-                        size="small"
-                        class="list-action-icon-btn"
-                        :title="tm('actions.more')"
-                        @click.stop
-                      />
-                    </template>
-                    <v-list-item
-                      class="styled-menu-item"
+                  <div class="task-inline-actions">
+                    <v-btn
+                      variant="tonal"
+                      size="small"
                       prepend-icon="mdi-pencil-outline"
+                      class="task-inline-action-btn task-inline-action-btn--edit"
                       @click.stop="openEdit(item)"
                     >
-                      <v-list-item-title>
-                        {{ tm("actions.edit") }}
-                      </v-list-item-title>
-                    </v-list-item>
-                    <v-list-item
-                      class="styled-menu-item"
+                      {{ tm("actions.edit") }}
+                    </v-btn>
+                    <v-btn
+                      variant="tonal"
+                      size="small"
                       prepend-icon="mdi-play-circle-outline"
                       :disabled="runningJobIds.has(item.job_id)"
+                      class="task-inline-action-btn task-inline-action-btn--run"
                       @click.stop="runJobNow(item)"
                     >
-                      <v-list-item-title>
-                        {{ tm("actions.runNow") }}
-                      </v-list-item-title>
-                    </v-list-item>
-                    <v-list-item
-                      class="styled-menu-item"
+                      {{ tm("actions.runNow") }}
+                    </v-btn>
+                    <v-btn
+                      variant="tonal"
+                      size="small"
                       prepend-icon="mdi-delete-outline"
+                      class="task-inline-action-btn task-inline-action-btn--danger"
                       @click.stop="deleteJob(item)"
                     >
-                      <v-list-item-title class="text-error">
-                        {{ tm("actions.delete") }}
-                      </v-list-item-title>
-                    </v-list-item>
-                  </StyledMenu>
+                      {{ tm("actions.delete") }}
+                    </v-btn>
+                  </div>
                 </template>
 
                 <template #control>
@@ -227,12 +217,12 @@
           {{ snackbar.message }}
         </v-snackbar>
 
-        <v-dialog v-model="createDialog" max-width="620">
-          <v-card class="dashboard-dialog-card">
-            <v-card-title class="text-h3 pa-4 pb-0 pl-6">{{
+        <v-dialog v-model="createDialog" max-width="760" scrollable>
+          <v-card class="dashboard-dialog-card cron-job-dialog-card">
+            <v-card-title class="text-h3 pa-4 pb-0 pl-6 cron-job-dialog-title">{{
               dialogTitle
             }}</v-card-title>
-            <v-card-text class="px-5 pb-2">
+            <v-card-text class="cron-job-dialog-body">
               <div class="dashboard-form-grid dashboard-form-grid--single">
                 <v-text-field
                   v-model="newJob.name"
@@ -251,7 +241,10 @@
                 <div class="schedule-field">
                   <v-select
                     v-model="newJob.schedule_mode"
-                    class="schedule-mode-select"
+                    :class="[
+                      'schedule-mode-select',
+                      scheduleTypeClass(newJob.schedule_mode),
+                    ]"
                     :items="scheduleModeOptions"
                     item-title="label"
                     item-value="value"
@@ -259,7 +252,33 @@
                     variant="outlined"
                     density="comfortable"
                     hide-details
-                  />
+                    :menu-props="{ contentClass: 'schedule-mode-menu' }"
+                  >
+                    <template #selection="{ item }">
+                      <span
+                        :class="[
+                          'schedule-mode-selection',
+                          scheduleTypeClass(item.raw.value),
+                        ]"
+                      >
+                        <span class="schedule-mode-dot" />
+                        {{ item.raw.label }}
+                      </span>
+                    </template>
+                    <template #item="{ props, item }">
+                      <v-list-item
+                        v-bind="props"
+                        :class="[
+                          'schedule-mode-option',
+                          scheduleTypeClass(item.raw.value),
+                        ]"
+                      >
+                        <template #prepend>
+                          <span class="schedule-mode-dot" />
+                        </template>
+                      </v-list-item>
+                    </template>
+                  </v-select>
 
                   <v-text-field
                     v-if="newJob.schedule_mode === 'once'"
@@ -375,6 +394,7 @@
                   clearable
                   hide-details
                   :no-data-text="tm('form.noUmos')"
+                  :menu-props="{ contentClass: 'cron-umo-menu' }"
                   @focus="loadUmos()"
                 >
                   <template #item="{ props, item }">
@@ -391,9 +411,7 @@
                         <v-chip
                           v-if="getUmoInfo(item.raw).platform"
                           size="x-small"
-                          :color="
-                            getPlatformColor(getUmoInfo(item.raw).platform)
-                          "
+                          variant="flat"
                           class="cron-umo-platform"
                         >
                           {{ getUmoInfo(item.raw).platform }}
@@ -415,13 +433,15 @@
                 </v-autocomplete>
               </div>
             </v-card-text>
-            <v-card-actions class="justify-end px-5 pb-5">
-              <v-btn variant="text" @click="createDialog = false">{{
+            <v-card-actions class="cron-job-dialog-actions">
+              <v-spacer />
+              <v-btn variant="tonal" class="cron-job-secondary-btn" @click="createDialog = false">{{
                 tm("actions.cancel")
               }}</v-btn>
               <v-btn
-                variant="tonal"
+                variant="flat"
                 color="primary"
+                class="cron-job-primary-btn"
                 :loading="creating"
                 @click="submitJob"
               >
@@ -441,7 +461,6 @@ import { useTheme } from "vuetify";
 import { botApi, cronApi, sessionApi } from "@/api/v1";
 import { useModuleI18n } from "@/i18n/composables";
 import OutlinedActionListItem from "@/components/shared/OutlinedActionListItem.vue";
-import StyledMenu from "@/components/shared/StyledMenu.vue";
 import UmoDisplay from "@/components/shared/UmoDisplay.vue";
 
 const { tm } = useModuleI18n("features/cron");
@@ -1163,6 +1182,10 @@ function readScheduleFromJob(job: any) {
   return fallback;
 }
 
+function scheduleTypeClass(mode: string) {
+  return `schedule-type--${mode}`;
+}
+
 function buildPayload() {
   const runOnce = newJob.value.schedule_mode === "once";
   const cronExpression = runOnce ? "" : buildCronExpression();
@@ -1330,24 +1353,29 @@ onMounted(() => {
 
 .cron-page {
   padding-bottom: 40px;
-  background: transparent;
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-primary), 0.05), transparent 260px),
+    rgb(var(--v-theme-background));
 }
 
 .cron-shell {
-  max-width: none;
+  max-width: 1420px;
+  padding: 24px 34px 34px !important;
 }
 
 .cron-detail-width {
   width: 100%;
-  max-width: 1040px;
+  max-width: none;
   margin: 0 auto;
 }
 
 .cron-header {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 24px;
+  margin-bottom: 16px !important;
+  padding: 0 2px 0 !important;
 }
 
 .cron-header-copy {
@@ -1361,8 +1389,18 @@ onMounted(() => {
   gap: 10px;
 }
 
+.cron-header-actions :deep(.v-btn) {
+  height: 38px;
+  border-radius: 8px;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
 .task-surface {
   min-width: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .task-filter-bar {
@@ -1371,10 +1409,27 @@ onMounted(() => {
   gap: 12px;
   align-items: center;
   margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(var(--v-theme-border), 0.52);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 251, 255, 0.86)),
+    rgb(var(--v-theme-surface));
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.035);
 }
 
 .task-filter-bar :deep(.v-field) {
-  box-shadow: none;
+  min-height: 42px;
+  border: 1px solid rgba(var(--v-theme-border), 0.48);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.92) !important;
+  box-shadow: none !important;
+}
+
+.task-filter-bar :deep(.v-field__input) {
+  min-height: 42px;
+  padding-top: 8px;
+  padding-bottom: 8px;
 }
 
 .task-filter-bar :deep(.v-input) {
@@ -1382,11 +1437,11 @@ onMounted(() => {
 }
 
 .task-filter-bar :deep(.v-text-field) {
-  width: 260px;
+  width: 280px;
 }
 
 .task-filter-bar :deep(.v-autocomplete) {
-  width: 300px;
+  width: 340px;
 }
 
 .supported-platform-link {
@@ -1399,30 +1454,156 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  padding: 0 !important;
+}
+
+.task-list :deep(.outlined-action-list-item) {
+  --task-accent: 56, 143, 196;
+  --task-chip-bg: 232, 244, 252;
+  --task-chip-text: 35, 111, 159;
+  position: relative;
+  border: 1px solid rgba(var(--task-accent), 0.16);
+  border-radius: 14px !important;
+  background:
+    linear-gradient(180deg, rgba(var(--task-accent), 0.045), rgba(255, 255, 255, 0.9) 58%),
+    rgb(var(--v-theme-surface));
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+
+.task-list :deep(.outlined-action-list-item::before) {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 4px;
+  border-radius: 999px;
+  background: rgba(var(--task-accent), 0.68);
+}
+
+.task-list :deep(.outlined-action-list-item:hover) {
+  border-color: rgba(var(--task-accent), 0.28);
+  background:
+    linear-gradient(180deg, rgba(var(--task-accent), 0.07), rgba(255, 255, 255, 0.94) 62%),
+    rgb(var(--v-theme-surface));
+  box-shadow: 0 14px 30px rgba(var(--task-accent), 0.1);
+  transform: translateY(-1px);
+}
+
+.task-list :deep(.outlined-action-list-item.task-item--once) {
+  --task-accent: 218, 125, 43;
+  --task-chip-bg: 255, 239, 219;
+  --task-chip-text: 160, 82, 20;
+}
+
+.task-list :deep(.outlined-action-list-item.task-item--interval) {
+  --task-accent: 56, 143, 196;
+  --task-chip-bg: 232, 244, 252;
+  --task-chip-text: 35, 111, 159;
+}
+
+.task-list :deep(.outlined-action-list-item.task-item--daily) {
+  --task-accent: 22, 151, 132;
+  --task-chip-bg: 224, 247, 242;
+  --task-chip-text: 19, 111, 98;
+}
+
+.task-list :deep(.outlined-action-list-item.task-item--weekly) {
+  --task-accent: 105, 91, 210;
+  --task-chip-bg: 238, 235, 255;
+  --task-chip-text: 82, 69, 170;
+}
+
+.task-list :deep(.outlined-action-list-item.task-item--monthly) {
+  --task-accent: 201, 88, 140;
+  --task-chip-bg: 253, 232, 242;
+  --task-chip-text: 157, 62, 108;
+}
+
+.task-list :deep(.outlined-action-list-item.task-item--cron) {
+  --task-accent: 99, 111, 130;
+  --task-chip-bg: 239, 242, 246;
+  --task-chip-text: 75, 85, 99;
+}
+
+.task-list :deep(.outlined-action-list-item__main) {
+  min-height: 84px;
+  padding: 13px 16px 13px 18px;
+  gap: 18px;
+}
+
+.task-list :deep(.outlined-action-list-item__content) {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.task-list :deep(.outlined-action-list-item__title) {
+  color: rgba(var(--v-theme-on-surface), 0.92);
+  font-size: 15.5px;
+  font-weight: 700;
+}
+
+.task-list :deep(.outlined-action-list-item__header) {
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.task-list :deep(.outlined-action-list-item__actions) {
+  min-height: 48px;
+  border-left: 1px solid rgba(var(--v-theme-border), 0.46);
+  padding: 4px 0 4px 16px;
 }
 
 .task-description {
   display: -webkit-box;
+  max-width: 920px;
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 1;
+  color: rgba(var(--v-theme-on-surface), 0.72);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .task-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px 18px;
-  margin-top: 6px;
+  gap: 7px;
+  margin-top: 8px;
+  color: rgba(var(--v-theme-on-surface), 0.62);
+  font-size: 12px;
 }
 
 .task-meta-item {
   display: inline-flex;
   min-width: 0;
   align-items: center;
+  gap: 4px;
   max-width: 100%;
+  border: 1px solid rgba(var(--v-theme-border), 0.38);
+  border-radius: 999px;
+  background: rgba(247, 250, 253, 0.78);
   overflow: hidden;
+  padding: 3px 8px;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: rgba(var(--v-theme-on-surface), 0.62);
+}
+
+.task-list :deep(.v-chip) {
+  border-radius: 999px;
+  font-weight: 650;
+}
+
+.task-list :deep(.schedule-type-chip) {
+  background: rgb(var(--task-chip-bg)) !important;
+  color: rgb(var(--task-chip-text)) !important;
+  letter-spacing: 0;
 }
 
 .cron-umo-platform {
@@ -1442,13 +1623,157 @@ onMounted(() => {
   white-space: nowrap;
 }
 
-.list-action-icon-btn {
-  color: rgba(var(--v-theme-on-surface), 0.78);
+.task-inline-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.list-action-icon-btn:hover {
-  background: rgba(var(--v-theme-on-surface), 0.08);
-  color: rgb(var(--v-theme-on-surface));
+.task-inline-action-btn {
+  height: 34px !important;
+  border: 1px solid rgba(var(--v-theme-border), 0.46);
+  border-radius: 8px !important;
+  background: rgba(247, 250, 253, 0.88) !important;
+  color: rgba(var(--v-theme-on-surface), 0.72) !important;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0;
+  padding-inline: 10px !important;
+}
+
+.task-inline-action-btn:hover {
+  border-color: rgba(var(--task-accent), 0.24);
+  background: rgba(var(--task-accent), 0.08) !important;
+  color: rgb(var(--task-chip-text)) !important;
+}
+
+.task-inline-action-btn--edit {
+  border-color: rgba(52, 124, 206, 0.18);
+  background: rgba(233, 243, 255, 0.9) !important;
+  color: #286fae !important;
+}
+
+.task-inline-action-btn--edit:hover {
+  border-color: rgba(52, 124, 206, 0.32);
+  background: rgba(221, 237, 255, 0.96) !important;
+  color: #1f5f9b !important;
+}
+
+.task-inline-action-btn--run {
+  border-color: rgba(31, 151, 111, 0.18);
+  background: rgba(228, 247, 240, 0.9) !important;
+  color: #17795c !important;
+}
+
+.task-inline-action-btn--run:hover {
+  border-color: rgba(31, 151, 111, 0.32);
+  background: rgba(215, 242, 232, 0.96) !important;
+  color: #12684f !important;
+}
+
+.task-inline-action-btn--danger {
+  border-color: rgba(229, 81, 81, 0.16);
+  background: rgba(255, 241, 241, 0.9) !important;
+  color: #c33d3d !important;
+}
+
+.task-inline-action-btn--danger:hover {
+  border-color: rgba(229, 81, 81, 0.3);
+  background: rgba(255, 231, 231, 0.95) !important;
+  color: #b42323 !important;
+}
+
+.task-list :deep(.v-switch .v-selection-control) {
+  min-height: 34px;
+}
+
+.cron-empty-state {
+  display: flex;
+  min-height: 190px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 18px;
+  border: 1px solid rgba(var(--v-theme-border), 0.54);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.78);
+  color: rgba(var(--v-theme-on-surface), 0.56);
+}
+
+.cron-job-dialog-card {
+  border: 1px solid rgba(var(--v-theme-border), 0.68);
+  border-radius: 16px !important;
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-primary), 0.035), transparent 180px),
+    rgb(var(--v-theme-surface));
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.18) !important;
+  overflow: hidden;
+}
+
+.cron-job-dialog-title {
+  position: relative;
+  min-height: 62px;
+  padding: 20px 24px 16px 30px !important;
+  border-bottom: 1px solid rgba(var(--v-theme-border), 0.56);
+  background: rgba(255, 255, 255, 0.78);
+  color: rgb(var(--v-theme-primaryText));
+  font-size: 1.18rem !important;
+  font-weight: 720 !important;
+  letter-spacing: 0;
+}
+
+.cron-job-dialog-title::before {
+  content: "";
+  position: absolute;
+  left: 18px;
+  top: 21px;
+  bottom: 17px;
+  width: 3px;
+  border-radius: 999px;
+  background: rgb(var(--v-theme-primary));
+}
+
+.cron-job-dialog-body {
+  max-height: min(76vh, 720px);
+  overflow-y: auto;
+  padding: 18px 22px 8px !important;
+  background: rgba(248, 250, 252, 0.64);
+}
+
+.cron-job-dialog-body :deep(.v-field) {
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.cron-job-dialog-body :deep(.v-field__outline) {
+  --v-field-border-opacity: 0.18;
+}
+
+.cron-job-dialog-body :deep(.v-field--focused .v-field__outline) {
+  --v-field-border-opacity: 0.48;
+}
+
+.cron-job-dialog-actions {
+  gap: 10px;
+  padding: 14px 22px 18px !important;
+  border-top: 1px solid rgba(var(--v-theme-border), 0.54);
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.cron-job-primary-btn,
+.cron-job-secondary-btn {
+  height: 40px !important;
+  max-height: 40px;
+  border-radius: 8px !important;
+  padding: 0 18px;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.cron-job-secondary-btn {
+  border: 1px solid rgba(var(--v-theme-border), 0.76);
+  background: rgba(255, 255, 255, 0.9);
+  color: rgba(var(--v-theme-on-surface), 0.74);
 }
 
 .platform-dialog-description {
@@ -1501,7 +1826,62 @@ onMounted(() => {
 }
 
 .schedule-mode-select {
+  --schedule-accent: 56, 143, 196;
   min-width: 0;
+}
+
+.schedule-mode-select :deep(.v-field) {
+  border-color: rgba(var(--schedule-accent), 0.22);
+  background: rgba(var(--schedule-accent), 0.035);
+}
+
+.schedule-mode-selection {
+  --schedule-accent: 56, 143, 196;
+  --schedule-text: 35, 111, 159;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: rgb(var(--schedule-text));
+  font-weight: 650;
+}
+
+.schedule-mode-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 999px;
+  background: rgb(var(--schedule-accent));
+  box-shadow: 0 0 0 4px rgba(var(--schedule-accent), 0.1);
+}
+
+.schedule-type--once {
+  --schedule-accent: 218, 125, 43;
+  --schedule-text: 160, 82, 20;
+}
+
+.schedule-type--interval {
+  --schedule-accent: 56, 143, 196;
+  --schedule-text: 35, 111, 159;
+}
+
+.schedule-type--daily {
+  --schedule-accent: 22, 151, 132;
+  --schedule-text: 19, 111, 98;
+}
+
+.schedule-type--weekly {
+  --schedule-accent: 105, 91, 210;
+  --schedule-text: 82, 69, 170;
+}
+
+.schedule-type--monthly {
+  --schedule-accent: 201, 88, 140;
+  --schedule-text: 157, 62, 108;
+}
+
+.schedule-type--cron {
+  --schedule-accent: 99, 111, 130;
+  --schedule-text: 75, 85, 99;
 }
 
 .schedule-inline-fields {
@@ -1528,5 +1908,74 @@ onMounted(() => {
   .schedule-inline-fields {
     grid-template-columns: 1fr;
   }
+}
+</style>
+
+<style>
+.cron-umo-menu .cron-umo-platform {
+  border: 1px solid rgba(56, 143, 196, 0.16) !important;
+  background: rgba(239, 247, 252, 0.94) !important;
+  color: #2d6f9f !important;
+  font-weight: 650;
+}
+
+.cron-umo-menu .v-list-item:hover {
+  background: rgba(56, 143, 196, 0.045) !important;
+}
+
+.schedule-mode-menu .schedule-mode-option {
+  --schedule-accent: 56, 143, 196;
+  --schedule-text: 35, 111, 159;
+  margin: 4px 6px;
+  border-radius: 8px;
+  color: rgba(31, 41, 55, 0.86);
+}
+
+.schedule-mode-menu .schedule-mode-option .v-list-item__prepend {
+  width: 24px;
+}
+
+.schedule-mode-menu .schedule-mode-option:hover,
+.schedule-mode-menu .schedule-mode-option.v-list-item--active {
+  background: rgba(var(--schedule-accent), 0.09) !important;
+  color: rgb(var(--schedule-text)) !important;
+}
+
+.schedule-mode-menu .schedule-type--once {
+  --schedule-accent: 218, 125, 43;
+  --schedule-text: 160, 82, 20;
+}
+
+.schedule-mode-menu .schedule-type--interval {
+  --schedule-accent: 56, 143, 196;
+  --schedule-text: 35, 111, 159;
+}
+
+.schedule-mode-menu .schedule-type--daily {
+  --schedule-accent: 22, 151, 132;
+  --schedule-text: 19, 111, 98;
+}
+
+.schedule-mode-menu .schedule-type--weekly {
+  --schedule-accent: 105, 91, 210;
+  --schedule-text: 82, 69, 170;
+}
+
+.schedule-mode-menu .schedule-type--monthly {
+  --schedule-accent: 201, 88, 140;
+  --schedule-text: 157, 62, 108;
+}
+
+.schedule-mode-menu .schedule-type--cron {
+  --schedule-accent: 99, 111, 130;
+  --schedule-text: 75, 85, 99;
+}
+
+.schedule-mode-menu .schedule-mode-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgb(var(--schedule-accent));
+  box-shadow: 0 0 0 4px rgba(var(--schedule-accent), 0.1);
 }
 </style>
