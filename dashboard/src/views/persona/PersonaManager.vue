@@ -8,9 +8,11 @@
         <div class="manager-layout">
             <!-- 左侧边栏 - 仅桌面端显示 -->
             <div class="sidebar d-none d-md-block">
-                <div class="sidebar-header d-flex justify-space-between align-center mb-3">
-                    <h3 class="text-h6">{{ tm('folder.sidebarTitle') }}</h3>
-                    <v-btn icon="mdi-folder-plus" variant="text" size="small" @click="showCreateFolderDialog = true"
+                <div class="sidebar-header">
+                    <div>
+                        <h3 class="sidebar-title">{{ tm('folder.sidebarTitle') }}</h3>
+                    </div>
+                    <v-btn icon="mdi-folder-plus" variant="tonal" size="small" class="sidebar-add-btn" @click="showCreateFolderDialog = true"
                         :title="tm('folder.createButton')" />
                 </div>
                 <FolderTree @move-folder="openMoveFolderDialog" @success="showSuccess" @error="showError"
@@ -20,24 +22,24 @@
             <!-- 主内容区 -->
             <div class="main-content">
                 <!-- 顶部工具栏 -->
-                <div class="toolbar d-flex flex-wrap justify-space-between align-center mb-4 ga-2">
+                <div class="toolbar">
                     <!-- 面包屑 - 仅桌面端显示 -->
-                    <div class="d-none d-md-block">
+                    <div class="breadcrumb-panel d-none d-md-flex">
                         <FolderBreadcrumb />
                     </div>
 
                     <!-- 操作按钮组 -->
-                    <div class="d-flex ga-2">
-                        <v-btn variant="outlined" prepend-icon="mdi-upload" @click="triggerImport"
-                            rounded="lg">
+                    <div class="toolbar-actions">
+                        <v-btn variant="tonal" prepend-icon="mdi-upload" @click="triggerImport"
+                            class="persona-action-btn persona-action-btn--import">
                             {{ tm('buttons.import') }}
                         </v-btn>
                         <v-btn color="primary" variant="tonal" prepend-icon="mdi-plus" @click="openCreatePersonaDialog"
-                            rounded="lg">
+                            class="persona-action-btn persona-action-btn--create">
                             {{ tm('buttons.create') }}
                         </v-btn>
-                        <v-btn variant="outlined" prepend-icon="mdi-folder-plus" @click="showCreateFolderDialog = true"
-                            rounded="lg">
+                        <v-btn variant="tonal" prepend-icon="mdi-folder-plus" @click="showCreateFolderDialog = true"
+                            class="persona-action-btn persona-action-btn--folder">
                             {{ tm('folder.createButton') }}
                         </v-btn>
                         <input ref="importFileInput" type="file" accept=".json" style="display: none"
@@ -93,20 +95,12 @@
 
                     <!-- 空状态 -->
                     <div v-if="currentFolders.length === 0 && currentPersonas.length === 0" class="empty-state">
-                        <v-card class="text-center pa-8" elevation="0">
-                            <v-icon size="64" color="grey-lighten-1" class="mb-4">mdi-folder-open-outline</v-icon>
-                            <h3 class="text-h5 mb-2">{{ tm('empty.folderEmpty') }}</h3>
-                            <p class="text-body-1 text-medium-emphasis mb-4">{{ tm('empty.folderEmptyDescription') }}</p>
-                            <div class="d-flex justify-center ga-2">
-                                <v-btn color="primary" variant="tonal" prepend-icon="mdi-plus"
-                                    @click="openCreatePersonaDialog">
-                                    {{ tm('buttons.create') }}
-                                </v-btn>
-                                <v-btn variant="outlined" prepend-icon="mdi-folder-plus"
-                                    @click="showCreateFolderDialog = true">
-                                    {{ tm('folder.createButton') }}
-                                </v-btn>
+                        <v-card class="empty-state-card text-center" elevation="0">
+                            <div class="empty-state-icon">
+                                <v-icon size="44">mdi-folder-open-outline</v-icon>
                             </div>
+                            <h3 class="empty-state-title">{{ tm('empty.folderEmpty') }}</h3>
+                            <p class="empty-state-description">{{ tm('empty.folderEmptyDescription') }}</p>
                         </v-card>
                     </div>
                 </div>
@@ -652,14 +646,20 @@ export default defineComponent({
 
 .manager-layout {
     display: flex;
-    gap: 24px;
+    gap: 18px;
     height: 100%;
 }
 
 .sidebar {
-    width: 280px;
+    width: 292px;
     flex-shrink: 0;
-    padding-right: 16px;
+    padding: 14px;
+    border: 1px solid rgba(var(--v-theme-border), 0.56);
+    border-radius: 14px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(248, 251, 255, 0.9)),
+        rgb(var(--v-theme-surface));
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
     height: fit-content;
     max-height: calc(100vh - 200px);
     overflow: hidden;
@@ -667,9 +667,189 @@ export default defineComponent({
     flex-direction: column;
 }
 
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding: 0 2px 2px;
+}
+
+.sidebar-title {
+    margin: 0;
+    color: rgba(var(--v-theme-on-surface), 0.9);
+    font-size: 14px;
+    font-weight: 720;
+    line-height: 1.4;
+}
+
+.sidebar-add-btn {
+    border-radius: 8px !important;
+    background: rgba(var(--v-theme-primary), 0.08) !important;
+    color: rgb(var(--v-theme-primary)) !important;
+}
+
+.folder-tree :deep(.v-field) {
+    min-height: 42px;
+    border: 1px solid rgba(var(--v-theme-border), 0.5);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.9) !important;
+    box-shadow: none !important;
+}
+
+.folder-tree :deep(.v-field__input) {
+    min-height: 42px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+
+.folder-tree :deep(.v-list) {
+    padding: 4px 0 0;
+}
+
+.folder-tree :deep(.v-list-item) {
+    min-height: 40px;
+    border-radius: 10px !important;
+    color: rgba(var(--v-theme-on-surface), 0.72);
+    font-weight: 600;
+    transition:
+        background-color 0.16s ease,
+        color 0.16s ease;
+}
+
+.folder-tree :deep(.v-list-item:hover) {
+    background: rgba(var(--v-theme-primary), 0.055);
+    color: rgb(var(--v-theme-on-surface));
+}
+
+.folder-tree :deep(.v-list-item--active) {
+    background: rgba(var(--v-theme-primary), 0.12) !important;
+    color: rgb(var(--v-theme-primary)) !important;
+}
+
+.folder-tree :deep(.v-list-item--active .v-icon) {
+    color: rgb(var(--v-theme-primary)) !important;
+}
+
 .main-content {
     flex: 1;
     min-width: 0;
+}
+
+.toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 16px;
+    padding: 12px 14px;
+    border: 1px solid rgba(var(--v-theme-border), 0.52);
+    border-radius: 14px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(248, 251, 255, 0.88)),
+        rgb(var(--v-theme-surface));
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.035);
+}
+
+.breadcrumb-panel {
+    min-width: 0;
+    align-items: center;
+}
+
+.toolbar-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.persona-action-btn {
+    height: 38px !important;
+    border-radius: 8px !important;
+    padding-inline: 14px !important;
+    font-weight: 650;
+    letter-spacing: 0;
+}
+
+.persona-action-btn--import {
+    border: 1px solid rgba(87, 102, 124, 0.18);
+    background: rgba(242, 245, 249, 0.9) !important;
+    color: #4b5d73 !important;
+}
+
+.persona-action-btn--create {
+    border: 1px solid rgba(56, 143, 196, 0.16);
+    background: rgba(232, 244, 252, 0.95) !important;
+    color: #236f9f !important;
+}
+
+.persona-action-btn--folder {
+    border: 1px solid rgba(31, 151, 111, 0.16);
+    background: rgba(228, 247, 240, 0.95) !important;
+    color: #17795c !important;
+}
+
+.folders-section,
+.personas-section {
+    padding: 2px;
+}
+
+.folders-section h3,
+.personas-section h3 {
+    color: rgba(var(--v-theme-on-surface), 0.86);
+    font-weight: 700 !important;
+}
+
+.empty-state {
+    display: flex;
+    min-height: min(520px, calc(100vh - 260px));
+    align-items: center;
+    justify-content: center;
+    padding: 34px 18px;
+    border: 1px solid rgba(var(--v-theme-border), 0.5);
+    border-radius: 16px;
+    background:
+        radial-gradient(circle at 50% 20%, rgba(var(--v-theme-primary), 0.07), transparent 280px),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(248, 251, 255, 0.58));
+}
+
+.empty-state-card {
+    width: min(460px, 100%);
+    padding: 34px 30px !important;
+    border: 1px solid rgba(var(--v-theme-border), 0.48);
+    border-radius: 16px !important;
+    background: rgba(255, 255, 255, 0.88) !important;
+    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.055);
+}
+
+.empty-state-icon {
+    display: inline-flex;
+    width: 76px;
+    height: 76px;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 18px;
+    border: 1px solid rgba(var(--v-theme-primary), 0.14);
+    border-radius: 18px;
+    background: rgba(var(--v-theme-primary), 0.075);
+    color: rgb(var(--v-theme-primary));
+}
+
+.empty-state-title {
+    margin: 0 0 8px;
+    color: rgba(var(--v-theme-on-surface), 0.9);
+    font-size: 18px;
+    font-weight: 720;
+    line-height: 1.35;
+}
+
+.empty-state-description {
+    margin: 0 0 20px;
+    color: rgba(var(--v-theme-on-surface), 0.62);
+    font-size: 14px;
+    line-height: 1.7;
 }
 
 .system-prompt-content {
@@ -702,6 +882,15 @@ export default defineComponent({
 
     .sidebar {
         display: none;
+    }
+
+    .toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .toolbar-actions {
+        justify-content: flex-start;
     }
 }
 </style>

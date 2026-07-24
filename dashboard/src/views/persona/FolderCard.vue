@@ -52,13 +52,35 @@ export default defineComponent({
 </script>
 
 <style scoped>
-.folder-card {
+.folder-card,
+:deep(.base-folder-card) {
     cursor: pointer;
-    transition: all 0.2s ease;
+    border: 1px solid rgba(var(--v-theme-border), 0.52);
+    border-radius: 14px !important;
+    background:
+        linear-gradient(180deg, rgba(255, 248, 235, 0.7), rgba(255, 255, 255, 0.92)),
+        rgb(var(--v-theme-surface));
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.035);
+    overflow: hidden;
+    transition:
+        border-color 0.16s ease,
+        box-shadow 0.16s ease,
+        transform 0.16s ease;
 }
 
-.folder-card:hover {
-    transform: translateY(-2px);
+.folder-card:hover,
+:deep(.base-folder-card:hover) {
+    border-color: rgba(209, 139, 35, 0.22);
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06);
+    transform: translateY(-1px);
+}
+
+:deep(.base-folder-card .v-card-text) {
+    padding: 16px !important;
+}
+
+:deep(.base-folder-card .v-icon) {
+    color: #d18b23 !important;
 }
 
 .folder-card.drag-over {

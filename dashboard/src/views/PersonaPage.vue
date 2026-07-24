@@ -1,17 +1,17 @@
 <template>
-    <div class="persona-page">
-        <v-container fluid class="pa-0">
+    <div class="dashboard-page persona-page-shell">
+        <v-container fluid class="dashboard-shell persona-page pa-4 pa-md-6">
             <!-- 页面标题 -->
-            <v-row class="d-flex justify-space-between align-center py-3 pb-6">
-                <div>
-                    <h1 class="text-h2 mb-1">
+            <div class="persona-page-header">
+                <div class="persona-page-header-copy">
+                    <h1 class="dashboard-title">
                         {{ t('core.navigation.persona') }}
                     </h1>
-                    <p class="text-body-2 text-medium-emphasis mb-0">
+                    <p class="dashboard-subtitle">
                         {{ tm('page.description') }}
                     </p>
                 </div>
-            </v-row>
+            </div>
 
             <!-- 主容器组件 -->
             <PersonaManager />
@@ -37,11 +37,31 @@ export default {
 </script>
 
 <style scoped>
+@import "@/styles/dashboard-shell.css";
+
+.persona-page-shell {
+    padding-bottom: 40px;
+    background:
+        linear-gradient(180deg, rgba(var(--v-theme-primary), 0.045), transparent 260px),
+        rgb(var(--v-theme-background));
+}
+
 .persona-page {
-    margin: 0 auto;
-    max-width: 1400px;
-    padding: 24px;
+    max-width: 1460px;
     width: 100%;
+}
+
+.persona-page-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 20px;
+    padding: 2px 2px 0;
+}
+
+.persona-page-header-copy {
+    min-width: 0;
 }
 
 @media (max-width: 768px) {

@@ -1,11 +1,11 @@
 <template>
     <v-card class="persona-card" :class="{ 'dragging': isDragging }" rounded="lg" variant="outlined" @click="$emit('view')"
         elevation="0" draggable="true" @dragstart="handleDragStart" @dragend="handleDragEnd">
-        <v-card-title class="d-flex justify-space-between align-center">
-            <div class="text-truncate ml-2">{{ persona.persona_id }}</div>
+        <v-card-title class="persona-card-title d-flex justify-space-between align-center">
+            <div class="persona-card-name text-truncate">{{ persona.persona_id }}</div>
             <v-menu offset-y>
                 <template v-slot:activator="{ props }">
-                    <v-btn icon="mdi-dots-vertical" variant="text" size="small" v-bind="props" @click.stop />
+                    <v-btn icon="mdi-dots-vertical" variant="text" size="small" class="persona-card-menu-btn" v-bind="props" @click.stop />
                 </template>
                 <v-list density="compact">
                     <v-list-item @click.stop="$emit('edit')">
@@ -37,7 +37,7 @@
             </v-menu>
         </v-card-title>
 
-        <v-card-text>
+        <v-card-text class="persona-card-body">
             <div class="system-prompt-preview">
                 {{ truncateText(persona.system_prompt, 100) }}
             </div>
@@ -188,15 +188,39 @@ export default defineComponent({
 
 <style scoped>
 .persona-card {
-    background: rgb(var(--v-theme-surface));
+    position: relative;
+    border: 1px solid rgba(var(--v-theme-border), 0.52);
+    border-radius: 14px !important;
+    background:
+        linear-gradient(180deg, rgba(var(--v-theme-primary), 0.035), rgba(255, 255, 255, 0.92) 52%),
+        rgb(var(--v-theme-surface));
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.035);
     height: 100%;
     cursor: grab;
-    transition: background-color 0.16s ease, opacity 0.2s ease, transform 0.2s ease;
+    overflow: hidden;
+    transition:
+        border-color 0.16s ease,
+        box-shadow 0.16s ease,
+        opacity 0.2s ease,
+        transform 0.2s ease;
+}
+
+.persona-card::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 14px;
+    bottom: 14px;
+    width: 4px;
+    border-radius: 999px;
+    background: rgba(var(--v-theme-primary), 0.62);
 }
 
 .persona-card:hover,
 .persona-card:focus-within {
-    background: rgba(var(--v-theme-on-surface), 0.04);
+    border-color: rgba(var(--v-theme-primary), 0.2);
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06);
+    transform: translateY(-1px);
 }
 
 .persona-card:active {
@@ -208,15 +232,50 @@ export default defineComponent({
     transform: scale(0.95);
 }
 
+.persona-card-title {
+    gap: 12px;
+    min-height: 54px;
+    padding: 14px 14px 8px 18px;
+}
+
+.persona-card-name {
+    min-width: 0;
+    color: rgba(var(--v-theme-on-surface), 0.9);
+    font-size: 15px;
+    font-weight: 720;
+    letter-spacing: 0;
+}
+
+.persona-card-menu-btn {
+    border-radius: 8px !important;
+    background: rgba(var(--v-theme-on-surface), 0.045);
+    color: rgba(var(--v-theme-on-surface), 0.64);
+}
+
+.persona-card-menu-btn:hover {
+    background: rgba(var(--v-theme-primary), 0.09);
+    color: rgb(var(--v-theme-primary));
+}
+
+.persona-card-body {
+    padding: 8px 16px 16px 18px;
+}
+
 .system-prompt-preview {
-    font-size: 14px;
-    line-height: 1.4;
+    min-height: 58px;
+    font-size: 13px;
+    line-height: 1.55;
     color: rgba(var(--v-theme-on-surface), 0.7);
     overflow: hidden;
     display: -webkit-box;
     -webkit-line-clamp: 3;
     line-clamp: 3;
     -webkit-box-orient: vertical;
+}
+
+.persona-card :deep(.v-chip) {
+    border-radius: 999px;
+    font-weight: 650;
 }
 
 .drag-preview {
