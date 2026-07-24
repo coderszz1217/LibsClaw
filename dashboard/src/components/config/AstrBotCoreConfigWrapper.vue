@@ -1,15 +1,15 @@
 <template>
-    <div :class="$vuetify.display.mobile ? '' : 'd-flex'">
+    <div :class="['config-workbench', $vuetify.display.mobile ? 'config-workbench--mobile' : 'config-workbench--desktop']">
         <v-tabs v-model="tab" :direction="$vuetify.display.mobile ? 'horizontal' : 'vertical'"
-            :align-tabs="$vuetify.display.mobile ? 'left' : 'start'" color="deep-purple-accent-4" class="config-tabs">
+            :align-tabs="$vuetify.display.mobile ? 'left' : 'start'" color="primary" class="config-tabs">
             <v-tab v-for="section in visibleSections" :key="section.key" :value="section.key"
-                style="font-weight: 1000; font-size: 15px">
+                class="config-tab-item">
                 {{ tm(section.value['name']) }}
             </v-tab>
         </v-tabs>
         <v-tabs-window v-model="tab" class="config-tabs-window" :style="readonly ? 'pointer-events: none; opacity: 0.6;' : ''">
             <v-tabs-window-item v-for="section in visibleSections" :key="section.key" :value="section.key">
-                <v-container fluid>
+                <v-container fluid class="config-section-container">
                     <div v-for="(val2, key2, index2) in section.value['metadata']" :key="key2">
                         <!-- Support both traditional and JSON selector metadata -->
                         <AstrBotConfigV4
@@ -26,7 +26,7 @@
         </v-tabs-window>
     </div>
     <v-container v-if="visibleSections.length === 0" fluid class="px-0">
-        <v-alert type="info" variant="tonal">
+        <v-alert type="info" variant="tonal" class="config-no-result">
             {{ tm('search.noResult') }}
         </v-alert>
     </v-container>
@@ -141,10 +141,57 @@ export default {
 </script>
 
 <style>
+.config-workbench {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+}
+
+.config-workbench--desktop {
+  width: 100%;
+}
+
+.config-tabs {
+  border: 1px solid rgba(var(--v-theme-border), 0.7);
+  border-radius: 14px;
+  background: rgba(var(--v-theme-surface), 0.82);
+  padding: 6px;
+}
+
+.config-tab-item {
+  justify-content: flex-start !important;
+  min-height: 44px !important;
+  border-radius: 8px !important;
+  color: rgba(var(--v-theme-on-surface), 0.78);
+  font-size: 14px !important;
+  font-weight: 680 !important;
+  letter-spacing: 0 !important;
+}
+
+.config-tabs .v-tab--selected {
+  background: rgba(var(--v-theme-primary), 0.1);
+  color: rgb(var(--v-theme-primary));
+}
+
+.config-tabs-window {
+  min-width: 0;
+}
+
+.config-section-container {
+  padding: 0 !important;
+}
+
+.config-no-result {
+  border-radius: 14px;
+}
+
 @media (min-width: 768px) {
   .config-tabs {
     display: flex;
-    margin: 16px 16px 0 0;
+    flex: 0 0 150px;
+    margin: 0;
+    position: sticky;
+    top: calc(var(--v-layout-top, 64px) + 24px);
   }
 
   .config-tabs-window {
@@ -159,12 +206,19 @@ export default {
 }
 
 @media (max-width: 767px) {
+.config-workbench {
+    flex-direction: column;
+    gap: 14px;
+  }
+
   .config-tabs {
     width: 100%;
+    overflow-x: auto;
   }
 
   .config-tabs-window {
-    margin-top: 16px;
+    width: 100%;
+    margin-top: 0;
   }
 }
 </style>
