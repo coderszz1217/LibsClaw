@@ -1,30 +1,28 @@
 <template>
   <div class="provider-page">
-    <v-container fluid class="pa-0">
-      <v-row class="d-flex justify-space-between align-center px-4 py-3 pb-4">
-        <div>
-          <h1 class="text-h1 font-weight-bold mb-2">
-            <v-icon class="me-2">mdi-creation</v-icon>{{ tm('title') }}
+    <v-container fluid class="provider-shell">
+      <section class="provider-hero">
+        <div class="provider-hero__copy">
+          <h1 class="provider-hero__title">
+            {{ tm('title') }}
           </h1>
-          <p class="text-subtitle-1 text-medium-emphasis mb-4">
+          <p class="provider-hero__subtitle">
             {{ tm('subtitle') }}
           </p>
         </div>
-        <div v-if="selectedProviderType !== 'chat_completion'">
-          <v-btn
-            color="primary"
-            prepend-icon="mdi-plus"
-            variant="tonal"
-            rounded="xl"
-            size="x-large"
-            @click="showAddProviderDialog = true"
-          >
-            {{ tm('providers.addProvider') }}
-          </v-btn>
-        </div>
-      </v-row>
+        <v-btn
+          v-if="selectedProviderType !== 'chat_completion'"
+          color="primary"
+          prepend-icon="mdi-plus"
+          variant="flat"
+          class="provider-hero__action"
+          @click="showAddProviderDialog = true"
+        >
+          {{ tm('providers.addProvider') }}
+        </v-btn>
+      </section>
 
-      <div>
+      <section class="provider-content">
         <v-tabs v-model="selectedProviderType" bg-color="transparent" class="mb-4">
           <v-tab
             v-for="type in providerTypes"
@@ -70,8 +68,8 @@
                     prepend-icon="mdi-content-save-outline"
                     :loading="savingSource"
                     :disabled="!isSourceModified"
-                    variant="tonal"
-                    rounded="xl"
+                    variant="flat"
+                    class="provider-config-save"
                     @click="saveProviderSource"
                   >
                     {{ tm('providerSources.save') }}
@@ -145,14 +143,12 @@
         </div>
 
         <template v-else>
-          <v-row v-if="filteredProviders.length === 0">
-            <v-col cols="12" class="text-center pa-8">
-              <v-icon size="64" color="grey-lighten-1">mdi-api-off</v-icon>
-              <p class="text-grey mt-4">{{ getEmptyText() }}</p>
-            </v-col>
-          </v-row>
-          <v-row v-else>
-            <v-col v-for="(provider, index) in filteredProviders" :key="index" cols="12" md="6" lg="4" xl="3">
+          <div v-if="filteredProviders.length === 0" class="provider-empty-state provider-empty-state--catalog">
+            <v-icon size="46" color="primary">mdi-api-off</v-icon>
+            <p>{{ getEmptyText() }}</p>
+          </div>
+          <div v-else class="provider-grid">
+            <div v-for="(provider, index) in filteredProviders" :key="index" class="provider-card-shell">
               <item-card
                 :item="provider"
                 title-field="id"
@@ -193,8 +189,8 @@
                     style="z-index: 100000;"
                     variant="tonal"
                     color="info"
-                    rounded="xl"
                     size="small"
+                    class="provider-card-action"
                     :loading="isProviderTesting(item.id)"
                     @click="testSingleProvider(item)"
                   >
@@ -202,10 +198,10 @@
                   </v-btn>
                 </template>
               </item-card>
-            </v-col>
-          </v-row>
+            </div>
+          </div>
         </template>
-      </div>
+      </section>
     </v-container>
 
     <AddNewProvider
@@ -739,19 +735,85 @@ function goToConfigPage() {
 <style scoped>
 .provider-page {
   --provider-surface: rgb(var(--v-theme-surface));
-  --provider-border: rgba(var(--v-theme-on-surface), 0.08);
-  padding: 20px;
-  padding-top: 8px;
-  padding-bottom: 40px;
+  --provider-border: rgba(var(--v-theme-border), 0.7);
+  min-height: 100%;
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-primary), 0.08), transparent 280px),
+    rgb(var(--v-theme-background));
+}
+
+.provider-shell {
+  max-width: 1200px;
+  padding: 24px;
+}
+
+.provider-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 18px;
+  padding: 18px 2px 20px;
+  border: 1px solid var(--provider-border);
+  border-width: 0 0 1px;
+}
+
+.provider-hero__copy {
+  min-width: 0;
+}
+
+.provider-hero__title {
+  margin: 0;
+  color: rgb(var(--v-theme-primaryText));
+  font-size: 1.65rem;
+  font-weight: 730;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+.provider-hero__subtitle {
+  margin: 6px 0 0;
+  color: rgba(var(--v-theme-on-surface), 0.68);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.provider-hero__action,
+.provider-config-save {
+  height: 46px;
+  max-height: 46px;
+  flex: 0 0 auto;
+  padding: 0 18px;
+  border-radius: 8px;
+  box-shadow: 0 8px 18px rgba(var(--v-theme-primary), 0.18);
+}
+
+.provider-content :deep(.v-tabs) {
+  min-height: 52px;
+  border: 1px solid rgba(var(--v-theme-border), 0.7);
+  border-radius: 12px;
+  background: rgba(var(--v-theme-surface), 0.78);
+  padding: 3px;
+}
+
+.provider-content :deep(.v-tab) {
+  min-height: 38px;
+  border-radius: 8px;
+  letter-spacing: 0;
+}
+
+.provider-content :deep(.v-tab--selected) {
+  background: rgba(var(--v-theme-primary), 0.1);
 }
 
 .provider-workbench {
   border: 1px solid var(--provider-border);
-  border-radius: 24px;
-  background: var(--provider-surface);
+  border-radius: 18px;
+  background: rgba(var(--v-theme-surface), 0.96);
+  box-shadow: 0 18px 48px rgba(17, 24, 39, 0.08);
   display: grid;
   grid-template-columns: minmax(280px, 320px) 1px minmax(0, 1fr);
-  min-height: 760px;
+  min-height: 720px;
   overflow: hidden;
 }
 
@@ -761,7 +823,7 @@ function goToConfigPage() {
 }
 
 .provider-workbench__divider {
-  background: var(--provider-border);
+  background: rgba(var(--v-theme-border), 0.7);
 }
 
 .provider-workbench__main {
@@ -780,7 +842,8 @@ function goToConfigPage() {
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
-  padding: 18px 22px 14px;
+  padding: 18px 22px 16px;
+  background: rgba(var(--v-theme-surface), 0.94);
 }
 
 .provider-config-headline {
@@ -788,10 +851,10 @@ function goToConfigPage() {
 }
 
 .provider-config-title {
-  font-size: 21px;
+  font-size: 20px;
   line-height: 1.1;
   font-weight: 680;
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
   overflow-wrap: anywhere;
 }
 
@@ -829,22 +892,75 @@ function goToConfigPage() {
   font-size: 16px;
   font-weight: 650;
   line-height: 1.4;
+  letter-spacing: 0;
 }
 
 .provider-empty-state {
   flex: 1;
-  min-height: 420px;
+  min-height: 360px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 12px;
   color: rgba(var(--v-theme-on-surface), 0.56);
 }
 
+.provider-empty-state p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.provider-empty-state--catalog {
+  min-height: 260px;
+  border: 1px dashed rgba(var(--v-theme-on-surface), 0.16);
+  border-radius: 18px;
+  background: rgba(var(--v-theme-surface), 0.84);
+  box-shadow: 0 18px 48px rgba(17, 24, 39, 0.05);
+}
+
+.provider-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 18px;
+}
+
+.provider-card-shell {
+  min-width: 0;
+}
+
+.provider-card-shell :deep(.v-card),
+.provider-card-shell :deep(.item-card) {
+  border-color: rgba(var(--v-theme-border), 0.7) !important;
+  border-radius: 16px !important;
+  background: rgba(var(--v-theme-surface), 0.96) !important;
+  box-shadow: 0 18px 48px rgba(17, 24, 39, 0.08) !important;
+}
+
+.provider-card-shell :deep(.v-card-title),
+.provider-card-shell :deep(.text-h3),
+.provider-card-shell :deep(.text-h4) {
+  letter-spacing: 0 !important;
+}
+
+.provider-card-action {
+  border-radius: 8px;
+}
+
 @media (max-width: 960px) {
-  .provider-page {
-    padding: 12px;
-    padding-bottom: 32px;
+  .provider-shell {
+    padding: 16px;
+  }
+
+  .provider-hero {
+    align-items: stretch;
+    flex-direction: column;
+    min-height: auto;
+    padding: 10px 0 16px;
+  }
+
+  .provider-hero__action {
+    width: 100%;
   }
 
   .provider-workbench {
@@ -873,25 +989,11 @@ function goToConfigPage() {
 }
 
 @media (max-width: 600px) {
-  .provider-page {
+  .provider-shell {
     padding: 8px;
-    padding-bottom: 24px;
   }
 
-  .provider-page :deep(.v-container) > .v-row:first-child {
-    margin: 0;
-    padding: 8px 4px 16px !important;
-  }
-
-  .provider-page :deep(.v-container) > .v-row:first-child > div {
-    width: 100%;
-  }
-
-  .provider-page :deep(.v-container) > .v-row:first-child .v-btn {
-    width: 100%;
-  }
-
-  .provider-page :deep(.v-tabs) {
+  .provider-content :deep(.v-tabs) {
     overflow-x: auto;
   }
 
@@ -915,6 +1017,10 @@ function goToConfigPage() {
   .provider-empty-state {
     min-height: 260px;
     padding: 24px;
+  }
+
+  .provider-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>
