@@ -40,7 +40,9 @@ const dialog = computed({
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-radius: 28px;
+  border: 1px solid rgba(var(--v-theme-border), 0.72);
+  border-radius: 18px;
+  box-shadow: 0 24px 70px rgba(17, 24, 39, 0.18);
 }
 
 .provider-config-dialog__body {
@@ -59,16 +61,16 @@ const dialog = computed({
 }
 
 :deep(.v-overlay__content) {
-  width: min(1600px, 70vw);
-  height: min(920px, 70dvh);
-  max-width: 70vw;
-  max-height: 70dvh;
+  width: min(1180px, calc(100vw - 96px));
+  height: min(720px, calc(100dvh - 96px));
+  max-width: calc(100vw - 96px);
+  max-height: calc(100dvh - 96px);
   margin: 0;
 }
 
 @media (max-width: 960px) {
   .provider-config-dialog {
-    border-radius: 20px;
+    border-radius: 16px;
   }
 
   :deep(.v-overlay__content) {

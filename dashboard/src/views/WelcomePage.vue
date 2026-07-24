@@ -1,114 +1,125 @@
 <template>
   <div class="welcome-page">
-    <v-container fluid class="pa-0">
-      <v-row class="px-4 py-3 pb-6">
-        <v-col cols="12">
-          <h1 class="text-h1 font-weight-bold mb-2 d-flex align-center">
-            {{ greetingText }} {{ greetingEmoji }}
+    <v-container fluid class="welcome-shell">
+      <section class="welcome-hero">
+        <div class="welcome-hero__content">
+          <div class="welcome-brand">
+            <span class="welcome-brand__mark">
+              <img src="@/assets/images/icon-no-shadow.svg" alt="LibsClaw Logo">
+            </span>
+            <span class="welcome-brand__name">LibsClaw</span>
+          </div>
+          <h1 class="welcome-title">
+            {{ greetingText }} <span aria-hidden="true">{{ greetingEmoji }}</span>
           </h1>
-          <p class="text-subtitle-1 text-medium-emphasis mb-0">
+          <p class="welcome-subtitle">
             {{ tm('subtitle') }}
           </p>
-        </v-col>
-      </v-row>
+        </div>
 
-      <v-row class="px-4">
-        <v-col cols="12">
-          <v-card class="welcome-card pa-6" elevation="0" border>
-            <div class="mb-4 text-h3 font-weight-bold">
-              {{ tm('onboard.title') }}
+      </section>
+
+      <section class="setup-grid" :aria-label="tm('onboard.title')">
+        <v-card
+          class="setup-step"
+          :class="{ 'setup-step--completed': providerStepState === 'completed' }"
+          elevation="0"
+          border
+        >
+          <div class="setup-step__header">
+            <div class="setup-step__index">01</div>
+          </div>
+          <div class="setup-step__body">
+            <div class="setup-step__icon">
+              <v-icon icon="mdi-brain" size="24" />
             </div>
+            <h2>{{ tm('onboard.step1Title') }}</h2>
+            <p>{{ tm('onboard.step1Desc') }}</p>
+          </div>
+          <v-btn color="primary" variant="flat" block class="setup-step__action" @click="openProviderDialog">
+            {{ tm('onboard.configure') }}
+          </v-btn>
+        </v-card>
 
-            <v-timeline align="start" side="end" density="compact" class="welcome-timeline" truncate-line="both">
-              <v-timeline-item :dot-color="providerStepState === 'completed' ? 'success' : 'primary'"
-                icon="mdi-numeric-1" fill-dot size="small">
-                <div class="pl-2">
-                  <div class="text-h6 font-weight-bold mb-1">{{ tm('onboard.step1Title') }}</div>
-                  <p class="text-body-2 text-medium-emphasis mb-3">{{ tm('onboard.step1Desc') }}</p>
-                  <div class="d-flex align-center">
-                    <v-btn color="primary" variant="flat" rounded="pill" class="px-6" @click="openProviderDialog">
-                      {{ tm('onboard.configure') }}
-                    </v-btn>
-                    <div v-if="providerStepState === 'completed'"
-                      class="text-success d-flex align-center text-body-2 font-weight-medium ml-3">
-                      {{ tm('onboard.completed') }}
-                    </div>
-                  </div>
-                </div>
-              </v-timeline-item>
-
-              <v-timeline-item :dot-color="platformStepState === 'completed' ? 'success' : 'primary'"
-                icon="mdi-numeric-2" fill-dot size="small">
-                <div class="pl-2">
-                  <div class="text-h6 font-weight-bold mb-1">{{ tm('onboard.step2Title') }}</div>
-                  <p class="text-body-2 text-medium-emphasis mb-3">{{ tm('onboard.step2Desc') }}</p>
-                  <div class="d-flex align-center">
-                    <v-btn color="primary" variant="flat" rounded="pill" class="px-6" :loading="loadingPlatformDialog"
-                      @click="openPlatformDialog">
-                      {{ tm('onboard.configure') }}
-                    </v-btn>
-                    <div v-if="platformStepState === 'completed'"
-                      class="text-success d-flex align-center text-body-2 font-weight-medium ml-3">
-                      {{ tm('onboard.completed') }}
-                    </div>
-                  </div>
-                </div>
-              </v-timeline-item>
-
-              <v-timeline-item :dot-color="computerAccessStepState === 'completed' ? 'success' : 'primary'"
-                icon="mdi-numeric-3" fill-dot size="small">
-                <div class="pl-2">
-                  <div class="d-flex align-center mb-1">
-                    <div class="text-h6 font-weight-bold">{{ tm('onboard.step3Title') }}</div>
-                    <v-btn
-                      icon
-                      variant="text"
-                      density="comfortable"
-                      size="small"
-                      class="ml-1"
-                      @click="showComputerAccessHelpDialog = true"
-                    >
-                      <span class="text-body-2 font-weight-bold">?</span>
-                    </v-btn>
-                  </div>
-                  <p class="text-body-2 text-medium-emphasis mb-3">{{ tm('onboard.step3Desc') }}</p>
-                  <div class="d-flex flex-wrap align-center ga-3">
-                    <v-select
-                      v-model="computerAccessRuntime"
-                      :items="computerAccessOptions"
-                      item-title="title"
-                      item-value="value"
-                      :label="tm('onboard.step3SelectLabel')"
-                      :loading="savingComputerAccess"
-                      :disabled="savingComputerAccess"
-                      hide-details
-                      density="comfortable"
-                      variant="outlined"
-                      class="computer-access-select"
-                    />
-                  </div>
-                </div>
-              </v-timeline-item>
-            </v-timeline>
-          </v-card>
-
-        </v-col>
-      </v-row>
-
-      <v-row v-if="showAnnouncement" class="px-4 mb-4">
-        <v-col cols="12">
-          <v-card class="welcome-card pa-6" elevation="0" border>
-            <div class="mb-4 text-h3 font-weight-bold">
-              {{ tm('announcement.title') }}
+        <v-card
+          class="setup-step"
+          :class="{ 'setup-step--completed': platformStepState === 'completed' }"
+          elevation="0"
+          border
+        >
+          <div class="setup-step__header">
+            <div class="setup-step__index">02</div>
+          </div>
+          <div class="setup-step__body">
+            <div class="setup-step__icon setup-step__icon--platform">
+              <v-icon icon="mdi-forum-outline" size="24" />
             </div>
-            <MarkdownRender
-              :content="welcomeAnnouncement"
-              :typewriter="false"
-              class="welcome-announcement-markdown markdown-content"
+            <h2>{{ tm('onboard.step2Title') }}</h2>
+            <p>{{ tm('onboard.step2Desc') }}</p>
+          </div>
+          <v-btn
+            color="primary"
+            variant="flat"
+            block
+            class="setup-step__action"
+            :loading="loadingPlatformDialog"
+            @click="openPlatformDialog"
+          >
+            {{ tm('onboard.configure') }}
+          </v-btn>
+        </v-card>
+
+        <v-card
+          class="setup-step"
+          :class="{ 'setup-step--completed': computerAccessStepState === 'completed' }"
+          elevation="0"
+          border
+        >
+          <div class="setup-step__header">
+            <div class="setup-step__index">03</div>
+            <v-btn
+              icon="mdi-help-circle-outline"
+              variant="text"
+              density="comfortable"
+              size="small"
+              @click="showComputerAccessHelpDialog = true"
             />
-          </v-card>
-        </v-col>
-      </v-row>
+          </div>
+          <div class="setup-step__body">
+            <div class="setup-step__icon setup-step__icon--access">
+              <v-icon icon="mdi-laptop-account" size="24" />
+            </div>
+            <h2>{{ tm('onboard.step3Title') }}</h2>
+            <p>{{ tm('onboard.step3Desc') }}</p>
+          </div>
+          <v-select
+            v-model="computerAccessRuntime"
+            :items="computerAccessOptions"
+            item-title="title"
+            item-value="value"
+            :label="tm('onboard.step3SelectLabel')"
+            :loading="savingComputerAccess"
+            :disabled="savingComputerAccess"
+            hide-details
+            density="comfortable"
+            variant="outlined"
+            class="computer-access-select"
+          />
+        </v-card>
+      </section>
+
+      <section v-if="showAnnouncement" class="announcement-section">
+        <v-card class="welcome-card pa-6" elevation="0" border>
+          <div class="mb-4 text-h3 font-weight-bold">
+            {{ tm('announcement.title') }}
+          </div>
+          <MarkdownRender
+            :content="welcomeAnnouncement"
+            :typewriter="false"
+            class="welcome-announcement-markdown markdown-content"
+          />
+        </v-card>
+      </section>
     </v-container>
 
     <AddNewPlatform v-model:show="showAddPlatformDialog" :metadata="platformMetadata" :config_data="platformConfigData"
@@ -493,11 +504,196 @@ watch(computerAccessRuntime, async (value, oldValue) => {
 
 <style scoped>
 .welcome-page {
-  height: 100%;
+  min-height: 100%;
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-primary), 0.08), transparent 280px),
+    rgb(var(--v-theme-background));
+}
+
+.welcome-shell {
+  max-width: 1200px;
+  padding: 24px;
+}
+
+.welcome-hero {
+  margin-bottom: 24px;
+}
+
+.welcome-hero__content,
+.setup-step,
+.welcome-card {
+  border: 1px solid rgba(var(--v-theme-border), 0.7);
+  box-shadow: 0 18px 48px rgba(17, 24, 39, 0.08);
+}
+
+.welcome-hero__content {
+  position: relative;
+  overflow: hidden;
+  min-height: 260px;
+  padding: 32px;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 88% 18%, rgba(var(--v-theme-info), 0.16), transparent 32%),
+    linear-gradient(135deg, rgba(var(--v-theme-surface), 0.98), rgba(var(--v-theme-lightprimary), 0.8));
+}
+
+.welcome-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.welcome-brand__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 10px 28px rgba(17, 24, 39, 0.14);
+}
+
+.welcome-brand__mark img {
+  width: 32px;
+  height: 32px;
+}
+
+.welcome-brand__name {
+  color: rgb(var(--v-theme-primaryText));
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.welcome-title {
+  max-width: 760px;
+  margin: 0;
+  color: rgb(var(--v-theme-primaryText));
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  font-weight: 760;
+  line-height: 1.08;
+  letter-spacing: 0;
+  text-wrap: pretty;
+}
+
+.welcome-subtitle {
+  max-width: 560px;
+  margin: 18px 0 0;
+  color: rgba(var(--v-theme-on-surface), 0.72);
+  font-size: 1rem;
+  line-height: 1.8;
+  text-wrap: pretty;
+}
+
+.setup-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.setup-step {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 320px;
+  padding: 22px;
+  border-radius: 16px;
+  background: rgba(var(--v-theme-surface), 0.96);
+}
+
+.setup-step--completed {
+  border-color: rgba(var(--v-theme-success), 0.36);
+}
+
+.setup-step__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 32px;
+}
+
+.setup-step__index {
+  color: rgba(var(--v-theme-on-surface), 0.34);
+  font-size: 0.86rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.setup-step__body {
+  flex: 1;
+  margin: 24px 0 22px;
+}
+
+.setup-step__action {
+  height: 46px;
+  max-height: 46px;
+}
+
+.setup-step__action :deep(.v-btn__content) {
+  line-height: 1;
+}
+
+.computer-access-select :deep(.v-field) {
+  min-height: 56px;
+}
+
+.computer-access-select :deep(.v-field__input) {
+  min-height: 56px;
+  padding-top: 18px;
+  padding-bottom: 6px;
+}
+
+.setup-step__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 18px;
+  border-radius: 15px;
+  color: rgb(var(--v-theme-primary));
+  background: rgba(var(--v-theme-primary), 0.12);
+}
+
+.setup-step__icon--platform {
+  color: #8d4f2b;
+  background: rgba(159, 95, 58, 0.14);
+}
+
+.setup-step__icon--access {
+  color: #0f766e;
+  background: rgba(15, 118, 110, 0.13);
+}
+
+.setup-step h2 {
+  margin: 0;
+  color: rgb(var(--v-theme-primaryText));
+  font-size: 1.1rem;
+  font-weight: 720;
+  line-height: 1.35;
+  letter-spacing: 0;
+  text-wrap: pretty;
+}
+
+.setup-step p {
+  margin: 10px 0 0;
+  color: rgba(var(--v-theme-on-surface), 0.68);
+  font-size: 0.875rem;
+  line-height: 1.65;
+  text-wrap: pretty;
+}
+
+.announcement-section {
+  margin-bottom: 24px;
 }
 
 .welcome-card {
   border-radius: 16px;
+  background: rgba(var(--v-theme-surface), 0.96);
 }
 
 .welcome-announcement-markdown {
@@ -505,12 +701,44 @@ watch(computerAccessRuntime, async (value, oldValue) => {
 }
 
 .computer-access-select {
-  max-width: 240px;
-  min-width: 220px;
+  height: 56px;
+  width: 100%;
+  min-width: 0;
 }
 
 .computer-access-help-list {
   margin: 0;
   padding-left: 1.25rem;
+}
+
+@media (max-width: 1100px) {
+  .setup-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .welcome-hero__content,
+  .setup-step {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .welcome-shell {
+    padding: 16px;
+  }
+
+  .welcome-hero {
+    margin-bottom: 16px;
+  }
+
+  .welcome-hero__content,
+  .setup-step {
+    padding: 20px;
+    border-radius: 14px;
+  }
+
+  .welcome-title {
+    font-size: 2rem;
+  }
 }
 </style>

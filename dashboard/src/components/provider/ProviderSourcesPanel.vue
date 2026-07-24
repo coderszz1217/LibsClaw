@@ -255,7 +255,7 @@ const selectSourceByValue = (value) => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 20px 20px 12px;
+  padding: 18px 18px 12px;
 }
 
 .provider-sources-head__copy {
@@ -271,8 +271,9 @@ const selectSourceByValue = (value) => {
 
 .provider-sources-title {
   margin: 0;
-  font-size: 16px;
-  font-weight: 650;
+  color: rgb(var(--v-theme-primaryText));
+  font-size: 15px;
+  font-weight: 720;
   line-height: 1.3;
 }
 
@@ -312,26 +313,36 @@ const selectSourceByValue = (value) => {
   padding: 6px 12px 16px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
 }
 
 .provider-source-item {
   width: 100%;
-  border: 0;
-  border-radius: 12px;
-  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: rgba(var(--v-theme-surface), 0.62);
   color: inherit;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 12px;
   cursor: pointer;
   text-align: left;
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
 }
 
-.provider-source-item:hover,
+.provider-source-item:hover {
+  background: rgba(var(--v-theme-surface), 0.92);
+  border-color: rgba(var(--v-theme-primary), 0.22);
+}
+
 .provider-source-item--active {
-  background: rgba(var(--v-theme-on-surface), 0.05);
+  background: rgb(var(--v-theme-surface));
+  border-color: rgba(var(--v-theme-primary), 0.3);
+  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.08);
 }
 
 .provider-source-avatar {
