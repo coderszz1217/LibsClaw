@@ -1,22 +1,18 @@
 <template>
   <div class="dashboard-page subagent-page" :class="{ 'is-dark': isDark }">
     <v-container fluid class="dashboard-shell pa-4 pa-md-6">
-      <div class="dashboard-header subagent-header">
-        <div class="dashboard-header-main">
-          <div class="subagent-title-row">
-            <div class="subagent-title-copy">
-              <div class="d-flex align-center flex-wrap" style="gap: 8px;">
-                <h1 class="dashboard-title">{{ tm('page.title') }}</h1>
-                <v-chip class="subagent-beta-chip" size="x-small" color="orange-darken-2" variant="tonal" label>
-                  {{ tm('page.beta') }}
-                </v-chip>
-              </div>
-              <p class="dashboard-subtitle">{{ tm('page.subtitle') }}</p>
-            </div>
+      <div class="subagent-page-head">
+        <div class="subagent-title-block">
+          <div class="subagent-title-line">
+            <span class="subagent-page-title">{{ tm('page.title') }}</span>
+            <v-chip class="subagent-beta-chip" size="small" color="primary" variant="tonal" label>
+              {{ tm('page.beta') }}
+            </v-chip>
           </div>
+          <p class="subagent-page-subtitle">{{ tm('page.subtitle') }}</p>
         </div>
 
-        <div class="dashboard-header-actions">
+        <div class="subagent-head-actions">
           <v-btn class="subagent-refresh-btn" variant="tonal" color="primary" prepend-icon="mdi-refresh" :loading="loading" @click="reload">
             {{ tm('actions.refresh') }}
           </v-btn>
@@ -476,46 +472,64 @@ onBeforeRouteLeave(async () => {
   max-width: 1500px;
 }
 
-.subagent-header {
-  align-items: center;
-  margin-bottom: 24px;
-  padding: 22px 24px;
-  border: 1px solid rgba(42, 143, 204, 0.12);
-  border-radius: 18px;
-  background: linear-gradient(135deg, #fbfdff 0%, #eef8fe 100%);
-}
-
-.subagent-title-row {
+.subagent-page-head {
   display: flex;
   align-items: center;
-  gap: 0;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding: 0 2px 12px;
+  border-bottom: 1px solid rgba(var(--v-theme-border), 0.54);
+}
+
+.subagent-title-block {
+  display: grid;
+  gap: 6px;
   min-width: 0;
 }
 
-.subagent-title-copy {
+.subagent-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   min-width: 0;
 }
 
-.subagent-page .dashboard-title {
-  font-size: 1.62rem;
-  font-weight: 820;
+.subagent-title-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.subagent-page-title {
+  color: rgb(var(--v-theme-primaryText));
+  font-size: 21px;
+  font-weight: 720;
+  line-height: 1.25;
+  letter-spacing: 0;
+  white-space: nowrap;
 }
 
 .subagent-beta-chip {
   border-radius: 999px !important;
-  font-weight: 700;
+  background: rgba(var(--v-theme-primary), 0.09) !important;
+  font-weight: 650;
 }
 
-.subagent-page .dashboard-subtitle {
-  margin-top: 7px;
+.subagent-page-subtitle {
+  margin: 0;
   color: rgba(var(--v-theme-on-surface), 0.66);
+  font-size: 13px;
+  line-height: 1.6;
+  max-width: 860px;
 }
 
 .subagent-refresh-btn,
 .subagent-save-btn,
 .subagent-add-btn,
 .empty-action-btn {
-  height: 38px;
+  height: 36px;
   border-radius: 11px !important;
   letter-spacing: 0;
   font-weight: 720;
@@ -524,7 +538,7 @@ onBeforeRouteLeave(async () => {
 
 .subagent-refresh-btn {
   border: 1px solid rgba(42, 143, 204, 0.14);
-  background: rgba(255, 255, 255, 0.72) !important;
+  background: #eaf5fc !important;
   color: #2378a9 !important;
 }
 
@@ -752,12 +766,9 @@ onBeforeRouteLeave(async () => {
     align-items: flex-start;
   }
 
-  .subagent-header {
+  .subagent-page-head {
     align-items: flex-start;
-  }
-
-  .subagent-title-row {
-    align-items: flex-start;
+    flex-direction: column;
   }
 }
 </style>
