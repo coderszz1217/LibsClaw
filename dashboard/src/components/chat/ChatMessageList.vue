@@ -1021,7 +1021,7 @@ function formatDuration(seconds: number) {
 
 .bot-avatar {
   margin-top: 2px;
-  color: rgb(var(--v-theme-primary));
+  color: #1d86bf;
   user-select: none;
 }
 
@@ -1033,7 +1033,13 @@ function formatDuration(seconds: number) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 30px;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(42, 143, 204, 0.14);
+  border-radius: 12px;
+  background: #eaf6fd;
+  color: #1d86bf;
+  font-size: 24px;
   margin-top: -2px;
   line-height: 0;
   pointer-events: none;
@@ -1041,24 +1047,27 @@ function formatDuration(seconds: number) {
 }
 
 .message-bubble {
-  border-radius: 8px;
+  border-radius: 14px;
   padding: 10px 14px;
   line-height: 1.65;
   overflow-wrap: anywhere;
 }
 
 .message-bubble.user {
-  color: var(--v-theme-primaryText);
+  color: #143045;
   padding: 12px 18px;
   font-size: 15px;
   max-width: 100%;
-  border-radius: 1.5rem;
-  background: rgba(var(--v-theme-primary), 0.12);
+  border: 1px solid rgba(42, 143, 204, 0.14);
+  border-radius: 18px 18px 6px 18px;
+  background: linear-gradient(180deg, #eaf6fd 0%, #dceff9 100%);
 }
 
 .message-bubble.bot {
-  background: transparent;
-  padding-left: 0;
+  border: 1px solid rgba(42, 143, 204, 0.08);
+  background: rgba(255, 255, 255, 0.72);
+  padding: 13px 16px;
+  border-radius: 6px 18px 18px 18px;
 }
 
 .plain-content {

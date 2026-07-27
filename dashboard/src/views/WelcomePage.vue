@@ -125,21 +125,29 @@
     <AddNewPlatform v-model:show="showAddPlatformDialog" :metadata="platformMetadata" :config_data="platformConfigData"
       @refresh-config="loadPlatformConfigBase" />
     <ProviderConfigDialog v-model="showProviderDialog" />
-    <v-dialog v-model="showComputerAccessHelpDialog" max-width="640">
-      <v-card>
-        <v-card-title class="text-h3 pa-4 pb-0 pl-6">
-          {{ tm('onboard.step3HelpTitle') }}
+    <v-dialog v-model="showComputerAccessHelpDialog" max-width="680">
+      <v-card class="computer-access-help-card" elevation="0">
+        <v-card-title class="computer-access-help-title">
+          <span class="computer-access-help-title__icon">
+            <v-icon icon="mdi-laptop-account" size="22" />
+          </span>
+          <span>{{ tm('onboard.step3HelpTitle') }}</span>
         </v-card-title>
-        <v-card-text>
+        <v-card-text class="computer-access-help-body">
           <ol class="computer-access-help-list">
             <li>{{ tm('onboard.step3HelpItem1') }}</li>
             <li>{{ tm('onboard.step3HelpItem2') }}</li>
             <li>{{ tm('onboard.step3HelpItem3') }}</li>
           </ol>
         </v-card-text>
-        <v-card-actions class="px-6 pb-4">
+        <v-card-actions class="computer-access-help-actions">
           <v-spacer />
-          <v-btn color="primary" variant="text" @click="showComputerAccessHelpDialog = false">
+          <v-btn
+            color="primary"
+            variant="tonal"
+            class="computer-access-help-close"
+            @click="showComputerAccessHelpDialog = false"
+          >
             {{ tm('onboard.step3HelpClose') }}
           </v-btn>
         </v-card-actions>
@@ -706,9 +714,98 @@ watch(computerAccessRuntime, async (value, oldValue) => {
   min-width: 0;
 }
 
+.computer-access-help-card {
+  overflow: hidden;
+  border: 1px solid #cfe5f4;
+  border-radius: 20px;
+  background: #f7fbfe;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+}
+
+.computer-access-help-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 24px 28px 16px;
+  color: rgb(var(--v-theme-primaryText));
+  font-size: 1.28rem;
+  font-weight: 760;
+  line-height: 1.3;
+  letter-spacing: 0;
+}
+
+.computer-access-help-title__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  border: 1px solid #bfe0f4;
+  border-radius: 14px;
+  color: rgb(var(--v-theme-primary));
+  background: #e5f4fd;
+}
+
+.computer-access-help-body {
+  padding: 0 28px 6px;
+}
+
 .computer-access-help-list {
+  display: grid;
+  gap: 10px;
   margin: 0;
-  padding-left: 1.25rem;
+  padding: 0;
+  counter-reset: access-help;
+  list-style: none;
+}
+
+.computer-access-help-list li {
+  position: relative;
+  min-height: 52px;
+  padding: 14px 16px 14px 54px;
+  border: 1px solid #d9e5ec;
+  border-radius: 14px;
+  color: rgba(var(--v-theme-on-surface), 0.82);
+  background: #ffffff;
+  font-size: 0.94rem;
+  line-height: 1.65;
+}
+
+.computer-access-help-list li::before {
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 9px;
+  color: rgb(var(--v-theme-primary));
+  background: #e6f5fc;
+  font-size: 0.78rem;
+  font-weight: 800;
+  content: counter(access-help, decimal-leading-zero);
+  counter-increment: access-help;
+}
+
+.computer-access-help-actions {
+  padding: 14px 28px 24px;
+}
+
+.computer-access-help-close {
+  min-width: 86px;
+  height: 42px;
+  border: 1px solid #bfe0f4;
+  border-radius: 12px;
+  background: #e6f3fc;
+  color: #1574a9;
+  font-weight: 700;
+}
+
+.computer-access-help-close :deep(.v-btn__overlay) {
+  display: none;
 }
 
 @media (max-width: 1100px) {

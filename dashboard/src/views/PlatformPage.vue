@@ -691,6 +691,57 @@ export default {
   letter-spacing: 0 !important;
 }
 
+.platform-card-shell :deep(.v-switch) {
+  flex: 0 0 auto;
+}
+
+.platform-card-shell :deep(.v-switch .v-selection-control) {
+  min-height: 34px;
+}
+
+.platform-card-shell :deep(.v-switch .v-selection-control__wrapper) {
+  width: 54px;
+  height: 32px;
+}
+
+.platform-card-shell :deep(.v-switch .v-switch__track) {
+  width: 50px;
+  height: 28px;
+  border: 1px solid #d2e2ec;
+  border-radius: 999px;
+  background: #eef4f8;
+  opacity: 1;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08);
+  transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.platform-card-shell :deep(.v-switch .v-switch__thumb) {
+  width: 22px;
+  height: 22px;
+  color: #ffffff;
+  background: #ffffff;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.2);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.platform-card-shell :deep(.v-switch .v-selection-control--dirty .v-switch__track) {
+  border-color: #75b9de;
+  background: linear-gradient(135deg, #80c5e8, #2f96cf);
+  box-shadow: inset 0 1px 2px rgba(15, 74, 111, 0.18), 0 8px 18px rgba(47, 150, 207, 0.22);
+}
+
+.platform-card-shell :deep(.v-switch .v-selection-control--dirty .v-switch__thumb) {
+  box-shadow: 0 4px 12px rgba(22, 107, 154, 0.28);
+}
+
+.platform-card-shell :deep(.v-switch:hover .v-switch__track) {
+  border-color: #aad2e9;
+}
+
+.platform-card-shell :deep(.v-switch .v-selection-control--disabled) {
+  opacity: 0.62;
+}
+
 .platform-empty-state {
   display: flex;
   min-height: 260px;
