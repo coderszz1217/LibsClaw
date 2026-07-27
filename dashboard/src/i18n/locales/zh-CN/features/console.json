@@ -1,5 +1,6 @@
 {
   "title": "平台日志",
+  "streamLabel": "实时日志",
   "autoScroll": {
     "enabled": "自动滚动已开启",
     "disabled": "自动滚动已关闭"

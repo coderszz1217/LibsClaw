@@ -1,5 +1,6 @@
 {
   "title": "Console",
+  "streamLabel": "Live logs",
   "autoScroll": {
     "enabled": "Auto-scroll enabled",
     "disabled": "Auto-scroll disabled"
