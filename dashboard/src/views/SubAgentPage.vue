@@ -1,22 +1,26 @@
 <template>
   <div class="dashboard-page subagent-page" :class="{ 'is-dark': isDark }">
     <v-container fluid class="dashboard-shell pa-4 pa-md-6">
-      <div class="dashboard-header">
+      <div class="dashboard-header subagent-header">
         <div class="dashboard-header-main">
-          <div class="d-flex align-center flex-wrap" style="gap: 8px;">
-            <h1 class="dashboard-title">{{ tm('page.title') }}</h1>
-            <v-chip size="x-small" color="orange-darken-2" variant="tonal" label>
-              {{ tm('page.beta') }}
-            </v-chip>
+          <div class="subagent-title-row">
+            <div class="subagent-title-copy">
+              <div class="d-flex align-center flex-wrap" style="gap: 8px;">
+                <h1 class="dashboard-title">{{ tm('page.title') }}</h1>
+                <v-chip class="subagent-beta-chip" size="x-small" color="orange-darken-2" variant="tonal" label>
+                  {{ tm('page.beta') }}
+                </v-chip>
+              </div>
+              <p class="dashboard-subtitle">{{ tm('page.subtitle') }}</p>
+            </div>
           </div>
-          <p class="dashboard-subtitle">{{ tm('page.subtitle') }}</p>
         </div>
 
         <div class="dashboard-header-actions">
-          <v-btn variant="text" color="primary" prepend-icon="mdi-refresh" :loading="loading" @click="reload">
+          <v-btn class="subagent-refresh-btn" variant="tonal" color="primary" prepend-icon="mdi-refresh" :loading="loading" @click="reload">
             {{ tm('actions.refresh') }}
           </v-btn>
-          <v-btn variant="tonal" color="primary" prepend-icon="mdi-content-save" :loading="saving" @click="save">
+          <v-btn class="subagent-save-btn" variant="tonal" color="primary" prepend-icon="mdi-content-save" :loading="saving" @click="save">
             {{ tm('actions.save') }}
           </v-btn>
         </div>
@@ -35,11 +39,13 @@
       </div>
 
       <div class="dashboard-form-grid global-settings-grid mb-5">
-        <div class="setting-card">
+        <div class="setting-card setting-card--primary">
           <div class="setting-card-head">
-            <div>
-              <div class="setting-title">{{ tm('switches.enable') }}</div>
-              <div class="setting-subtitle">{{ tm('switches.enableHint') }}</div>
+            <div class="setting-copy">
+              <div>
+                <div class="setting-title">{{ tm('switches.enable') }}</div>
+                <div class="setting-subtitle">{{ tm('switches.enableHint') }}</div>
+              </div>
             </div>
             <v-switch
               v-model="cfg.main_enable"
@@ -53,9 +59,11 @@
 
         <div class="setting-card">
           <div class="setting-card-head">
-            <div>
-              <div class="setting-title">{{ tm('switches.dedupe') }}</div>
-              <div class="setting-subtitle">{{ tm('switches.dedupeHint') }}</div>
+            <div class="setting-copy">
+              <div>
+                <div class="setting-title">{{ tm('switches.dedupe') }}</div>
+                <div class="setting-subtitle">{{ tm('switches.dedupeHint') }}</div>
+              </div>
             </div>
             <v-switch
               v-model="cfg.remove_main_duplicate_tools"
@@ -79,7 +87,7 @@
             <v-icon size="16">mdi-robot-outline</v-icon>
             <span>{{ cfg.agents.length }}</span>
           </div>
-          <v-btn color="primary" variant="tonal" prepend-icon="mdi-plus" @click="addAgent">
+          <v-btn class="subagent-add-btn" color="primary" variant="tonal" prepend-icon="mdi-plus" @click="addAgent">
             {{ tm('actions.add') }}
           </v-btn>
         </div>
@@ -87,10 +95,12 @@
 
       <div v-if="cfg.agents.length === 0" class="dashboard-card dashboard-card--padded empty-card">
         <div class="empty-wrap">
-          <v-icon icon="mdi-robot-off" size="60" class="mb-4" />
+          <span class="empty-icon">
+            <v-icon icon="mdi-robot-off" size="42" />
+          </span>
           <div class="empty-title">{{ tm('empty.title') }}</div>
           <div class="dashboard-empty mb-4">{{ tm('empty.subtitle') }}</div>
-          <v-btn color="primary" variant="tonal" @click="addAgent">
+          <v-btn class="empty-action-btn" color="primary" variant="tonal" prepend-icon="mdi-plus" @click="addAgent">
             {{ tm('empty.action') }}
           </v-btn>
         </div>
@@ -457,6 +467,80 @@ onBeforeRouteLeave(async () => {
 
 .subagent-page {
   padding-bottom: 40px;
+  background:
+    linear-gradient(180deg, rgba(239, 248, 254, 0.72) 0%, rgba(255, 255, 255, 0) 260px),
+    var(--dashboard-bg);
+}
+
+.subagent-page .dashboard-shell {
+  max-width: 1500px;
+}
+
+.subagent-header {
+  align-items: center;
+  margin-bottom: 24px;
+  padding: 22px 24px;
+  border: 1px solid rgba(42, 143, 204, 0.12);
+  border-radius: 18px;
+  background: linear-gradient(135deg, #fbfdff 0%, #eef8fe 100%);
+}
+
+.subagent-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  min-width: 0;
+}
+
+.subagent-title-copy {
+  min-width: 0;
+}
+
+.subagent-page .dashboard-title {
+  font-size: 1.62rem;
+  font-weight: 820;
+}
+
+.subagent-beta-chip {
+  border-radius: 999px !important;
+  font-weight: 700;
+}
+
+.subagent-page .dashboard-subtitle {
+  margin-top: 7px;
+  color: rgba(var(--v-theme-on-surface), 0.66);
+}
+
+.subagent-refresh-btn,
+.subagent-save-btn,
+.subagent-add-btn,
+.empty-action-btn {
+  height: 38px;
+  border-radius: 11px !important;
+  letter-spacing: 0;
+  font-weight: 720;
+  box-shadow: none !important;
+}
+
+.subagent-refresh-btn {
+  border: 1px solid rgba(42, 143, 204, 0.14);
+  background: rgba(255, 255, 255, 0.72) !important;
+  color: #2378a9 !important;
+}
+
+.subagent-save-btn,
+.subagent-add-btn,
+.empty-action-btn {
+  border: 1px solid rgba(42, 143, 204, 0.18);
+  background: linear-gradient(180deg, #eaf6fd 0%, #dceff9 100%) !important;
+  color: #1674a8 !important;
+}
+
+.subagent-refresh-btn:hover,
+.subagent-save-btn:hover,
+.subagent-add-btn:hover,
+.empty-action-btn:hover {
+  border-color: rgba(42, 143, 204, 0.34);
 }
 
 .unsaved-banner {
@@ -474,23 +558,44 @@ onBeforeRouteLeave(async () => {
 }
 
 .setting-card {
-  border: 1px solid var(--dashboard-border);
-  border-radius: 14px;
-  padding: 18px;
-  background: rgba(var(--v-theme-primary), 0.02);
+  position: relative;
+  overflow: hidden;
+  min-height: 94px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 16px;
+  padding: 18px 18px 16px;
+  background: #ffffff;
+}
+
+.setting-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: rgba(42, 143, 204, 0.48);
+}
+
+.setting-card--primary {
+  border-color: rgba(42, 143, 204, 0.16);
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbfe 100%);
 }
 
 .setting-card-head {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 16px;
+}
+
+.setting-copy {
+  min-width: 0;
 }
 
 .setting-title {
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 760;
   line-height: 1.5;
+  color: #172635;
 }
 
 .setting-subtitle {
@@ -501,7 +606,13 @@ onBeforeRouteLeave(async () => {
 }
 
 .empty-card {
+  position: relative;
+  overflow: hidden;
   min-height: 280px;
+  border-color: rgba(42, 143, 204, 0.12);
+  background:
+    radial-gradient(circle at 50% 18%, rgba(42, 143, 204, 0.1), transparent 32%),
+    linear-gradient(180deg, #ffffff 0%, #f8fbfd 100%);
 }
 
 .empty-wrap {
@@ -514,10 +625,22 @@ onBeforeRouteLeave(async () => {
   color: var(--dashboard-muted);
 }
 
+.empty-icon {
+  display: inline-grid;
+  width: 78px;
+  height: 78px;
+  margin-bottom: 18px;
+  place-items: center;
+  border: 1px solid rgba(42, 143, 204, 0.14);
+  border-radius: 22px;
+  background: #eef8fe;
+  color: #1d86bf;
+}
+
 .empty-title {
   font-size: 20px;
-  font-weight: 650;
-  color: var(--dashboard-text);
+  font-weight: 780;
+  color: #172635;
   margin-bottom: 8px;
 }
 
@@ -529,6 +652,8 @@ onBeforeRouteLeave(async () => {
 .agent-panel {
   display: grid;
   gap: 18px;
+  border-color: rgba(42, 143, 204, 0.12);
+  background: linear-gradient(180deg, #ffffff 0%, #f9fcfe 100%);
 }
 
 .agent-summary {
@@ -572,6 +697,10 @@ onBeforeRouteLeave(async () => {
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
+  padding: 6px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 14px;
+  background: #ffffff;
 }
 
 .agent-edit-grid {
@@ -603,7 +732,7 @@ onBeforeRouteLeave(async () => {
   border: 1px solid var(--dashboard-border);
   border-radius: 12px;
   padding: 14px;
-  background: transparent;
+  background: #ffffff;
 }
 
 .persona-preview-wrap {
@@ -620,6 +749,14 @@ onBeforeRouteLeave(async () => {
   .setting-card-head,
   .agent-summary {
     flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .subagent-header {
+    align-items: flex-start;
+  }
+
+  .subagent-title-row {
     align-items: flex-start;
   }
 }
