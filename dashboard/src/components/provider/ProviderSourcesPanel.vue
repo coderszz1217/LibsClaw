@@ -71,9 +71,10 @@
           <template #activator="{ props }">
             <v-btn
               v-bind="props"
+              class="provider-sources-add-btn"
               prepend-icon="mdi-plus"
               color="primary"
-              variant="text"
+              variant="tonal"
               size="small"
               rounded="xl"
             >
@@ -267,6 +268,27 @@ const selectSourceByValue = (value) => {
   align-items: center;
   gap: 8px;
   min-width: 0;
+}
+
+.provider-sources-add-btn {
+  min-width: 76px;
+  height: 34px;
+  padding: 0 13px !important;
+  border: 1px solid rgba(42, 143, 204, 0.18);
+  background: linear-gradient(180deg, #eff8fe 0%, #e2f1fa 100%) !important;
+  color: #1674a8 !important;
+  font-weight: 700;
+  letter-spacing: 0;
+  box-shadow: none !important;
+}
+
+.provider-sources-add-btn :deep(.v-icon) {
+  font-size: 16px;
+}
+
+.provider-sources-add-btn:hover {
+  border-color: rgba(42, 143, 204, 0.34);
+  background: linear-gradient(180deg, #e6f5fd 0%, #d7ecf8 100%) !important;
 }
 
 .provider-sources-title {

@@ -1,5 +1,5 @@
 <template>
-  <div class="d-flex align-center justify-space-between ga-2">
+  <div class="list-config-inline d-flex align-center justify-space-between ga-2">
     <div v-if="isSingleItemMode" class="flex-grow-1 d-flex align-center ga-2">
       <v-text-field
         v-model="singleItemValue"
@@ -22,21 +22,24 @@
         </v-chip>
       </div>
     </div>
-    <v-btn size="small" color="primary" variant="tonal" @click="openDialog">
+    <v-btn class="list-config-open-btn" size="small" color="primary" variant="tonal" @click="openDialog">
       {{ preferSingleItem ? t('core.common.list.addMore') : (buttonText || t('core.common.list.modifyButton')) }}
     </v-btn>
   </div>
 
   <!-- List Management Dialog -->
   <v-dialog v-model="dialog" max-width="600px">
-    <v-card>
-      <v-card-title class="text-h3 pa-4 pb-0 pl-6">
-        {{ dialogTitle || t('core.common.list.editTitle') }}
+    <v-card class="list-config-dialog-card">
+      <v-card-title class="text-h3 pa-4 pb-0 pl-6 list-config-dialog-title">
+        <span class="list-config-dialog-title__icon">
+          <v-icon size="18">mdi-format-list-bulleted-square</v-icon>
+        </span>
+        <span>{{ dialogTitle || t('core.common.list.editTitle') }}</span>
       </v-card-title>
       
       <!-- Add new item section - moved to top -->
-      <v-card-text class="pa-4 pb-2">
-        <div class="d-flex align-center ga-2">
+      <v-card-text class="list-config-dialog-input pa-4 pb-2">
+        <div class="list-config-add-row d-flex align-center ga-2">
           <v-text-field 
             v-model="newItem" 
             :label="t('core.common.list.addItemPlaceholder')" 
@@ -46,9 +49,10 @@
             variant="outlined" 
             density="compact" 
             :placeholder="t('core.common.list.inputPlaceholder')"
-            class="flex-grow-1">
+            class="flex-grow-1 list-config-text-field">
           </v-text-field>
           <v-btn
+            class="list-config-add-btn"
             @click="addItem"
             variant="tonal"
             color="primary"
@@ -57,6 +61,7 @@
             {{ t('core.common.list.addButton') }}
           </v-btn>
           <v-btn 
+            class="list-config-import-btn"
             @click="showBatchImport = true" 
             variant="tonal" 
             color="primary"
@@ -67,8 +72,8 @@
         </div>
       </v-card-text>
 
-      <v-card-text class="pa-0" style="max-height: 400px; overflow-y: auto;">
-        <v-list v-if="localItems.length > 0" density="compact">
+      <v-card-text class="list-config-dialog-list pa-0">
+        <v-list v-if="localItems.length > 0" density="compact" class="list-config-items">
           <v-list-item
             v-for="(item, index) in localItems"
             :key="index"
@@ -114,28 +119,31 @@
           </v-list-item>
         </v-list>
         
-        <div v-else class="text-center py-8">
+        <div v-else class="list-config-empty text-center py-8">
           <v-icon size="64" color="grey-lighten-1">mdi-format-list-bulleted</v-icon>
           <p class="text-grey mt-4">{{ t('core.common.list.noItemsHint') }}</p>
         </div>
       </v-card-text>
 
-      <v-card-actions class="pa-4">
+      <v-card-actions class="list-config-dialog-actions pa-4">
         <v-spacer></v-spacer>
-        <v-btn variant="text" @click="cancelDialog">{{ t('core.common.cancel') }}</v-btn>
-        <v-btn color="primary" variant="tonal" @click="confirmDialog">{{ t('core.common.confirm') }}</v-btn>
+        <v-btn class="list-config-cancel-btn" variant="text" @click="cancelDialog">{{ t('core.common.cancel') }}</v-btn>
+        <v-btn class="list-config-confirm-btn" color="primary" variant="tonal" @click="confirmDialog">{{ t('core.common.confirm') }}</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
 
   <!-- Batch Import Dialog -->
   <v-dialog v-model="showBatchImport" max-width="600px">
-    <v-card>
-      <v-card-title class="text-h3 pa-4 pb-0 pl-6">
-        {{ t('core.common.list.batchImportTitle') }}
+    <v-card class="list-config-dialog-card">
+      <v-card-title class="text-h3 pa-4 pb-0 pl-6 list-config-dialog-title">
+        <span class="list-config-dialog-title__icon">
+          <v-icon size="18">mdi-import</v-icon>
+        </span>
+        <span>{{ t('core.common.list.batchImportTitle') }}</span>
       </v-card-title>
       
-      <v-card-text>
+      <v-card-text class="list-config-dialog-input">
         <v-textarea
           v-model="batchImportText"
           :label="t('core.common.list.batchImportLabel')"
@@ -147,10 +155,10 @@
         ></v-textarea>
       </v-card-text>
 
-      <v-card-actions class="pa-4">
+      <v-card-actions class="list-config-dialog-actions pa-4">
         <v-spacer></v-spacer>
-        <v-btn variant="text" @click="cancelBatchImport">{{ t('core.common.cancel') }}</v-btn>
-        <v-btn color="primary" variant="tonal" @click="confirmBatchImport">
+        <v-btn class="list-config-cancel-btn" variant="text" @click="cancelBatchImport">{{ t('core.common.cancel') }}</v-btn>
+        <v-btn class="list-config-confirm-btn" color="primary" variant="tonal" @click="confirmBatchImport">
           {{ t('core.common.list.batchImportButton', { count: batchImportPreviewCount }) }}
         </v-btn>
       </v-card-actions>
@@ -326,23 +334,150 @@ function cancelBatchImport() {
 </script>
 
 <style scoped>
+.list-config-inline {
+  min-width: 0;
+}
+
+.list-config-open-btn {
+  min-width: 82px;
+  height: 34px;
+  border: 1px solid rgba(42, 143, 204, 0.16);
+  border-radius: 10px !important;
+  background: #eaf5fc !important;
+  color: #1976a9 !important;
+  font-weight: 700;
+  letter-spacing: 0;
+  box-shadow: none !important;
+}
+
+.list-config-open-btn:hover {
+  border-color: rgba(42, 143, 204, 0.32);
+  background: #def0fa !important;
+}
+
+.list-config-dialog-card {
+  overflow: hidden;
+  border: 1px solid rgba(42, 143, 204, 0.12);
+  border-radius: 18px !important;
+  background: linear-gradient(180deg, #fbfdff 0%, #f7fbfe 100%) !important;
+  box-shadow: 0 22px 54px rgba(20, 42, 62, 0.18) !important;
+}
+
+.list-config-dialog-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 20px !important;
+  color: #142433;
+  font-size: 20px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0;
+}
+
+.list-config-dialog-title__icon {
+  display: inline-grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 12px;
+  background: #e8f5fc;
+  color: #1d86bf;
+}
+
+.list-config-dialog-input {
+  padding: 18px 22px 12px !important;
+}
+
+.list-config-add-row {
+  padding: 12px;
+  border: 1px solid rgba(42, 143, 204, 0.12);
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.list-config-add-btn,
+.list-config-import-btn,
+.list-config-confirm-btn {
+  height: 36px;
+  border-radius: 10px !important;
+  background: #e8f5fc !important;
+  color: #1674a8 !important;
+  font-weight: 700;
+  box-shadow: none !important;
+}
+
+.list-config-import-btn {
+  background: #eef7f3 !important;
+  color: #237b5e !important;
+}
+
+.list-config-cancel-btn {
+  height: 36px;
+  border-radius: 10px !important;
+  color: rgba(var(--v-theme-on-surface), 0.68) !important;
+  font-weight: 650;
+}
+
+.list-config-dialog-list {
+  max-height: 360px;
+  overflow-y: auto;
+  margin: 2px 22px 0;
+  border: 1px solid rgba(var(--v-theme-border), 0.42);
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.list-config-items {
+  padding: 8px !important;
+  background: transparent;
+}
+
 .v-list-item {
   transition: all 0.2s ease;
 }
 
 .list-item-clickable {
   cursor: pointer;
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: 12px !important;
 }
 
 .list-item-clickable:hover {
-  background-color: rgba(var(--v-theme-primary), 0.08);
+  border-color: rgba(42, 143, 204, 0.14);
+  background-color: #f3f9fd;
 }
 
 .item-text {
   user-select: none;
+  color: #21313f;
+  font-weight: 560;
 }
 
 .v-chip {
   margin: 2px;
+}
+
+.list-config-empty {
+  color: rgba(var(--v-theme-on-surface), 0.58);
+}
+
+.list-config-dialog-actions {
+  margin-top: 12px;
+  padding: 14px 22px 18px !important;
+  border-top: 1px solid rgba(var(--v-theme-border), 0.36);
+  background: rgba(248, 251, 253, 0.88);
+}
+
+@media (max-width: 600px) {
+  .list-config-add-row {
+    align-items: stretch !important;
+    flex-direction: column;
+  }
+
+  .list-config-add-btn,
+  .list-config-import-btn {
+    width: 100%;
+  }
 }
 </style>
