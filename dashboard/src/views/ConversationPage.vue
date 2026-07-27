@@ -168,13 +168,15 @@
 
                         <template v-slot:item.actions="{ item }">
                             <div class="actions-wrapper">
-                                <v-btn icon variant="plain" size="x-small" class="action-button"
+                                <v-btn icon variant="text" size="small" class="action-button action-button--view"
+                                    :title="tm('actions.view')"
                                     @click="viewConversation(item)" :disabled="loading">
-                                    <v-icon>mdi-eye</v-icon>
+                                    <v-icon size="17">mdi-eye</v-icon>
                                 </v-btn>
-                                <v-btn icon color="error" variant="plain" size="x-small" class="action-button"
+                                <v-btn icon variant="text" size="small" class="action-button action-button--delete"
+                                    :title="tm('actions.delete')"
                                     @click="confirmDeleteConversation(item)" :disabled="loading">
-                                    <v-icon>mdi-delete</v-icon>
+                                    <v-icon size="17">mdi-delete-outline</v-icon>
                                 </v-btn>
                             </div>
                         </template>
@@ -213,37 +215,42 @@
         </v-container>
 
         <!-- 对话详情对话框 -->
-        <v-dialog v-model="dialogView" max-width="900px" scrollable>
+        <v-dialog v-model="dialogView" max-width="980px" scrollable>
             <v-card class="conversation-detail-card">
-                <v-card-title class="text-h3 pa-4 pb-0 pl-6 conversation-detail-title">
-                    <div class="conversation-detail-heading">
-                        <span class="text-truncate">{{ selectedConversation?.title || tm('status.noTitle') }}</span>
-                        <UmoDisplay v-if="selectedConversation?.user_id && hasConversationUmoReadableName(selectedConversation)"
-                            v-bind="getConversationUmoDisplayProps(selectedConversation)" compact :show-info="false"
-                            :show-platform="false" :show-meta="false" class="conversation-umo-display" />
-                        <div v-if="selectedConversation?.user_id"
-                            class="conversation-umo-parsed conversation-detail-umo-parsed">
-                            <v-chip size="x-small" label>
-                                {{ getConversationUmoInfo(selectedConversation).platform || tm('status.unknown') }}
-                            </v-chip>
-                            <span class="umo-separator">:</span>
-                            <v-chip size="x-small" label>
-                                {{ getMessageTypeDisplay(getConversationUmoInfo(selectedConversation).message_type) }}
-                            </v-chip>
-                            <span class="umo-separator">:</span>
-                            <span class="umo-session-id">{{ getConversationUmoInfo(selectedConversation).session_id || tm('status.unknown') }}</span>
+                <v-card-title class="conversation-detail-title">
+                    <div class="conversation-detail-title-main">
+                        <div class="conversation-detail-heading">
+                            <span class="conversation-detail-name text-truncate">{{ selectedConversation?.title || tm('status.noTitle') }}</span>
+                            <UmoDisplay v-if="selectedConversation?.user_id && hasConversationUmoReadableName(selectedConversation)"
+                                v-bind="getConversationUmoDisplayProps(selectedConversation)" compact :show-info="false"
+                                :show-platform="false" :show-meta="false" class="conversation-umo-display" />
+                            <div v-if="selectedConversation?.user_id"
+                                class="conversation-umo-parsed conversation-detail-umo-parsed">
+                                <v-chip size="x-small" label>
+                                    {{ getConversationUmoInfo(selectedConversation).platform || tm('status.unknown') }}
+                                </v-chip>
+                                <span class="umo-separator">:</span>
+                                <v-chip size="x-small" label>
+                                    {{ getMessageTypeDisplay(getConversationUmoInfo(selectedConversation).message_type) }}
+                                </v-chip>
+                                <span class="umo-separator">:</span>
+                                <span class="umo-session-id">{{ getConversationUmoInfo(selectedConversation).session_id || tm('status.unknown') }}</span>
+                            </div>
                         </div>
                     </div>
+                    <v-btn icon="mdi-close" variant="text" class="conversation-detail-close-btn"
+                        @click="closeHistoryDialog" />
                 </v-card-title>
 
-                <v-card-text>
-                    <div class="mb-4 d-flex align-center">
-                        <v-btn color="secondary" variant="tonal" size="small" class="mr-2"
+                <v-card-text class="conversation-detail-body">
+                    <div class="conversation-detail-toolbar">
+                        <v-btn variant="tonal" size="small" class="conversation-detail-mode-btn"
                             @click="isEditingHistory = !isEditingHistory">
                             <v-icon class="mr-1">{{ isEditingHistory ? 'mdi-eye' : 'mdi-pencil' }}</v-icon>
                             {{ isEditingHistory ? tm('dialogs.view.previewMode') : tm('dialogs.view.editMode') }}
                         </v-btn>
-                        <v-btn v-if="isEditingHistory" color="success" variant="tonal" size="small"
+                        <v-btn v-if="isEditingHistory" variant="tonal" size="small"
+                            class="conversation-detail-save-btn"
                             :loading="savingHistory" @click="saveHistoryChanges">
                             <v-icon class="mr-1">mdi-content-save</v-icon>
                             {{ tm('dialogs.view.saveChanges') }}
@@ -263,7 +270,7 @@
                     </div>
 
                     <!-- 预览模式 - 聊天界面 -->
-                    <div v-else class="conversation-messages-container" style="background-color: var(--v-theme-surface);"
+                    <div v-else class="conversation-messages-container"
                         ref="messagesContainer"
                         @wheel.prevent="onContainerWheel">
                         <!-- 空对话提示 -->
@@ -277,9 +284,9 @@
                     </div>
                 </v-card-text>
 
-                <v-card-actions class="pa-4">
+                <v-card-actions class="conversation-detail-actions">
                     <v-spacer></v-spacer>
-                    <v-btn variant="text" @click="closeHistoryDialog">
+                    <v-btn variant="tonal" class="conversation-detail-footer-close" @click="closeHistoryDialog">
                         {{ tm('dialogs.view.close') }}
                     </v-btn>
                 </v-card-actions>
@@ -287,29 +294,29 @@
         </v-dialog>
 
         <!-- 编辑对话框 -->
-        <v-dialog v-model="dialogEdit" max-width="500px">
-            <v-card>
-                <v-card-title class="text-h3 pa-4 pb-0 pl-6">
-                    <v-icon color="primary" class="me-2">mdi-pencil</v-icon>
+        <v-dialog v-model="dialogEdit" max-width="540px">
+            <v-card class="conversation-edit-card">
+                <v-card-title class="conversation-edit-title">
+                    <span class="conversation-edit-title-icon">
+                        <v-icon size="22">mdi-pencil</v-icon>
+                    </span>
                     <span>{{ tm('dialogs.edit.title') }}</span>
                 </v-card-title>
 
-                <v-card-text class="py-4">
+                <v-card-text class="conversation-edit-body">
                     <v-form ref="form" v-model="valid">
                         <v-text-field v-model="editedItem.title" :label="tm('dialogs.edit.titleLabel')"
                             :placeholder="tm('dialogs.edit.titlePlaceholder')" variant="outlined" density="comfortable"
-                            class="mb-3"></v-text-field>
+                            class="conversation-edit-field"></v-text-field>
                     </v-form>
                 </v-card-text>
 
-                <v-divider></v-divider>
-
-                <v-card-actions class="pa-4">
+                <v-card-actions class="conversation-edit-actions">
                     <v-spacer></v-spacer>
-                    <v-btn variant="text" @click="dialogEdit = false" :disabled="loading">
+                    <v-btn variant="tonal" class="conversation-edit-cancel-btn" @click="dialogEdit = false" :disabled="loading">
                         {{ tm('dialogs.edit.cancel') }}
                     </v-btn>
-                    <v-btn color="primary" variant="tonal" @click="saveConversation" :loading="loading">
+                    <v-btn color="primary" variant="flat" class="conversation-edit-save-btn" @click="saveConversation" :loading="loading">
                         {{ tm('dialogs.edit.save') }}
                     </v-btn>
                 </v-card-actions>
@@ -1490,34 +1497,78 @@ export default {
 
 .actions-wrapper {
     display: flex;
-    justify-content: flex-end;
-    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-width: 88px;
 }
 
 .action-button {
-    border-radius: 8px;
-    font-weight: 500;
-    opacity: 0.78;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    border: 1px solid rgba(var(--v-theme-border), 0.46);
+    border-radius: 9px !important;
+    background: rgba(247, 250, 253, 0.9) !important;
+    color: rgba(var(--v-theme-on-surface), 0.68) !important;
+    opacity: 1;
+    transition:
+        border-color 0.16s ease,
+        background-color 0.16s ease,
+        color 0.16s ease,
+        transform 0.16s ease,
+        box-shadow 0.16s ease;
 }
 
 .action-button:hover {
-    opacity: 1;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+}
+
+.action-button--view {
+    border-color: rgba(56, 143, 196, 0.18);
+    background: rgba(232, 244, 252, 0.95) !important;
+    color: #236f9f !important;
+}
+
+.action-button--view:hover {
+    border-color: rgba(56, 143, 196, 0.34);
+    background: rgba(220, 238, 249, 0.98) !important;
+    color: #1f628f !important;
+}
+
+.action-button--delete {
+    border-color: rgba(229, 81, 81, 0.16);
+    background: rgba(255, 241, 241, 0.95) !important;
+    color: #c33d3d !important;
+}
+
+.action-button--delete:hover {
+    border-color: rgba(229, 81, 81, 0.32);
+    background: rgba(255, 231, 231, 0.98) !important;
+    color: #b42323 !important;
 }
 
 .monaco-editor-container {
-    height: 500px;
-    border-radius: 8px;
+    height: min(58vh, 560px);
+    border: 1px solid rgba(var(--v-theme-border), 0.5);
+    border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
 }
 
 /* 聊天消息容器样式 */
 .conversation-messages-container {
-    max-height: 500px;
+    max-height: min(58vh, 560px);
+    min-height: 420px;
     overflow-y: auto;
-    padding: 8px;
-    border-radius: 8px;
-    background-color: #f9f9f9;
+    padding: 18px 20px;
+    border: 1px solid rgba(var(--v-theme-border), 0.48);
+    border-radius: 14px;
+    background:
+        linear-gradient(180deg, rgba(var(--v-theme-primary), 0.025), rgba(255, 255, 255, 0.96)),
+        rgb(var(--v-theme-surface));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86);
 }
 
 /* 让 ToolCallCard 内部的 args/result 自然展开，由外层容器统一滚动，避免双滚动条 */
@@ -1542,19 +1593,217 @@ export default {
     max-height: 90vh;
     display: flex;
     flex-direction: column;
+    border: 1px solid rgba(var(--v-theme-border), 0.68);
+    border-radius: 18px !important;
+    background:
+        linear-gradient(180deg, rgba(var(--v-theme-primary), 0.04), transparent 220px),
+        rgb(var(--v-theme-surface));
+    box-shadow: 0 24px 72px rgba(15, 23, 42, 0.2) !important;
+    overflow: hidden;
 }
 
 .conversation-detail-title {
     display: flex;
+    min-height: 98px;
     align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 20px 24px 18px !important;
+    border-bottom: 1px solid rgba(var(--v-theme-border), 0.56);
+    background: rgba(255, 255, 255, 0.86);
+}
+
+.conversation-detail-title-main {
+    display: flex;
+    min-width: 0;
+    align-items: flex-start;
+    flex: 1 1 auto;
+}
+
+.conversation-detail-close-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px !important;
+    background: rgba(var(--v-theme-on-surface), 0.045);
+    color: rgba(var(--v-theme-on-surface), 0.62);
+}
+
+.conversation-detail-close-btn:hover {
+    background: rgba(var(--v-theme-primary), 0.09);
+    color: rgb(var(--v-theme-primary));
 }
 
 .conversation-detail-heading {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
     min-width: 0;
     width: 100%;
+}
+
+.conversation-detail-name {
+    color: rgba(var(--v-theme-on-surface), 0.92);
+    font-size: 20px;
+    font-weight: 760;
+    line-height: 1.32;
+    letter-spacing: 0;
+}
+
+.conversation-detail-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 16px 22px 12px !important;
+    background: rgba(248, 250, 252, 0.62);
+}
+
+.conversation-detail-toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    border: 1px solid rgba(var(--v-theme-border), 0.48);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.conversation-detail-mode-btn,
+.conversation-detail-save-btn,
+.conversation-detail-footer-close {
+    height: 38px !important;
+    border-radius: 8px !important;
+    padding-inline: 14px !important;
+    font-weight: 650;
+    letter-spacing: 0;
+}
+
+.conversation-detail-mode-btn {
+    border: 1px solid rgba(56, 143, 196, 0.16);
+    background: rgba(232, 244, 252, 0.95) !important;
+    color: #236f9f !important;
+}
+
+.conversation-detail-mode-btn:hover {
+    border-color: rgba(56, 143, 196, 0.28);
+    background: rgba(220, 238, 249, 0.98) !important;
+    color: #1f628f !important;
+}
+
+.conversation-detail-save-btn {
+    border: 1px solid rgba(31, 151, 111, 0.16);
+    background: rgba(228, 247, 240, 0.95) !important;
+    color: #17795c !important;
+}
+
+.conversation-detail-save-btn:hover {
+    border-color: rgba(31, 151, 111, 0.3);
+    background: rgba(215, 242, 232, 0.98) !important;
+    color: #12684f !important;
+}
+
+.conversation-detail-actions {
+    padding: 14px 22px 20px !important;
+    border-top: 1px solid rgba(var(--v-theme-border), 0.54);
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.conversation-detail-footer-close {
+    border: 1px solid rgba(var(--v-theme-border), 0.76);
+    background: rgba(255, 255, 255, 0.9) !important;
+    color: rgba(var(--v-theme-on-surface), 0.74) !important;
+}
+
+.conversation-detail-footer-close:hover {
+    background: rgba(var(--v-theme-on-surface), 0.055) !important;
+    color: rgb(var(--v-theme-on-surface)) !important;
+}
+
+.conversation-edit-card {
+    border: 1px solid rgba(var(--v-theme-border), 0.68);
+    border-radius: 16px !important;
+    background:
+        linear-gradient(180deg, rgba(var(--v-theme-primary), 0.045), transparent 180px),
+        rgb(var(--v-theme-surface));
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.18) !important;
+    overflow: hidden;
+}
+
+.conversation-edit-title {
+    display: flex;
+    min-height: 68px;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 24px 16px !important;
+    border-bottom: 1px solid rgba(var(--v-theme-border), 0.54);
+    background: rgba(255, 255, 255, 0.84);
+    color: rgba(var(--v-theme-on-surface), 0.92);
+    font-size: 1.18rem !important;
+    font-weight: 720 !important;
+    letter-spacing: 0;
+}
+
+.conversation-edit-title-icon {
+    display: inline-flex;
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(56, 143, 196, 0.18);
+    border-radius: 10px;
+    background: rgba(232, 244, 252, 0.95);
+    color: #236f9f;
+}
+
+.conversation-edit-body {
+    padding: 22px 24px 12px !important;
+    background: rgba(248, 250, 252, 0.62);
+}
+
+.conversation-edit-field :deep(.v-field) {
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.96);
+}
+
+.conversation-edit-field :deep(.v-field__outline) {
+    --v-field-border-opacity: 0.2;
+}
+
+.conversation-edit-field :deep(.v-field--focused .v-field__outline) {
+    --v-field-border-opacity: 0.5;
+}
+
+.conversation-edit-actions {
+    gap: 10px;
+    padding: 14px 24px 20px !important;
+    border-top: 1px solid rgba(var(--v-theme-border), 0.54);
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.conversation-edit-cancel-btn,
+.conversation-edit-save-btn {
+    height: 40px !important;
+    max-height: 40px;
+    border-radius: 8px !important;
+    padding: 0 18px !important;
+    font-weight: 650;
+    letter-spacing: 0;
+}
+
+.conversation-edit-cancel-btn {
+    border: 1px solid rgba(var(--v-theme-border), 0.76);
+    background: rgba(255, 255, 255, 0.9) !important;
+    color: rgba(var(--v-theme-on-surface), 0.74) !important;
+}
+
+.conversation-edit-save-btn {
+    background: #236f9f !important;
+    color: #fff !important;
+}
+
+.conversation-edit-save-btn:hover {
+    background: #1f628f !important;
 }
 
 .text-truncate {
@@ -1681,18 +1930,24 @@ export default {
     align-items: center;
     gap: 5px;
     min-width: 0;
-    color: rgba(var(--v-theme-on-surface), 0.62);
+    color: rgba(var(--v-theme-on-surface), 0.54);
     font-size: 12px;
 }
 
 .conversation-umo-parsed .v-chip {
     height: 22px;
-    border: 1px solid rgba(var(--v-theme-border), 0.56);
+    border: 1px solid rgba(56, 143, 196, 0.16);
     border-radius: 6px;
-    background: rgba(248, 250, 252, 0.92) !important;
-    color: rgba(var(--v-theme-on-surface), 0.68);
+    background: rgba(232, 244, 252, 0.95) !important;
+    color: #236f9f;
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 650;
+}
+
+.conversation-umo-parsed .v-chip:nth-of-type(2) {
+    border-color: rgba(31, 151, 111, 0.16);
+    background: rgba(228, 247, 240, 0.95) !important;
+    color: #17795c;
 }
 
 .conversation-detail-umo-parsed {
@@ -1700,13 +1955,14 @@ export default {
 }
 
 .umo-separator {
-    color: rgba(var(--v-theme-on-surface), 0.5);
+    color: rgba(var(--v-theme-on-surface), 0.34);
     flex-shrink: 0;
 }
 
 .umo-session-id,
 .umo-raw-text {
     min-width: 0;
+    color: rgba(var(--v-theme-on-surface), 0.55);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
