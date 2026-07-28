@@ -1,9 +1,9 @@
 <template>
   <div class="skills-page">
-    <v-container fluid class="pa-0" elevation="0">
+    <v-container fluid class="skills-container pa-0" elevation="0">
       <v-row
         v-if="neoEnabled"
-        class="d-flex justify-end align-center px-4 py-3 pb-4"
+        class="skills-mode-row d-flex justify-end align-center px-4 py-3 pb-4"
       >
         <v-btn-toggle
           v-model="mode"
@@ -40,99 +40,168 @@
       </div>
 
       <template v-if="mode === 'local'">
-        <v-progress-linear
-          v-if="loading"
-          indeterminate
-          color="primary"
-        ></v-progress-linear>
+        <div class="skills-workbench">
+          <div class="skills-toolbar">
+            <div class="skills-summary">
+              <div class="skills-summary-pill">
+                <strong>{{ skills.length }}</strong>
+                <span>{{ tm("tabs.skills") }}</span>
+              </div>
+              <div class="skills-summary-pill skills-summary-pill--active">
+                <strong>{{ activeSkillCount }}</strong>
+                <span>{{ t("core.common.enabled") }}</span>
+              </div>
+              <div class="skills-summary-pill">
+                <strong>{{ localSkillCount }}</strong>
+                <span>{{ tm("skills.modeLocal") }}</span>
+              </div>
+            </div>
 
-        <div v-else-if="skills.length === 0" class="text-center pa-8">
-          <v-icon size="64" color="grey-lighten-1">mdi-folder-open</v-icon>
-          <p class="text-grey mt-4">{{ tm("skills.empty") }}</p>
-          <small class="text-grey">{{ tm("skills.emptyHint") }}</small>
-        </div>
+            <v-text-field
+              :model-value="skillSearchQuery"
+              :placeholder="tm('skills.searchPlaceholder')"
+              prepend-inner-icon="mdi-magnify"
+              variant="solo"
+              density="compact"
+              hide-details
+              clearable
+              class="skills-search-field"
+              @update:model-value="updateSkillSearchQuery"
+              @click:clear="clearSkillSearch"
+            />
 
-        <div v-else class="skills-list pb-3">
-          <OutlinedActionListItem
-            v-for="skill in skills"
-            :key="skill.name"
-            :title="skill.name"
-            clickable
-            @click="openSkillEditor(skill)"
-          >
-            <template #title-extra>
-              <v-chip
-                size="x-small"
+            <div class="skills-toolbar-actions">
+              <v-btn
+                color="primary"
+                prepend-icon="mdi-refresh"
                 variant="tonal"
-                :color="sourceTypeColor(skill.source_type)"
+                class="skills-toolbar-btn"
+                @click="refreshCurrentMode"
               >
-                {{ sourceTypeLabel(skill.source_type, skill) }}
-              </v-chip>
-            </template>
-
-            <div class="skill-description text-body-2 text-medium-emphasis">
-              {{ skill.description || tm("skills.noDescription") }}
+                {{ tm("skills.refresh") }}
+              </v-btn>
+              <v-btn
+                color="primary"
+                prepend-icon="mdi-upload"
+                variant="flat"
+                class="skills-toolbar-btn skills-toolbar-btn--primary"
+                @click="openUploadDialog"
+              >
+                {{ tm("skills.upload") }}
+              </v-btn>
             </div>
+          </div>
 
-            <div class="skill-path text-caption text-medium-emphasis">
-              <v-icon size="small" class="me-1">mdi-file-document</v-icon>
-              {{ tm("skills.path") }}: {{ skill.path }}
+          <v-progress-linear
+            v-if="loading"
+            indeterminate
+            color="primary"
+            class="skills-progress"
+          ></v-progress-linear>
+
+          <div v-else-if="skills.length === 0" class="skills-empty-state">
+            <div class="skills-empty-state__icon">
+              <v-icon size="38">mdi-folder-open-outline</v-icon>
             </div>
+            <p>{{ tm("skills.empty") }}</p>
+            <small>{{ tm("skills.emptyHint") }}</small>
+          </div>
 
-            <template #actions>
-              <v-tooltip :text="tm('skills.download')" location="top">
-                <template #activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    icon="mdi-download-outline"
-                    variant="text"
-                    size="small"
-                    class="list-action-icon-btn"
-                    :disabled="itemLoading[skill.name] || isReadOnlySourceSkill(skill)"
-                    @click.stop="downloadSkill(skill)"
-                  />
-                </template>
-              </v-tooltip>
+          <div
+            v-else-if="filteredSkills.length === 0"
+            class="skills-empty-state skills-empty-state--search"
+          >
+            <div class="skills-empty-state__icon">
+              <v-icon size="38">mdi-file-search-outline</v-icon>
+            </div>
+            <p>{{ tm("skills.searchNoResults") }}</p>
+            <small>{{ tm("skills.searchNoResultsHint") }}</small>
+          </div>
 
-              <v-tooltip :text="t('core.common.itemCard.delete')" location="top">
-                <template #activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    icon="mdi-delete-outline"
-                    variant="text"
-                    size="small"
-                    class="list-action-icon-btn"
-                    :disabled="itemLoading[skill.name] || isReadOnlySourceSkill(skill)"
-                    @click.stop="confirmDelete(skill)"
-                  />
-                </template>
-              </v-tooltip>
-            </template>
+          <div v-else class="skills-list">
+            <OutlinedActionListItem
+              v-for="skill in filteredSkills"
+              :key="skill.name"
+              :title="skill.name"
+              clickable
+              @click="openSkillEditor(skill)"
+            >
+              <template #title-extra>
+                <v-chip
+                  size="x-small"
+                  variant="tonal"
+                  :color="sourceTypeColor(skill.source_type)"
+                  class="skill-source-chip"
+                >
+                  {{ sourceTypeLabel(skill.source_type, skill) }}
+                </v-chip>
+              </template>
 
-            <template #control>
-              <v-tooltip location="top">
-                <template #activator="{ props }">
-                  <v-switch
-                    v-bind="props"
-                    color="primary"
-                    density="compact"
-                    hide-details
-                    inset
-                    :model-value="skill.active"
-                    :loading="itemLoading[skill.name] || false"
-                    :disabled="itemLoading[skill.name] || isSandboxPresetSkill(skill)"
-                    @click.stop
-                    @update:model-value="toggleSkill(skill)"
-                  />
-                </template>
-                <span>{{
-                  skill.active
-                    ? t("core.common.itemCard.enabled")
-                    : t("core.common.itemCard.disabled")
-                }}</span>
-              </v-tooltip>
-            </template>
-          </OutlinedActionListItem>
+              <div class="skill-description">
+                {{ skill.description || tm("skills.noDescription") }}
+              </div>
+
+              <div class="skill-path">
+                <v-icon size="small" class="me-1">mdi-file-document-outline</v-icon>
+                {{ tm("skills.path") }}: {{ skill.path }}
+              </div>
+
+              <template #actions>
+                <v-tooltip :text="tm('skills.download')" location="top">
+                  <template #activator="{ props }">
+                    <v-btn
+                      v-bind="props"
+                      icon="mdi-download-outline"
+                      variant="text"
+                      size="small"
+                      class="list-action-icon-btn list-action-icon-btn--download"
+                      :disabled="itemLoading[skill.name] || isReadOnlySourceSkill(skill)"
+                      @click.stop="downloadSkill(skill)"
+                    />
+                  </template>
+                </v-tooltip>
+
+                <v-tooltip :text="t('core.common.itemCard.delete')" location="top">
+                  <template #activator="{ props }">
+                    <v-btn
+                      v-bind="props"
+                      icon="mdi-delete-outline"
+                      variant="text"
+                      size="small"
+                      class="list-action-icon-btn list-action-icon-btn--delete"
+                      :disabled="itemLoading[skill.name] || isReadOnlySourceSkill(skill)"
+                      @click.stop="confirmDelete(skill)"
+                    />
+                  </template>
+                </v-tooltip>
+              </template>
+
+              <template #control>
+                <v-tooltip location="top">
+                  <template #activator="{ props }">
+                    <v-switch
+                      v-bind="props"
+                      color="primary"
+                      density="compact"
+                      hide-details
+                      inset
+                      class="skill-active-switch"
+                      :model-value="skill.active"
+                      :loading="itemLoading[skill.name] || false"
+                      :disabled="itemLoading[skill.name] || isSandboxPresetSkill(skill)"
+                      @click.stop
+                      @update:model-value="toggleSkill(skill)"
+                    />
+                  </template>
+                  <span>{{
+                    skill.active
+                      ? t("core.common.itemCard.enabled")
+                      : t("core.common.itemCard.disabled")
+                  }}</span>
+                </v-tooltip>
+              </template>
+            </OutlinedActionListItem>
+          </div>
         </div>
       </template>
 
@@ -337,7 +406,7 @@
       </template>
     </v-container>
 
-    <div class="skills-fab-stack">
+    <div v-if="mode === 'neo'" class="skills-fab-stack">
       <v-tooltip :text="tm('skills.refresh')" location="left">
         <template #activator="{ props }">
           <v-btn
@@ -594,7 +663,7 @@
 
     <v-dialog
       v-model="editorDialog.show"
-      max-width="1180px"
+      max-width="1240px"
       :persistent="editorDialog.saving"
     >
       <v-card class="skill-editor-dialog">
@@ -607,6 +676,7 @@
           <v-btn
             icon="mdi-close"
             variant="text"
+            class="skill-editor-dialog__close"
             :disabled="editorDialog.saving"
             @click="closeSkillEditor"
           />
@@ -705,7 +775,9 @@
         <v-card-actions class="skill-editor-dialog__actions">
           <v-spacer />
           <v-btn
-            variant="text"
+            variant="tonal"
+            color="secondary"
+            class="skill-editor-dialog__action-btn"
             :disabled="editorDialog.saving"
             @click="closeSkillEditor"
           >
@@ -714,6 +786,7 @@
           <v-btn
             color="primary"
             variant="tonal"
+            class="skill-editor-dialog__action-btn"
             :loading="editorDialog.saving"
             :disabled="
               !editorDialog.filePath ||
@@ -777,6 +850,7 @@ export default {
 
     const mode = ref("local");
     const skills = ref([]);
+    const skillSearchQuery = ref("");
     const loading = ref(false);
     const runtime = ref("local");
     const sandboxCache = reactive({ ready: false, count: 0, updated_at: null });
@@ -842,6 +916,17 @@ export default {
 
     const activeReleaseCount = computed(
       () => neoReleases.value.filter((item) => item?.is_active).length,
+    );
+    const activeSkillCount = computed(
+      () => skills.value.filter((skill) => skill?.active).length,
+    );
+    const localSkillCount = computed(
+      () =>
+        skills.value.filter((skill) =>
+          ["local_only", "both", undefined, null, ""].includes(
+            skill?.source_type,
+          ),
+        ).length,
     );
     const editorLanguage = computed(() => {
       const path = String(editorDialog.filePath || "").toLowerCase();
@@ -960,6 +1045,31 @@ export default {
       if (sourceType === "plugin") return "secondary";
       if (sourceType === "both") return "success";
       return "primary";
+    };
+
+    const filteredSkills = computed(() => {
+      const query = String(skillSearchQuery.value || "").trim().toLowerCase();
+      if (!query) return skills.value;
+      return skills.value.filter((skill) =>
+        [
+          skill?.name,
+          skill?.description,
+          skill?.path,
+          skill?.source_label,
+          skill?.plugin_name,
+          sourceTypeLabel(skill?.source_type, skill),
+        ]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(query)),
+      );
+    });
+
+    const updateSkillSearchQuery = (value) => {
+      skillSearchQuery.value = String(value || "");
+    };
+
+    const clearSkillSearch = () => {
+      skillSearchQuery.value = "";
     };
 
     const isSandboxPresetSkill = (skill) =>
@@ -1756,6 +1866,10 @@ export default {
       tm,
       mode,
       skills,
+      filteredSkills,
+      skillSearchQuery,
+      updateSkillSearchQuery,
+      clearSkillSearch,
       loading,
       runtime,
       sandboxCache,
@@ -1781,6 +1895,8 @@ export default {
       activeReleaseCount,
       candidateHeaders,
       releaseHeaders,
+      activeSkillCount,
+      localSkillCount,
       payloadDialog,
       editorDialog,
       editorLanguage,
@@ -1829,19 +1945,320 @@ export default {
 </script>
 
 <style scoped>
+.skills-container {
+  min-width: 0;
+}
+
+.skills-mode-row {
+  margin: 0;
+}
+
+.skills-mode-row :deep(.v-btn-toggle) {
+  overflow: hidden;
+  border: 1px solid #d6e5ee;
+  border-radius: 12px;
+  background: #f6fafc;
+}
+
+.skills-mode-row :deep(.v-btn) {
+  min-width: 112px;
+  letter-spacing: 0;
+}
+
+.skills-workbench {
+  overflow: hidden;
+  border: 1px solid #dbe7ef;
+  border-radius: 18px;
+  background: #fbfdfe;
+  box-shadow: 0 18px 48px rgba(17, 24, 39, 0.06);
+}
+
+.skills-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border-bottom: 1px solid #e3edf3;
+  background: #f5fafd;
+}
+
+.skills-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-width: 0;
+}
+
+.skills-summary-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 1px solid #d9e6ee;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #526171;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.skills-summary-pill strong {
+  color: #1e3343;
+  font-size: 15px;
+  font-weight: 780;
+}
+
+.skills-summary-pill--active {
+  border-color: #c6ead9;
+  background: #effaf4;
+  color: #26714b;
+}
+
+.skills-summary-pill--active strong {
+  color: #138246;
+}
+
+.skills-toolbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.skills-search-field {
+  flex: 1 1 320px;
+  min-width: 260px;
+  max-width: 420px;
+}
+
+.skills-search-field :deep(.v-field) {
+  min-height: 38px;
+  border: 1px solid #d9e6ee;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.skills-search-field :deep(.v-field--focused) {
+  border-color: #9ed2ee;
+  box-shadow: 0 0 0 3px rgba(66, 165, 217, 0.12);
+}
+
+.skills-search-field :deep(.v-field__input) {
+  min-height: 38px;
+  padding-top: 0;
+  padding-bottom: 0;
+  color: #263545;
+  font-size: 13px;
+}
+
+.skills-search-field :deep(.v-field__prepend-inner) {
+  color: rgb(var(--v-theme-primary));
+}
+
+.skills-toolbar-btn {
+  height: 38px;
+  border-radius: 10px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.skills-toolbar-btn--primary {
+  box-shadow: 0 8px 18px rgba(var(--v-theme-primary), 0.18);
+}
+
+.skills-progress {
+  border-radius: 0;
+}
+
 .skills-list {
   display: flex;
   flex-direction: column;
+  gap: 0;
+  padding: 0;
+}
+
+.skills-list :deep(.outlined-action-list-item) {
+  position: relative;
+  overflow: hidden;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  cursor: pointer;
+  transition: background-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.skills-list :deep(.outlined-action-list-item)::before {
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: 0;
+  width: 3px;
+  border-radius: 999px;
+  background: rgb(var(--v-theme-primary));
+  content: "";
+  opacity: 0;
+  transform: scaleY(0.45);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.skills-list :deep(.outlined-action-list-item + .outlined-action-list-item) {
+  margin-top: 0;
+  border-top: 1px solid #e3edf3 !important;
+}
+
+.skills-list :deep(.outlined-action-list-item:hover),
+.skills-list :deep(.outlined-action-list-item:focus-within) {
+  background: #f5fbff !important;
+  box-shadow: inset 0 0 0 1px #d2e8f6 !important;
+}
+
+.skills-list :deep(.outlined-action-list-item:hover)::before,
+.skills-list :deep(.outlined-action-list-item:focus-within)::before {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+.skills-list :deep(.outlined-action-list-item:hover .outlined-action-list-item__title),
+.skills-list :deep(.outlined-action-list-item:focus-within .outlined-action-list-item__title) {
+  color: rgb(var(--v-theme-primary));
+}
+
+.skills-list :deep(.outlined-action-list-item__main) {
+  min-height: 86px;
+  padding: 16px 18px;
+}
+
+.skills-list :deep(.outlined-action-list-item__content) {
+  flex: 1 1 auto;
+}
+
+.skills-list :deep(.outlined-action-list-item__header) {
+  gap: 10px;
+  margin-bottom: 7px;
+}
+
+.skills-list :deep(.outlined-action-list-item__title) {
+  color: #1f2937;
+  font-size: 15px;
+  font-weight: 760;
+  letter-spacing: 0;
+}
+
+.skills-list :deep(.outlined-action-list-item__actions) {
   gap: 12px;
+  padding-left: 18px;
+  border-left: 1px solid #edf2f5;
+}
+
+.skill-source-chip {
+  height: 22px;
+  font-weight: 700;
 }
 
 .list-action-icon-btn {
-  color: rgba(var(--v-theme-on-surface), 0.78);
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  color: #536475;
+  background: #f3f7fa;
 }
 
 .list-action-icon-btn:hover {
-  background: rgba(var(--v-theme-on-surface), 0.08);
-  color: rgb(var(--v-theme-on-surface));
+  background: #e8f3fb;
+  color: rgb(var(--v-theme-primary));
+}
+
+.list-action-icon-btn--delete {
+  color: #d84040;
+  background: #fff1f1;
+}
+
+.list-action-icon-btn--delete:hover {
+  background: #ffe4e4;
+  color: #c92d2d;
+}
+
+.skill-active-switch :deep(.v-selection-control) {
+  min-height: 34px;
+}
+
+.skill-active-switch :deep(.v-selection-control__wrapper) {
+  width: 54px;
+  height: 32px;
+}
+
+.skill-active-switch :deep(.v-switch__track) {
+  width: 50px;
+  height: 28px;
+  border: 1px solid #d2e2ec;
+  border-radius: 999px;
+  background: #edf4f8;
+  opacity: 1;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+.skill-active-switch :deep(.v-switch__thumb) {
+  width: 22px;
+  height: 22px;
+  color: #ffffff;
+  background: #ffffff;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.2);
+}
+
+.skill-active-switch :deep(.v-selection-control--dirty .v-switch__track) {
+  border-color: #76bbdf;
+  background: #62b6df;
+  box-shadow: inset 0 1px 2px rgba(15, 74, 111, 0.16), 0 8px 18px rgba(47, 150, 207, 0.18);
+}
+
+.skill-active-switch :deep(.v-selection-control--dirty .v-switch__thumb) {
+  box-shadow: 0 4px 12px rgba(22, 107, 154, 0.26);
+}
+
+.skills-empty-state {
+  display: flex;
+  min-height: 260px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 32px;
+  color: #677583;
+}
+
+.skills-empty-state__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border: 1px solid #d7e8f2;
+  border-radius: 18px;
+  color: rgb(var(--v-theme-primary));
+  background: #edf8fe;
+}
+
+.skills-empty-state p {
+  margin: 8px 0 0;
+  color: #2c3a45;
+  font-size: 16px;
+  font-weight: 760;
+}
+
+.skills-empty-state small {
+  color: #758391;
+}
+
+.skills-empty-state--search {
+  min-height: 220px;
 }
 
 .skills-fab-stack {
@@ -1856,80 +2273,177 @@ export default {
 }
 
 .skills-fab {
-  border-radius: 16px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border: 1px solid #bee0f3;
+  border-radius: 14px;
+  background: #e8f5fd !important;
+  color: rgb(var(--v-theme-primary)) !important;
+  box-shadow: 0 10px 24px rgba(24, 113, 164, 0.16);
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .skills-fab:hover {
-  box-shadow: 0 12px 20px rgba(var(--v-theme-primary), 0.4);
-  transform: translateY(-4px) scale(1.05);
+  box-shadow: 0 14px 28px rgba(24, 113, 164, 0.22);
+  transform: translateY(-3px);
 }
 
 .skill-description {
   display: -webkit-box;
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
+  color: #536171;
+  font-size: 13px;
+  line-height: 1.55;
   overflow: hidden;
 }
 
 .skill-path {
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
   overflow: hidden;
+  min-height: 26px;
+  padding: 4px 8px;
+  border: 1px solid #e2eaf0;
+  border-radius: 999px;
+  background: #f6f9fb;
+  color: #657382;
+  font-size: 12px;
+  line-height: 1.2;
+  margin-top: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   word-break: break-all;
 }
 
+@media (max-width: 760px) {
+  .skills-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .skills-search-field {
+    max-width: none;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .skills-toolbar-actions {
+    width: 100%;
+  }
+
+  .skills-toolbar-btn {
+    flex: 1 1 140px;
+  }
+
+  .skills-list :deep(.outlined-action-list-item__actions) {
+    justify-content: space-between;
+    padding-top: 12px;
+    padding-left: 0;
+    border-top: 1px solid #edf2f5;
+    border-left: 0;
+  }
+}
+
 .skill-editor-dialog {
+  display: flex;
+  flex-direction: column;
   max-height: min(88vh, 980px);
+  border: 1px solid #d6e5ee;
+  border-radius: 20px;
+  background: #fbfdfe;
   overflow: hidden;
+  box-shadow: 0 24px 58px rgba(15, 23, 42, 0.18);
 }
 
 .skill-editor-dialog__header {
-  align-items: flex-start;
+  align-items: center;
+  min-height: 70px;
+  border-bottom: 1px solid #e0ebf2;
+  background: #f6fbfe;
   display: flex;
   justify-content: space-between;
   gap: 16px;
+  color: #182636;
+  font-size: 20px;
+  font-weight: 780;
+}
+
+.skill-editor-dialog__close {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  color: #536475;
+  background: #ffffff;
+}
+
+.skill-editor-dialog__close:hover {
+  color: rgb(var(--v-theme-primary));
+  background: #eaf6fd;
 }
 
 .skill-editor-dialog__body {
+  flex: 1 1 auto;
   min-height: 0;
-  padding: 16px 22px;
+  padding: 18px 22px;
+  background: #fbfdfe;
 }
 
 .skill-editor-dialog__actions {
-  border-top: 1px solid var(--v-theme-border);
-  padding: 12px 22px;
+  border-top: 1px solid #e0ebf2;
+  padding: 14px 22px;
+  background: #ffffff;
+}
+
+.skill-editor-dialog__action-btn {
+  min-width: 96px;
+  height: 38px;
+  border-radius: 10px;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 
 .skill-editor {
   display: grid;
-  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  grid-template-columns: minmax(240px, 292px) minmax(0, 1fr);
   gap: 16px;
-  min-height: 560px;
+  min-height: 590px;
 }
 
 .skill-editor__files {
-  border: 1px solid rgba(128, 128, 128, 0.28);
-  border-radius: 10px;
+  border: 1px solid #d8e7f0;
+  border-radius: 14px;
+  background: #ffffff;
   display: flex;
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .skill-editor__files-header {
   align-items: center;
-  border-bottom: 1px solid rgba(128, 128, 128, 0.28);
+  border-bottom: 1px solid #e2edf3;
+  background: #f6fafc;
   display: flex;
   gap: 8px;
-  min-height: 44px;
-  padding: 6px 10px;
+  min-height: 48px;
+  padding: 7px 12px;
+}
+
+.skill-editor__files-header :deep(.v-btn) {
+  border-radius: 10px;
+  color: #78909c;
+}
+
+.skill-editor__files-header :deep(.v-btn:not(.v-btn--disabled):hover) {
+  color: rgb(var(--v-theme-primary));
+  background: #eaf6fd;
 }
 
 .skill-editor__files-header span {
+  color: #334455;
+  font-size: 13px;
+  font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1938,30 +2452,44 @@ export default {
 .skill-editor__file-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   overflow-y: auto;
-  padding: 6px;
+  padding: 10px;
 }
 
 .skill-editor__file-row {
   align-items: center;
-  border-radius: 8px;
-  color: rgb(var(--v-theme-on-surface));
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: #334455;
   display: grid;
   gap: 8px;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  min-height: 34px;
-  padding: 6px 8px;
+  min-height: 38px;
+  padding: 7px 9px;
   text-align: left;
+  transition: border-color 0.16s ease, background-color 0.16s ease, color 0.16s ease;
 }
 
-.skill-editor__file-row:hover,
-.skill-editor__file-row--active {
-  background: rgba(var(--v-theme-on-surface), 0.06);
+.skill-editor__file-row :deep(.v-icon) {
+  color: #506575;
+}
+
+.skill-editor__file-row:hover {
+  border-color: #d0e5f2;
+  background: #f5fbff;
+  color: rgb(var(--v-theme-primary));
 }
 
 .skill-editor__file-row--active {
-  background: rgba(var(--v-theme-on-surface), 0.1);
+  border-color: #b9dff3;
+  background: #eaf6fd;
+  color: rgb(var(--v-theme-primary));
+  font-weight: 760;
+}
+
+.skill-editor__file-row--active :deep(.v-icon) {
+  color: rgb(var(--v-theme-primary));
 }
 
 .skill-editor__file-row span {
@@ -1974,28 +2502,38 @@ export default {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  overflow: hidden;
+  border: 1px solid #d8e7f0;
+  border-radius: 14px;
+  background: #ffffff;
 }
 
 .skill-editor__content-header {
   align-items: center;
+  border-bottom: 1px solid #e2edf3;
+  background: #f6fafc;
   display: flex;
   gap: 10px;
   justify-content: space-between;
-  min-height: 34px;
+  min-height: 48px;
+  padding: 0 14px;
 }
 
 .skill-editor__path {
+  color: #263545;
+  font-size: 14px;
+  font-weight: 760;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .skill-editor__monaco {
-  border: 1px solid rgba(128, 128, 128, 0.28);
-  border-radius: 10px;
+  border: 0;
+  border-radius: 0;
   flex: 1 1 auto;
-  margin-top: 12px;
-  min-height: 520px;
+  margin-top: 0;
+  min-height: 540px;
   overflow: hidden;
   position: relative;
 }
@@ -2315,12 +2853,38 @@ export default {
 }
 
 @media (max-width: 860px) {
+  .skill-editor {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  .skill-editor__files {
+    max-height: 240px;
+  }
+
+  .skill-editor__monaco {
+    min-height: 420px;
+  }
+
   .skills-upload-capabilities {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 640px) {
+  .skill-editor-dialog__body {
+    padding: 14px;
+  }
+
+  .skill-editor-dialog__header {
+    min-height: 62px;
+    padding-left: 18px !important;
+  }
+
+  .skill-editor-dialog__actions {
+    padding: 12px 14px;
+  }
+
   .skills-upload-dialog {
     max-height: 92vh;
   }
