@@ -4,13 +4,12 @@ import re
 import time
 import uuid
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import aiofiles
 
 from astrbot.core import logger
-from astrbot.core.db.vec_db.base import BaseVecDB
 from astrbot.core.exceptions import KnowledgeBaseUploadError
+from astrbot.core.knowledge_base.wiki import WikiStore
 from astrbot.core.provider.manager import ProviderManager
 from astrbot.core.provider.provider import (
     EmbeddingProvider,
@@ -24,13 +23,16 @@ from .chunking.base import BaseChunker
 from .chunking.markdown import MarkdownChunker
 from .chunking.recursive import RecursiveCharacterChunker
 from .kb_db_sqlite import KBSQLiteDatabase
-from .models import KBDocument, KBMedia, KnowledgeBase
+from .models import (
+    DEFAULT_CHUNK_OVERLAP,
+    DEFAULT_CHUNK_SIZE,
+    KBDocument,
+    KBMedia,
+    KnowledgeBase,
+)
 from .parsers.url_parser import extract_text_from_url
 from .parsers.util import select_parser
 from .prompts import TEXT_REPAIR_SYSTEM_PROMPT
-
-if TYPE_CHECKING:
-    from astrbot.core.db.vec_db.faiss_impl.vec_db import FaissVecDB
 
 
 class RateLimiter:
@@ -115,7 +117,8 @@ def _compact_chunks(chunks: list[str]) -> list[str]:
 
 
 class KBHelper:
-    vec_db: BaseVecDB
+    vec_db: WikiStore
+    wiki_store: WikiStore
     kb: KnowledgeBase
     init_error: str | None
 
@@ -133,6 +136,7 @@ class KBHelper:
         self.kb_root_dir = kb_root_dir
         self.chunker = chunker
         self.init_error = None
+        self._vec_db_init_lock = asyncio.Lock()
 
         self.kb_dir = Path(self.kb_root_dir) / self.kb.kb_id
         self.kb_medias_dir = Path(self.kb_dir) / "medias" / self.kb.kb_id
@@ -169,32 +173,63 @@ class KBHelper:
             return None
         return rp
 
-    async def _ensure_vec_db(self) -> "FaissVecDB":
-        if not self.kb.embedding_provider_id:
-            raise ValueError(f"知识库 {self.kb.kb_name} 未配置 Embedding Provider")
+    async def _ensure_vec_db(self) -> WikiStore:
+        init_lock = getattr(self, "_vec_db_init_lock", None)
+        if init_lock is None:
+            init_lock = asyncio.Lock()
+            self._vec_db_init_lock = init_lock
 
-        ep = await self.get_ep()
-        rp: RerankProvider | None = None
-        try:
-            rp = await self.get_rp()
-        except Exception as e:
-            logger.warning(
-                f"知识库 {self.kb.kb_name}({self.kb.kb_id}) 初始化重排序能力失败，将跳过重排序: {e}",
+        async with init_lock:
+            current_store = getattr(self, "wiki_store", None)
+            if current_store is None:
+                current_store = getattr(self, "vec_db", None)
+            if isinstance(current_store, WikiStore) and current_store._db is not None:
+                self.wiki_store = current_store
+                self.vec_db = current_store
+                self.init_error = None
+                return current_store
+
+            ep: EmbeddingProvider | None = None
+            if self.kb.embedding_provider_id:
+                ep = await self.get_ep()
+            rp: RerankProvider | None = None
+            try:
+                rp = await self.get_rp()
+            except Exception as e:
+                logger.warning(
+                    f"Failed to initialize reranking for knowledge base "
+                    f"{self.kb.kb_name}({self.kb.kb_id}); reranking is disabled: {e}",
+                )
+
+            if current_store is not None and hasattr(current_store, "close"):
+                await current_store.close()
+
+            wiki_store = WikiStore(
+                kb_dir=self.kb_dir,
+                kb_id=self.kb.kb_id,
+                embedding_provider=ep,
+                rerank_provider=rp,
+                chunk_size=(
+                    self.kb.chunk_size
+                    if self.kb.chunk_size is not None
+                    else DEFAULT_CHUNK_SIZE
+                ),
+                chunk_overlap=(
+                    self.kb.chunk_overlap
+                    if self.kb.chunk_overlap is not None
+                    else DEFAULT_CHUNK_OVERLAP
+                ),
             )
-
-        from astrbot.core.db.vec_db.faiss_impl.vec_db import FaissVecDB
-
-        vec_db = FaissVecDB(
-            doc_store_path=str(self.kb_dir / "doc.db"),
-            index_store_path=str(self.kb_dir / "index.faiss"),
-            embedding_provider=ep,
-            rerank_provider=rp,
-        )
-        await vec_db.initialize()
-        self.vec_db = vec_db
-        # Clear stale init_error once initialization succeeds.
-        self.init_error = None
-        return vec_db
+            try:
+                await wiki_store.initialize()
+            except Exception:
+                await wiki_store.close()
+                raise
+            self.wiki_store = wiki_store
+            self.vec_db = wiki_store
+            # Clear stale init_error once initialization succeeds.
+            self.init_error = None
+            return wiki_store
 
     async def delete_vec_db(self) -> None:
         """删除知识库的向量数据库和所有相关文件"""
@@ -213,8 +248,8 @@ class KBHelper:
         file_name: str,
         file_content: bytes | None,
         file_type: str,
-        chunk_size: int = 512,
-        chunk_overlap: int = 50,
+        chunk_size: int = DEFAULT_CHUNK_SIZE,
+        chunk_overlap: int = DEFAULT_CHUNK_OVERLAP,
         batch_size: int = 32,
         tasks_limit: int = 3,
         max_retries: int = 3,
@@ -227,7 +262,7 @@ class KBHelper:
         1. Parse document content
         2. Extract media resources
         3. Chunk text
-        4. Generate embeddings and store them (chunk text DB + FAISS)
+        4. Write the Markdown page and rebuildable Wiki indexes
         5. Persist document metadata (KBDocument / KBMedia)
         6. Refresh stats
 
@@ -245,6 +280,7 @@ class KBHelper:
         await self._ensure_vec_db()
         doc_id = str(uuid.uuid4())
         media_paths: list[Path] = []
+        source_path: Path | None = None
         file_size = 0
         # Only roll back chunks/vectors/media when metadata has not been
         # committed yet. After commit (e.g. stats refresh failure) the document
@@ -258,10 +294,12 @@ class KBHelper:
         try:
             chunks_text = []
             saved_media = []
+            source_content = ""
 
             if pre_chunked_text is not None:
                 # 如果提供了预分块文本，直接使用
                 chunks_text = _compact_chunks(pre_chunked_text)
+                source_content = "\n\n".join(chunks_text)
                 file_size = sum(len(chunk) for chunk in chunks_text)
                 logger.info(f"使用预分块文本进行上传，共 {len(chunks_text)} 个块。")
             else:
@@ -292,6 +330,7 @@ class KBHelper:
                         details={"file_name": file_name},
                     ) from exc
                 text_content = parse_result.text
+                source_content = text_content
                 media_items = parse_result.media
                 if not text_content or not text_content.strip():
                     raise KnowledgeBaseUploadError(
@@ -369,18 +408,6 @@ class KBHelper:
                         details={"file_name": file_name},
                     )
 
-            contents = []
-            metadatas = []
-            for idx, chunk_text in enumerate(chunks_text):
-                contents.append(chunk_text)
-                metadatas.append(
-                    {
-                        "kb_id": self.kb.kb_id,
-                        "kb_doc_id": doc_id,
-                        "chunk_index": idx,
-                    },
-                )
-
             if progress_callback:
                 await progress_callback("chunking", 100, 100)
 
@@ -390,9 +417,26 @@ class KBHelper:
                     await progress_callback("embedding", current, total)
 
             try:
-                await self.vec_db.insert_batch(
-                    contents=contents,
-                    metadatas=metadatas,
+                source_suffix = Path(file_name).suffix or f".{file_type}"
+                source_path = self.wiki_store.sources_dir / f"{doc_id}{source_suffix}"
+                if file_content is not None:
+                    source_path.parent.mkdir(parents=True, exist_ok=True)
+                    async with aiofiles.open(source_path, "wb") as source_file:
+                        await source_file.write(file_content)
+                else:
+                    source_path = source_path.with_suffix(".md")
+                    source_path.parent.mkdir(parents=True, exist_ok=True)
+                    async with aiofiles.open(
+                        source_path, "w", encoding="utf-8"
+                    ) as source_file:
+                        await source_file.write(source_content)
+
+                page = await self.wiki_store.upsert_document(
+                    doc_id=doc_id,
+                    file_name=file_name,
+                    source=file_name,
+                    content=source_content,
+                    chunks=chunks_text,
                     batch_size=batch_size,
                     tasks_limit=tasks_limit,
                     max_retries=max_retries,
@@ -418,10 +462,9 @@ class KBHelper:
                 doc_name=file_name,
                 file_type=file_type,
                 file_size=file_size,
-                # file_path=str(file_path),
-                file_path="",
+                file_path=page["path"],
                 chunk_count=len(chunks_text),
-                media_count=0,
+                media_count=len(saved_media),
             )
             try:
                 async with self.kb_db.get_db() as session:
@@ -453,9 +496,11 @@ class KBHelper:
                     details={"file_name": file_name, "doc_id": doc_id},
                 ) from exc
 
-            vec_db: FaissVecDB = self.vec_db  # type: ignore
             try:
-                await self.kb_db.update_kb_stats(kb_id=self.kb.kb_id, vec_db=vec_db)
+                await self.kb_db.update_kb_stats(
+                    kb_id=self.kb.kb_id,
+                    vec_db=self.vec_db,  # type: ignore[arg-type]
+                )
                 await self.refresh_kb()
                 await self.refresh_document(doc_id)
             except KnowledgeBaseUploadError:
@@ -477,15 +522,121 @@ class KBHelper:
 
             if not metadata_committed:
                 await self._cleanup_failed_upload(
-                    doc_id=doc_id, media_paths=media_paths
+                    doc_id=doc_id,
+                    media_paths=media_paths,
+                    source_path=source_path,
                 )
 
             raise
+
+    async def import_wiki_sources(
+        self,
+        sources: list[tuple[Path, str | None]],
+        *,
+        overwrite: bool = False,
+    ) -> dict:
+        """Import a batch of Markdown sources and synchronize document metadata.
+
+        Args:
+            sources: Local files, directories, or ZIP archives, optionally paired
+                with a Wiki-relative target path or directory prefix.
+            overwrite: Whether exact existing Wiki page paths may be replaced.
+
+        Returns:
+            Wiki import results plus synchronized document metadata.
+
+        Raises:
+            ValueError: If an imported page document identifier belongs to a
+                different knowledge base.
+        """
+        wiki_store = await self._ensure_vec_db()
+        result = await wiki_store.import_sources(sources, overwrite=overwrite)
+        if not result["imported"]:
+            result["documents"] = []
+            return result
+
+        documents: list[KBDocument] = []
+        try:
+            for page in result["imported"]:
+                document = await self.kb_db.get_document_by_id(page["doc_id"])
+                if document and document.kb_id != self.kb.kb_id:
+                    raise ValueError(
+                        f"Document ID {page['doc_id']} belongs to another "
+                        "knowledge base"
+                    )
+                if document is None:
+                    document = KBDocument(
+                        doc_id=page["doc_id"],
+                        kb_id=self.kb.kb_id,
+                        doc_name=page["title"],
+                        file_type="md",
+                        file_size=page["size"],
+                        file_path=page["path"],
+                        chunk_count=page["chunk_count"],
+                        media_count=0,
+                    )
+                else:
+                    document.doc_name = page["title"]
+                    document.file_type = "md"
+                    document.file_size = page["size"]
+                    document.file_path = page["path"]
+                    document.chunk_count = page["chunk_count"]
+                documents.append(document)
+
+            async with self.kb_db.get_db() as session, session.begin():
+                for document in documents:
+                    session.add(document)
+        except Exception:
+            if overwrite:
+                logger.warning(
+                    "Wiki document metadata synchronization failed after an "
+                    "overwrite import. Imported pages were kept so the same "
+                    "overwrite request can be retried safely."
+                )
+            else:
+                for page in reversed(result["imported"]):
+                    try:
+                        await wiki_store.delete_page(page["path"])
+                    except Exception as rollback_exc:
+                        logger.error(
+                            "Failed to roll back Wiki page %s after document "
+                            "metadata synchronization failed: %s",
+                            page["path"],
+                            rollback_exc,
+                            exc_info=True,
+                        )
+            raise
+
+        result["documents"] = [document.model_dump() for document in documents]
+        try:
+            await self.kb_db.update_kb_stats(
+                kb_id=self.kb.kb_id,
+                vec_db=wiki_store,
+            )
+            await self.refresh_kb()
+        except Exception as exc:
+            logger.warning(
+                "Wiki pages and document metadata were saved, but knowledge "
+                "base statistics could not be refreshed: %s",
+                exc,
+                exc_info=True,
+            )
+            result["warnings"] = [
+                {
+                    "stage": "statistics",
+                    "message": (
+                        "Wiki pages and document metadata were saved, but "
+                        "knowledge base statistics could not be refreshed."
+                    ),
+                }
+            ]
+        return result
 
     async def _cleanup_failed_upload(
         self,
         doc_id: str,
         media_paths: list[Path],
+        source_path: Path | None = None,
     ) -> None:
         """Best-effort compensating cleanup after a failed upload.
 
@@ -501,6 +652,7 @@ class KBHelper:
         Args:
             doc_id: Pre-generated document id used for this upload attempt.
             media_paths: Media files written to disk during this attempt.
+            source_path: Original source copy written during this attempt.
         """
         from sqlalchemy import delete
         from sqlmodel import col
@@ -540,6 +692,12 @@ class KBHelper:
                     media_path.unlink()
             except Exception as me:
                 logger.warning(f"Failed to clean up media file {media_path}: {me}")
+
+        if source_path is not None:
+            try:
+                source_path.unlink(missing_ok=True)
+            except Exception as exc:
+                logger.warning(f"Failed to clean up source file {source_path}: {exc}")
 
         # 4) empty media directory for this doc
         try:
@@ -590,14 +748,25 @@ class KBHelper:
     async def get_document(self, doc_id: str) -> KBDocument | None:
         """获取单个文档"""
         doc = await self.kb_db.get_document_by_id(doc_id)
-        return doc
+        if doc and doc.kb_id == self.kb.kb_id:
+            return doc
+        return None
 
     async def delete_document(self, doc_id: str) -> None:
         """删除单个文档及其相关数据"""
+        doc = await self.get_document(doc_id)
+        if not doc:
+            raise ValueError(f"无法找到当前知识库中的文档: {doc_id}")
+        media_items = await self.kb_db.list_media_by_doc(doc_id)
         await self.kb_db.delete_document_by_id(
             doc_id=doc_id,
             vec_db=self.vec_db,  # type: ignore
         )
+        source_candidates = list(self.wiki_store.sources_dir.glob(f"{doc_id}.*"))
+        for source_path in source_candidates:
+            source_path.unlink(missing_ok=True)
+        for media in media_items:
+            Path(media.file_path).unlink(missing_ok=True)
         await self.kb_db.update_kb_stats(
             kb_id=self.kb.kb_id,
             vec_db=self.vec_db,  # type: ignore
@@ -605,15 +774,14 @@ class KBHelper:
         await self.refresh_kb()
 
     async def delete_chunk(self, chunk_id: str, doc_id: str) -> None:
-        """删除单个文本块及其相关数据"""
-        vec_db: FaissVecDB = self.vec_db  # type: ignore
-        await vec_db.delete(chunk_id)
-        await self.kb_db.update_kb_stats(
-            kb_id=self.kb.kb_id,
-            vec_db=self.vec_db,  # type: ignore
+        """拒绝删除由 Wiki 页面派生的单个文本块。"""
+        doc = await self.get_document(doc_id)
+        if not doc:
+            raise ValueError(f"无法找到当前知识库中的文档: {doc_id}")
+        raise ValueError(
+            "Wiki 知识库不支持删除单个文本块；文本块由 Markdown 页面派生，"
+            "请编辑或删除对应的 Markdown 页面。"
         )
-        await self.refresh_kb()
-        await self.refresh_document(doc_id)
 
     async def refresh_kb(self) -> None:
         if self.kb:
@@ -641,8 +809,10 @@ class KBHelper:
         limit: int = 100,
     ) -> list[dict]:
         """获取文档的所有块及其元数据"""
-        vec_db: FaissVecDB = self.vec_db  # type: ignore
-        chunks = await vec_db.document_storage.get_documents(
+        doc = await self.get_document(doc_id)
+        if not doc:
+            return []
+        chunks = await self.vec_db.document_storage.get_documents(
             metadata_filters={"kb_doc_id": doc_id},
             offset=offset,
             limit=limit,
@@ -664,8 +834,10 @@ class KBHelper:
 
     async def get_chunk_count_by_doc_id(self, doc_id: str) -> int:
         """获取文档的块数量"""
-        vec_db: FaissVecDB = self.vec_db  # type: ignore
-        count = await vec_db.count_documents(metadata_filter={"kb_doc_id": doc_id})
+        doc = await self.get_document(doc_id)
+        if not doc:
+            return 0
+        count = await self.vec_db.count_documents(metadata_filter={"kb_doc_id": doc_id})
         return count
 
     async def _save_media(
@@ -702,8 +874,8 @@ class KBHelper:
     async def upload_from_url(
         self,
         url: str,
-        chunk_size: int = 512,
-        chunk_overlap: int = 50,
+        chunk_size: int = DEFAULT_CHUNK_SIZE,
+        chunk_overlap: int = DEFAULT_CHUNK_OVERLAP,
         batch_size: int = 32,
         tasks_limit: int = 3,
         max_retries: int = 3,
@@ -798,8 +970,8 @@ class KBHelper:
         enable_cleaning: bool = False,
         cleaning_provider_id: str | None = None,
         repair_max_rpm: int = 60,
-        chunk_size: int = 512,
-        chunk_overlap: int = 50,
+        chunk_size: int = DEFAULT_CHUNK_SIZE,
+        chunk_overlap: int = DEFAULT_CHUNK_OVERLAP,
     ) -> list[str]:
         """
         对从 URL 获取的内容进行清洗、修复、翻译和重新分块。

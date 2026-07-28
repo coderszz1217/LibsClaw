@@ -7,6 +7,8 @@
 import hashlib
 import json
 import os
+import sqlite3
+import tempfile
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -42,7 +44,8 @@ class AstrBotExporter:
     导出内容：
     - 主数据库所有表（data/data_v4.db）
     - 知识库元数据（data/knowledge_base/kb.db）
-    - 每个知识库的向量文档数据
+    - 每个知识库的 Wiki 真源与派生索引
+    - 旧版向量文档数据（兼容项）
     - 配置文件（data/cmd_config.json）
     - 附件文件
     - 知识库多媒体文件
@@ -64,6 +67,7 @@ class AstrBotExporter:
         self.kb_manager = kb_manager
         self.config_path = config_path
         self._checksums: dict[str, str] = {}
+        self._kb_wiki_files: dict[str, list[str]] = {}
 
     async def export_all(
         self,
@@ -81,6 +85,9 @@ class AstrBotExporter:
         """
         if output_dir is None:
             output_dir = get_astrbot_backups_path()
+
+        self._checksums.clear()
+        self._kb_wiki_files.clear()
 
         # 确保输出目录存在
         Path(output_dir).mkdir(parents=True, exist_ok=True)
@@ -146,8 +153,12 @@ class AstrBotExporter:
                         zf.writestr(doc_path, doc_json)
                         self._add_checksum(doc_path, doc_json)
 
-                        # 导出 FAISS 索引文件
-                        await self._export_faiss_index(zf, kb_helper, kb_id)
+                        # Export durable Wiki files and a consistent SQLite snapshot.
+                        self._kb_wiki_files[kb_id] = await self._export_kb_wiki_files(
+                            zf,
+                            kb_helper,
+                            kb_id,
+                        )
 
                         # 导出知识库多媒体文件
                         await self._export_kb_media_files(zf, kb_helper, kb_id)
@@ -251,9 +262,7 @@ class AstrBotExporter:
     async def _export_kb_documents(self, kb_helper: Any) -> dict[str, Any]:
         """导出知识库的文档块数据"""
         try:
-            from astrbot.core.db.vec_db.faiss_impl.vec_db import FaissVecDB
-
-            vec_db: FaissVecDB = kb_helper.vec_db
+            vec_db = kb_helper.vec_db
             if not vec_db or not vec_db.document_storage:
                 return {"documents": []}
 
@@ -269,21 +278,93 @@ class AstrBotExporter:
             logger.warning(f"导出知识库文档失败: {e}")
             return {"documents": []}
 
-    async def _export_faiss_index(
+    async def _export_kb_wiki_files(
         self,
         zf: zipfile.ZipFile,
         kb_helper: Any,
         kb_id: str,
-    ) -> None:
-        """导出 FAISS 索引文件"""
-        try:
-            index_path = kb_helper.kb_dir / "index.faiss"
-            if index_path.exists():
-                archive_path = f"databases/kb_{kb_id}/index.faiss"
-                zf.write(str(index_path), archive_path)
-                logger.debug(f"导出 FAISS 索引: {archive_path}")
-        except Exception as e:
-            logger.warning(f"导出 FAISS 索引失败: {e}")
+    ) -> list[str]:
+        """Export one knowledge base's file-backed Wiki.
+
+        Markdown pages, sources, assets, and migration state are copied directly.
+        The active SQLite index is exported through SQLite's online backup API so
+        committed WAL changes are included without transient ``-wal`` files.
+
+        Args:
+            zf: Destination backup archive.
+            kb_helper: Knowledge base helper owning the Wiki directory.
+            kb_id: Stable knowledge base identifier.
+
+        Returns:
+            Relative Wiki file paths written to the archive.
+        """
+        kb_dir = Path(kb_helper.kb_dir)
+        archived_files: list[str] = []
+        for directory_name in (
+            "knowledge",
+            "sources",
+            "assets",
+            "index",
+            ".migrations",
+        ):
+            directory = kb_dir / directory_name
+            if not directory.exists():
+                continue
+            for file_path in sorted(directory.rglob("*")):
+                if not file_path.is_file() or file_path.is_symlink():
+                    continue
+                if directory_name == "index" and file_path.name in {
+                    "wiki.db",
+                    "wiki.db-journal",
+                    "wiki.db-shm",
+                    "wiki.db-wal",
+                }:
+                    continue
+                if not file_path.resolve().is_relative_to(kb_dir.resolve()):
+                    logger.warning(
+                        f"Wiki file path escapes knowledge base: {file_path}"
+                    )
+                    continue
+                rel_path = file_path.relative_to(kb_dir).as_posix()
+                zf.write(file_path, f"files/kb_wiki/{kb_id}/{rel_path}")
+                archived_files.append(rel_path)
+
+        wiki_db_path = kb_dir / "index" / "wiki.db"
+        resolved_kb_dir = kb_dir.resolve()
+        if wiki_db_path.is_symlink():
+            logger.warning(
+                f"Wiki database path escapes knowledge base or is a symlink: "
+                f"{wiki_db_path}"
+            )
+        else:
+            try:
+                resolved_wiki_db_path = wiki_db_path.resolve(strict=False)
+            except (OSError, RuntimeError) as exc:
+                logger.warning(
+                    f"Cannot resolve Wiki database path {wiki_db_path}: {exc}"
+                )
+            else:
+                if not resolved_wiki_db_path.is_relative_to(resolved_kb_dir):
+                    logger.warning(
+                        f"Wiki database path escapes knowledge base: {wiki_db_path}"
+                    )
+                elif resolved_wiki_db_path.is_file():
+                    with tempfile.TemporaryDirectory(
+                        prefix="astrbot-kb-backup-"
+                    ) as temp_dir:
+                        snapshot_path = Path(temp_dir) / "wiki.db"
+                        source_db = sqlite3.connect(resolved_wiki_db_path)
+                        target_db = sqlite3.connect(snapshot_path)
+                        try:
+                            source_db.backup(target_db)
+                        finally:
+                            target_db.close()
+                            source_db.close()
+                        archive_path = f"files/kb_wiki/{kb_id}/index/wiki.db"
+                        zf.write(snapshot_path, archive_path)
+                        archived_files.append("index/wiki.db")
+
+        return archived_files
 
     async def _export_kb_media_files(
         self, zf: zipfile.ZipFile, kb_helper: Any, kb_id: str
@@ -451,6 +532,7 @@ class AstrBotExporter:
             "schema_version": {
                 "main_db": "v4",
                 "kb_db": "v1",
+                "kb_wiki": "v1",
             },
             "tables": {
                 "main_db": list(main_data.keys()),
@@ -460,6 +542,7 @@ class AstrBotExporter:
             "files": {
                 "attachments": attachment_files,
                 "kb_media": kb_media_files,
+                "kb_wiki": self._kb_wiki_files,
             },
             "directories": list(dir_stats.keys()),
             "checksums": self._checksums,

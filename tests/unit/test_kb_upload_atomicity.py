@@ -351,9 +351,10 @@ async def test_upload_document_cleans_up_on_storage_failure(
 
 @pytest.mark.asyncio
 async def test_upload_document_cleans_up_on_metadata_failure(
+    tmp_path: Path,
     stub_provider_manager_module,
 ) -> None:
-    """Metadata commit failure after insert_batch should delete written chunks."""
+    """Metadata commit failure after Wiki upsert should delete the page."""
     KBHelper = _import_kb_helper()
 
     helper = KBHelper.__new__(KBHelper)
@@ -363,11 +364,15 @@ async def test_upload_document_cleans_up_on_metadata_failure(
         embedding_provider_id="emb",
     )
     helper.kb_db = MagicMock()
-    helper.vec_db = AsyncMock()
-    helper.kb_medias_dir = Path("/tmp/kb-medias-unused")
+    helper.wiki_store = AsyncMock()
+    helper.wiki_store.sources_dir = tmp_path / "sources"
+    helper.wiki_store.upsert_document = AsyncMock(
+        return_value={"path": "sources/demo.md"}
+    )
+    helper.vec_db = helper.wiki_store
+    helper.kb_medias_dir = tmp_path / "medias"
     helper.chunker = AsyncMock()
 
-    helper.vec_db.insert_batch = AsyncMock()
     helper.vec_db.delete_documents = AsyncMock()
     helper.kb_db.get_db = _failing_get_db()
 
@@ -383,12 +388,14 @@ async def test_upload_document_cleans_up_on_metadata_failure(
         )
 
     assert exc_info.value.stage == "metadata"
-    helper.vec_db.insert_batch.assert_awaited_once()
+    helper.wiki_store.upsert_document.assert_awaited_once()
     helper.vec_db.delete_documents.assert_awaited()
+    assert list(helper.wiki_store.sources_dir.glob("*.md")) == []
 
 
 @pytest.mark.asyncio
 async def test_upload_document_skips_rollback_after_metadata_commit(
+    tmp_path: Path,
     stub_provider_manager_module,
 ) -> None:
     """Stats refresh failure after metadata commit must not roll back the doc."""
@@ -401,10 +408,14 @@ async def test_upload_document_skips_rollback_after_metadata_commit(
         embedding_provider_id="emb",
     )
     helper.kb_db = MagicMock()
-    helper.vec_db = AsyncMock()
-    helper.kb_medias_dir = Path("/tmp/kb-medias-unused")
+    helper.wiki_store = AsyncMock()
+    helper.wiki_store.sources_dir = tmp_path / "sources"
+    helper.wiki_store.upsert_document = AsyncMock(
+        return_value={"path": "sources/demo.md"}
+    )
+    helper.vec_db = helper.wiki_store
+    helper.kb_medias_dir = tmp_path / "medias"
     helper.chunker = AsyncMock()
-    helper.vec_db.insert_batch = AsyncMock()
     helper.vec_db.delete_documents = AsyncMock()
     helper.kb_db.update_kb_stats = AsyncMock(side_effect=RuntimeError("stats fail"))
     helper.refresh_kb = AsyncMock()
@@ -426,11 +437,14 @@ async def test_upload_document_skips_rollback_after_metadata_commit(
 
     assert exc_info.value.stage == "metadata"
     assert "统计信息刷新失败" in str(exc_info.value)
+    helper.wiki_store.upsert_document.assert_awaited_once()
     helper.vec_db.delete_documents.assert_not_awaited()
+    assert len(list(helper.wiki_store.sources_dir.glob("*.md"))) == 1
 
 
 @pytest.mark.asyncio
 async def test_upload_document_skips_rollback_when_refresh_fails_after_commit(
+    tmp_path: Path,
     stub_provider_manager_module,
 ) -> None:
     """If commit succeeds but session.refresh fails, do not roll back."""
@@ -443,10 +457,14 @@ async def test_upload_document_skips_rollback_when_refresh_fails_after_commit(
         embedding_provider_id="emb",
     )
     helper.kb_db = MagicMock()
-    helper.vec_db = AsyncMock()
-    helper.kb_medias_dir = Path("/tmp/kb-medias-unused")
+    helper.wiki_store = AsyncMock()
+    helper.wiki_store.sources_dir = tmp_path / "sources"
+    helper.wiki_store.upsert_document = AsyncMock(
+        return_value={"path": "sources/demo.md"}
+    )
+    helper.vec_db = helper.wiki_store
+    helper.kb_medias_dir = tmp_path / "medias"
     helper.chunker = AsyncMock()
-    helper.vec_db.insert_batch = AsyncMock()
     helper.vec_db.delete_documents = AsyncMock()
 
     session = _session_with_begin()
@@ -466,7 +484,9 @@ async def test_upload_document_skips_rollback_when_refresh_fails_after_commit(
 
     assert exc_info.value.stage == "metadata"
     assert "文档记录刷新失败" in str(exc_info.value)
+    helper.wiki_store.upsert_document.assert_awaited_once()
     helper.vec_db.delete_documents.assert_not_awaited()
+    assert len(list(helper.wiki_store.sources_dir.glob("*.md"))) == 1
 
 
 @pytest.mark.asyncio

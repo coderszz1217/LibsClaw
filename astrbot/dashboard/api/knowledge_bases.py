@@ -14,8 +14,12 @@ from astrbot.dashboard.schemas import (
     KnowledgeBaseRequest,
     KnowledgeBaseRetrieveRequest,
     KnowledgeBaseUrlImportRequest,
+    KnowledgeWikiMoveRequest,
+    KnowledgeWikiPageCreateRequest,
+    KnowledgeWikiPageUpdateRequest,
 )
 from astrbot.dashboard.services.knowledge_base_service import (
+    KNOWLEDGE_UPLOAD_MAX_REQUEST_BYTES,
     KnowledgeBaseService,
     KnowledgeBaseServiceError,
 )
@@ -162,6 +166,160 @@ async def get_knowledge_base_stats(
     )
 
 
+@router.get("/knowledge-bases/{kb_id}/wiki/tree")
+async def get_knowledge_base_wiki_tree(
+    kb_id: str,
+    _auth: AuthContext = Depends(require_kb_scope),
+    service: KnowledgeBaseService = Depends(get_service),
+):
+    return await _run(
+        lambda: service.list_wiki_tree(kb_id),
+        prefix="获取知识页面树失败",
+    )
+
+
+@router.get("/knowledge-bases/{kb_id}/wiki/pages")
+async def get_knowledge_base_wiki_page(
+    kb_id: str,
+    request: Request,
+    _auth: AuthContext = Depends(require_kb_scope),
+    service: KnowledgeBaseService = Depends(get_service),
+):
+    return await _run(
+        lambda: service.read_wiki_page(kb_id, request.query_params.get("path")),
+        prefix="获取知识页面失败",
+    )
+
+
+@router.post("/knowledge-bases/{kb_id}/wiki/pages")
+async def create_knowledge_base_wiki_page(
+    kb_id: str,
+    payload: KnowledgeWikiPageCreateRequest,
+    _auth: AuthContext = Depends(require_kb_scope),
+    service: KnowledgeBaseService = Depends(get_service),
+):
+    return await _run(
+        lambda: service.write_wiki_page(kb_id, payload.model_dump()),
+        prefix="创建知识页面失败",
+    )
+
+
+@router.put("/knowledge-bases/{kb_id}/wiki/pages")
+async def update_knowledge_base_wiki_page(
+    kb_id: str,
+    payload: KnowledgeWikiPageUpdateRequest,
+    _auth: AuthContext = Depends(require_kb_scope),
+    service: KnowledgeBaseService = Depends(get_service),
+):
+    return await _run(
+        lambda: service.write_wiki_page(
+            kb_id,
+            payload.model_dump(),
+            require_existing=True,
+        ),
+        prefix="更新知识页面失败",
+    )
+
+
+@router.delete("/knowledge-bases/{kb_id}/wiki/pages")
+async def delete_knowledge_base_wiki_page(
+    kb_id: str,
+    request: Request,
+    _auth: AuthContext = Depends(require_kb_scope),
+    service: KnowledgeBaseService = Depends(get_service),
+):
+    return await _run(
+        lambda: service.delete_wiki_page(kb_id, request.query_params.get("path")),
+        prefix="删除知识页面失败",
+    )
+
+
+@router.post("/knowledge-bases/{kb_id}/wiki/move")
+async def move_knowledge_base_wiki_path(
+    kb_id: str,
+    payload: KnowledgeWikiMoveRequest,
+    _auth: AuthContext = Depends(require_kb_scope),
+    service: KnowledgeBaseService = Depends(get_service),
+):
+    return await _run(
+        lambda: service.move_wiki_path(kb_id, payload.model_dump()),
+        prefix="移动知识文件失败",
+    )
+
+
+@router.delete("/knowledge-bases/{kb_id}/wiki/paths")
+async def delete_knowledge_base_wiki_path(
+    kb_id: str,
+    request: Request,
+    _auth: AuthContext = Depends(require_kb_scope),
+    service: KnowledgeBaseService = Depends(get_service),
+):
+    recursive = request.query_params.get("recursive", "false").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+    return await _run(
+        lambda: service.delete_wiki_path(
+            kb_id,
+            request.query_params.get("path"),
+            recursive=recursive,
+        ),
+        prefix="删除知识文件失败",
+    )
+
+
+@router.post("/knowledge-bases/{kb_id}/wiki/import")
+async def import_knowledge_base_wiki(
+    kb_id: str,
+    request: Request,
+    _auth: AuthContext = Depends(require_kb_scope),
+    service: KnowledgeBaseService = Depends(get_service),
+):
+    async def _operation():
+        try:
+            form_data, files = await multipart_parts(
+                request,
+                extra_form={"kb_id": kb_id},
+                max_files=float("inf"),
+                max_fields=float("inf"),
+                max_body_size=KNOWLEDGE_UPLOAD_MAX_REQUEST_BYTES,
+            )
+            return await service.import_wiki(
+                content_type=request.headers.get("content-type"),
+                form_data=form_data,
+                files=files,
+            )
+        finally:
+            await request.close()
+
+    return await _run(_operation, prefix="导入 Wiki 失败")
+
+
+@router.post("/knowledge-bases/{kb_id}/wiki/rebuild")
+async def rebuild_knowledge_base_wiki_index(
+    kb_id: str,
+    _auth: AuthContext = Depends(require_kb_scope),
+    service: KnowledgeBaseService = Depends(get_service),
+):
+    return await _run(
+        lambda: service.rebuild_wiki_index(kb_id),
+        prefix="重建知识库索引失败",
+    )
+
+
+@router.get("/knowledge-bases/{kb_id}/wiki/graph")
+async def get_knowledge_base_wiki_graph(
+    kb_id: str,
+    _auth: AuthContext = Depends(require_kb_scope),
+    service: KnowledgeBaseService = Depends(get_service),
+):
+    return await _run(
+        lambda: service.get_wiki_graph(kb_id),
+        prefix="获取知识图谱失败",
+    )
+
+
 @router.get("/knowledge-bases/{kb_id}/documents")
 async def list_knowledge_base_documents(
     kb_id: str,
@@ -188,12 +346,21 @@ async def upload_knowledge_base_document(
     service: KnowledgeBaseService = Depends(get_service),
 ):
     async def _operation():
-        form_data, files = await multipart_parts(request, extra_form={"kb_id": kb_id})
-        return await service.upload_document(
-            content_type=request.headers.get("content-type"),
-            form_data=form_data,
-            files=files,
-        )
+        try:
+            form_data, files = await multipart_parts(
+                request,
+                extra_form={"kb_id": kb_id},
+                max_files=float("inf"),
+                max_fields=float("inf"),
+                max_body_size=KNOWLEDGE_UPLOAD_MAX_REQUEST_BYTES,
+            )
+            return await service.upload_document(
+                content_type=request.headers.get("content-type"),
+                form_data=form_data,
+                files=files,
+            )
+        finally:
+            await request.close()
 
     return await _run(_operation, prefix="上传文档失败")
 
@@ -396,12 +563,20 @@ async def dashboard_upload_document(
     service: KnowledgeBaseService = Depends(get_service),
 ):
     async def _operation():
-        form_data, files = await multipart_parts(request)
-        return await service.upload_document(
-            content_type=request.headers.get("content-type"),
-            form_data=form_data,
-            files=files,
-        )
+        try:
+            form_data, files = await multipart_parts(
+                request,
+                max_files=float("inf"),
+                max_fields=float("inf"),
+                max_body_size=KNOWLEDGE_UPLOAD_MAX_REQUEST_BYTES,
+            )
+            return await service.upload_document(
+                content_type=request.headers.get("content-type"),
+                form_data=form_data,
+                files=files,
+            )
+        finally:
+            await request.close()
 
     return await _run(_operation, prefix="上传文档失败")
 

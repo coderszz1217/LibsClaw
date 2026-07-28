@@ -14,19 +14,6 @@
           <v-col cols="12" md="8">
             <v-textarea v-model="query" :label="t('retrieval.query')" :placeholder="t('retrieval.queryPlaceholder')"
               variant="outlined" rows="3" auto-grow clearable />
-
-            <!-- debug -->
-            <div v-if="debugVisualize" class="mt-2">
-              <v-card variant="outlined">
-                <v-img :src="`data:image/png;base64,${debugVisualize}`" :alt="t('retrieval.tsneVisualization')" cover>
-                  <template v-slot:placeholder>
-                    <div class="d-flex align-center justify-center fill-height">
-                      <v-progress-circular indeterminate color="primary" />
-                    </div>
-                  </template>
-                </v-img>
-              </v-card>
-            </div>
           </v-col>
           <v-col cols="12" md="4">
             <v-card variant="outlined" class="pa-4">
@@ -34,16 +21,6 @@
 
               <v-text-field v-model.number="topK" :label="t('retrieval.topK')" :hint="t('retrieval.topKHint')"
                 type="number" variant="outlined" density="compact" persistent-hint class="mb-3" />
-
-              <v-switch v-model="debugMode" :label="t('retrieval.debugMode')" color="primary" density="compact"
-                hide-details>
-                <template v-slot:label>
-                  <span class="text-caption">
-                    <v-icon size="small" class="mr-1">mdi-bug</v-icon>
-                    Debug (t-SNE)
-                  </span>
-                </template>
-              </v-switch>
             </v-card>
           </v-col>
         </v-row>
@@ -124,17 +101,14 @@ const { tm: t } = useModuleI18n('features/knowledge-base/detail')
 
 const props = defineProps<{
   kbId: string,
-  kbName: string,
 }>()
 
 // 状态
 const loading = ref(false)
 const query = ref('')
 const topK = ref(5)
-const debugMode = ref(false)
 const results = ref<any[]>([])
 const hasSearched = ref(false)
-const debugVisualize = ref<string | null>(null)
 
 const snackbar = ref({
   show: false,
@@ -157,23 +131,17 @@ const performRetrieval = async () => {
 
   loading.value = true
   hasSearched.value = false
-  debugVisualize.value = null
 
   try {
     const response = await knowledgeApi.retrieve(props.kbId, {
       query: query.value,
-      kb_names: [props.kbName],
-      top_k: topK.value,
-      debug: debugMode.value
+      kb_ids: [props.kbId],
+      top_k: topK.value
     })
 
     if (response.data.status === 'ok') {
       results.value = response.data.data.results || []
       hasSearched.value = true
-
-      if (debugMode.value && response.data.data.visualization) {
-        debugVisualize.value = response.data.data.visualization
-      }
 
       showSnackbar(t('retrieval.searchSuccess', { count: results.value.length }))
     } else {

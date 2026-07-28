@@ -16,6 +16,7 @@
     "content": "Content",
     "charCount": "Characters",
     "actions": "Actions",
+    "derivedNotice": "Chunks are generated from Markdown Wiki pages and are read-only. To change or remove content, edit or delete the corresponding page from the knowledge base Wiki tab.",
     "view": "View",
     "edit": "Edit",
     "delete": "Delete",

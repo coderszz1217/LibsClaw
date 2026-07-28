@@ -3,6 +3,9 @@ from datetime import datetime, timezone
 
 from sqlmodel import Field, MetaData, SQLModel, Text, UniqueConstraint
 
+DEFAULT_CHUNK_SIZE = 800
+DEFAULT_CHUNK_OVERLAP = 80
+
 
 class BaseKBModel(SQLModel, table=False):
     metadata = MetaData()
@@ -34,8 +37,8 @@ class KnowledgeBase(BaseKBModel, table=True):
     embedding_provider_id: str | None = Field(default=None, max_length=100)
     rerank_provider_id: str | None = Field(default=None, max_length=100)
     # 分块配置参数
-    chunk_size: int | None = Field(default=512, nullable=True)
-    chunk_overlap: int | None = Field(default=50, nullable=True)
+    chunk_size: int | None = Field(default=DEFAULT_CHUNK_SIZE, nullable=True)
+    chunk_overlap: int | None = Field(default=DEFAULT_CHUNK_OVERLAP, nullable=True)
     # 检索配置参数
     top_k_dense: int | None = Field(default=50, nullable=True)
     top_k_sparse: int | None = Field(default=50, nullable=True)

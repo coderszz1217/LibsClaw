@@ -5,7 +5,6 @@
 
 import time
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 from astrbot import logger
 from astrbot.core.db.vec_db.base import Result
@@ -15,9 +14,6 @@ from astrbot.core.knowledge_base.retrieval.sparse_retriever import SparseRetriev
 from astrbot.core.provider.provider import RerankProvider
 
 from ..kb_helper import KBHelper
-
-if TYPE_CHECKING:
-    from astrbot.core.db.vec_db.faiss_impl import FaissVecDB
 
 
 @dataclass
@@ -216,7 +212,7 @@ class RetrievalManager:
             if kb_id not in kb_options:
                 continue
             try:
-                vec_db: FaissVecDB = kb_options[kb_id]["vec_db"]
+                vec_db = kb_options[kb_id]["vec_db"]
                 dense_k = int(kb_options[kb_id]["top_k_dense"])
                 vec_results = await vec_db.retrieve(
                     query=query,

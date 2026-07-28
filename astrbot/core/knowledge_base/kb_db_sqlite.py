@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import Protocol
 
 from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -15,8 +15,13 @@ from astrbot.core.knowledge_base.models import (
 )
 from astrbot.core.utils.astrbot_path import get_astrbot_knowledge_base_path
 
-if TYPE_CHECKING:
-    from astrbot.core.db.vec_db.faiss_impl import FaissVecDB
+
+class ChunkStore(Protocol):
+    """Storage operations required by knowledge base metadata maintenance."""
+
+    async def delete_documents(self, metadata_filters: dict) -> None: ...
+
+    async def count_documents(self, metadata_filter: dict | None = None) -> int: ...
 
 
 class KBSQLiteDatabase:
@@ -319,7 +324,7 @@ class KBSQLiteDatabase:
 
         return metadata_map
 
-    async def delete_document_by_id(self, doc_id: str, vec_db: "FaissVecDB") -> None:
+    async def delete_document_by_id(self, doc_id: str, vec_db: ChunkStore) -> None:
         """删除单个文档及其相关数据（包括多媒体记录）"""
         async with self.get_db() as session, session.begin():
             # 删除多媒体记录
@@ -332,6 +337,22 @@ class KBSQLiteDatabase:
 
         # 在 vec db 中删除相关向量
         await vec_db.delete_documents(metadata_filters={"kb_doc_id": doc_id})
+
+    async def delete_document_records(self, doc_ids: list[str]) -> None:
+        """Delete document and media rows after Wiki files were removed in bulk.
+
+        Args:
+            doc_ids: Stable document identifiers already removed from Wiki storage.
+        """
+        if not doc_ids:
+            return
+        async with self.get_db() as session, session.begin():
+            await session.execute(
+                delete(KBMedia).where(col(KBMedia.doc_id).in_(doc_ids))
+            )
+            await session.execute(
+                delete(KBDocument).where(col(KBDocument.doc_id).in_(doc_ids))
+            )
 
     # ===== 多媒体查询 =====
 
@@ -349,7 +370,7 @@ class KBSQLiteDatabase:
             result = await session.execute(stmt)
             return result.scalar_one_or_none()
 
-    async def update_kb_stats(self, kb_id: str, vec_db: "FaissVecDB") -> None:
+    async def update_kb_stats(self, kb_id: str, vec_db: ChunkStore) -> None:
         """更新知识库统计信息"""
         chunk_cnt = await vec_db.count_documents(metadata_filter={"kb_id": kb_id})
 

@@ -1,8 +1,10 @@
 """备份功能单元测试"""
 
+import hashlib
 import json
 import os
 import re
+import sqlite3
 import zipfile
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -172,6 +174,102 @@ class TestAstrBotExporter:
         assert "test.json" in exporter._checksums
         assert exporter._checksums["test.json"].startswith("sha256:")
 
+    @pytest.mark.asyncio
+    async def test_export_kb_wiki_files_includes_truth_and_sqlite_snapshot(
+        self,
+        tmp_path,
+    ):
+        """Wiki backup contains durable files and a WAL-safe database snapshot."""
+        kb_dir = tmp_path / "kb-1"
+        (kb_dir / "knowledge" / "guides").mkdir(parents=True)
+        (kb_dir / "sources").mkdir()
+        (kb_dir / "assets").mkdir()
+        (kb_dir / "index").mkdir()
+        (kb_dir / ".migrations").mkdir()
+        (kb_dir / "knowledge" / "guides" / "page.md").write_text(
+            "# Page\n",
+            encoding="utf-8",
+        )
+        (kb_dir / "sources" / "source.txt").write_text("source", encoding="utf-8")
+        (kb_dir / "assets" / "image.bin").write_bytes(b"asset")
+        (kb_dir / ".migrations" / "faiss-to-wiki-v1.json").write_text(
+            '{"state":"complete"}\n',
+            encoding="utf-8",
+        )
+
+        connection = sqlite3.connect(kb_dir / "index" / "wiki.db")
+        connection.execute("PRAGMA journal_mode=WAL")
+        connection.execute("CREATE TABLE pages (path TEXT)")
+        connection.execute("INSERT INTO pages VALUES ('guides/page.md')")
+        connection.commit()
+
+        exporter = AstrBotExporter(main_db=MagicMock())
+        helper = MagicMock(kb_dir=kb_dir)
+        zip_path = tmp_path / "wiki.zip"
+        try:
+            with zipfile.ZipFile(zip_path, "w") as zf:
+                files = await exporter._export_kb_wiki_files(
+                    zf,
+                    helper,
+                    "kb-1",
+                )
+        finally:
+            connection.close()
+
+        assert set(files) == {
+            "knowledge/guides/page.md",
+            "sources/source.txt",
+            "assets/image.bin",
+            "index/wiki.db",
+            ".migrations/faiss-to-wiki-v1.json",
+        }
+        restored_db = tmp_path / "restored.db"
+        with zipfile.ZipFile(zip_path) as zf:
+            names = set(zf.namelist())
+            assert "files/kb_wiki/kb-1/index/wiki.db-wal" not in names
+            restored_db.write_bytes(zf.read("files/kb_wiki/kb-1/index/wiki.db"))
+        restored = sqlite3.connect(restored_db)
+        try:
+            assert restored.execute("SELECT path FROM pages").fetchone() == (
+                "guides/page.md",
+            )
+        finally:
+            restored.close()
+
+    @pytest.mark.asyncio
+    async def test_export_kb_wiki_files_rejects_external_database_symlink(
+        self,
+        tmp_path,
+    ):
+        """Wiki database snapshots never follow links outside the KB directory."""
+        kb_dir = tmp_path / "kb-1"
+        (kb_dir / "index").mkdir(parents=True)
+        external_database = tmp_path / "external.db"
+        database = sqlite3.connect(external_database)
+        try:
+            database.execute("CREATE TABLE private_data(value TEXT)")
+            database.execute("INSERT INTO private_data VALUES ('outside')")
+            database.commit()
+        finally:
+            database.close()
+        try:
+            (kb_dir / "index" / "wiki.db").symlink_to(external_database)
+        except OSError as exc:
+            pytest.skip(f"Symlink creation is unavailable: {exc}")
+
+        exporter = AstrBotExporter(main_db=MagicMock())
+        zip_path = tmp_path / "wiki.zip"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            files = await exporter._export_kb_wiki_files(
+                zf,
+                MagicMock(kb_dir=kb_dir),
+                "kb-1",
+            )
+
+        assert "index/wiki.db" not in files
+        with zipfile.ZipFile(zip_path) as zf:
+            assert "files/kb_wiki/kb-1/index/wiki.db" not in zf.namelist()
+
     def test_generate_manifest(self, mock_main_db, mock_kb_manager):
         """测试生成清单"""
         exporter = AstrBotExporter(
@@ -309,6 +407,483 @@ class TestAstrBotImporter:
         # created_at 应该被转换为 datetime 对象
         assert isinstance(result["created_at"], datetime)
         assert isinstance(result["updated_at"], datetime)
+
+    @pytest.mark.asyncio
+    async def test_import_kb_wiki_files_restores_layout_and_rejects_traversal(
+        self,
+        tmp_path,
+    ):
+        """Wiki restore preserves per-KB files without allowing path traversal."""
+        zip_path = tmp_path / "wiki.zip"
+        source_kb_dir = tmp_path / "wiki-source"
+        from astrbot.core.knowledge_base.wiki import WikiStore
+
+        source_store = WikiStore(source_kb_dir, "kb-1")
+        await source_store.initialize()
+        try:
+            await source_store.write_page("topic.md", "# Topic\n")
+        finally:
+            await source_store.close()
+        wiki_db_path = source_kb_dir / "index" / "wiki.db"
+        page_content = (source_kb_dir / "knowledge" / "topic.md").read_text(
+            encoding="utf-8"
+        )
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr(
+                "files/kb_wiki/kb-1/knowledge/topic.md",
+                page_content,
+            )
+            zf.writestr("files/kb_wiki/kb-1/sources/raw.txt", "raw")
+            zf.writestr("files/kb_wiki/kb-1/assets/image.bin", b"asset")
+            zf.writestr(
+                "files/kb_wiki/kb-1/.migrations/faiss-to-wiki-v1.json",
+                '{"state":"complete"}\n',
+            )
+            zf.write(wiki_db_path, "files/kb_wiki/kb-1/index/wiki.db")
+            zf.writestr("files/kb_wiki/kb-1/../../escaped.txt", "escaped")
+
+        importer = AstrBotImporter(
+            main_db=MagicMock(),
+            kb_root_dir=str(tmp_path / "knowledge-base"),
+        )
+        kb_dir = tmp_path / "knowledge-base" / "kb-1"
+        kb_dir.mkdir(parents=True)
+        with zipfile.ZipFile(zip_path) as zf:
+            count = importer._import_kb_wiki_files(zf, "kb-1", kb_dir)
+
+        assert count == (5, True)
+        assert (kb_dir / "knowledge" / "topic.md").read_text() == page_content
+        assert (kb_dir / "sources" / "raw.txt").read_text() == "raw"
+        assert (kb_dir / "assets" / "image.bin").read_bytes() == b"asset"
+        assert (
+            kb_dir / ".migrations" / "faiss-to-wiki-v1.json"
+        ).read_text() == '{"state":"complete"}\n'
+        restored_database = sqlite3.connect(kb_dir / "index" / "wiki.db")
+        try:
+            assert restored_database.execute("PRAGMA quick_check").fetchone() == ("ok",)
+        finally:
+            restored_database.close()
+        assert not (tmp_path / "knowledge-base" / "escaped.txt").exists()
+
+    @pytest.mark.asyncio
+    async def test_import_legacy_kb_documents_builds_markdown_for_reindex(
+        self, tmp_path
+    ):
+        """Legacy chunks become Markdown and leave indexing to KB initialization."""
+        importer = AstrBotImporter(
+            main_db=MagicMock(),
+            kb_root_dir=str(tmp_path / "knowledge-base"),
+        )
+        await importer._import_legacy_kb_documents(
+            "kb-legacy",
+            {
+                "documents": [
+                    {
+                        "doc_id": "chunk-2",
+                        "text": "second chunk",
+                        "metadata": json.dumps(
+                            {
+                                "kb_id": "kb-legacy",
+                                "kb_doc_id": "doc-1",
+                                "chunk_index": 1,
+                            }
+                        ),
+                    },
+                    {
+                        "doc_id": "chunk-1",
+                        "text": "first chunk",
+                        "metadata": json.dumps(
+                            {
+                                "kb_id": "kb-legacy",
+                                "kb_doc_id": "doc-1",
+                                "chunk_index": 0,
+                            }
+                        ),
+                    },
+                ]
+            },
+        )
+
+        kb_dir = tmp_path / "knowledge-base" / "kb-legacy"
+        page_paths = list((kb_dir / "knowledge" / "legacy").glob("*.md"))
+        assert len(page_paths) == 1
+        page_content = page_paths[0].read_text(encoding="utf-8")
+        assert page_content.index("first chunk") < page_content.index("second chunk")
+        assert not (kb_dir / "index" / "wiki.db").exists()
+        marker = json.loads(
+            (kb_dir / ".migrations" / "faiss-to-wiki-v1.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        assert marker["state"] == "complete"
+        assert marker["documents"]["doc-1"]["chunk_ids"] == [
+            "chunk-1",
+            "chunk-2",
+        ]
+
+        from astrbot.core.knowledge_base.wiki import WikiStore
+
+        provider = MagicMock()
+        provider.get_dim.return_value = 2
+        provider.get_embeddings_batch = AsyncMock(
+            side_effect=lambda texts, **_kwargs: [[1.0, 0.5] for _ in texts]
+        )
+        store = WikiStore(kb_dir, "kb-legacy", embedding_provider=provider)
+        await store.initialize()
+        try:
+            database = sqlite3.connect(kb_dir / "index" / "wiki.db")
+            try:
+                pages = database.execute("SELECT doc_id FROM pages").fetchall()
+                chunks = database.execute(
+                    "SELECT chunk_id, text, embedding FROM chunks ORDER BY chunk_index"
+                ).fetchall()
+            finally:
+                database.close()
+            assert pages == [("doc-1",)]
+            assert [row[0] for row in chunks] == ["chunk-1", "chunk-2"]
+            assert [row[1] for row in chunks] == ["first chunk", "second chunk"]
+            assert chunks and all(row[2] is not None for row in chunks)
+            provider.get_embeddings_batch.assert_awaited()
+        finally:
+            await store.close()
+
+    def test_resolve_kb_dir_rejects_unsafe_metadata_ids(self, tmp_path):
+        """Backup metadata IDs cannot escape or add levels under the KB root."""
+        importer = AstrBotImporter(
+            main_db=MagicMock(),
+            kb_root_dir=str(tmp_path / "knowledge-base"),
+        )
+
+        for kb_id in ("../outside", "nested/kb", "nested\\kb", ".", "", "/tmp/kb"):
+            with pytest.raises(ValueError, match="knowledge base"):
+                importer._resolve_kb_dir(kb_id)
+        assert (
+            importer._resolve_kb_dir("kb-safe").parent
+            == (tmp_path / "knowledge-base").resolve()
+        )
+
+    @pytest.mark.asyncio
+    async def test_import_kb_media_cannot_overwrite_wiki_namespaces(self, tmp_path):
+        """Media archive entries are confined to medias/<kb_id>."""
+        from astrbot.core.knowledge_base.kb_db_sqlite import KBSQLiteDatabase
+
+        kb_database = KBSQLiteDatabase(str(tmp_path / "kb.db"))
+        await kb_database.initialize()
+        kb_manager = MagicMock(kb_db=kb_database)
+        kb_manager.load_kbs = AsyncMock()
+        importer = AstrBotImporter(
+            main_db=MagicMock(),
+            kb_manager=kb_manager,
+            kb_root_dir=str(tmp_path / "knowledge-base"),
+        )
+        zip_path = tmp_path / "media.zip"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr(
+                "files/kb_media/kb-1/medias/kb-1/doc-1/image.bin",
+                b"media",
+            )
+            zf.writestr(
+                "files/kb_media/kb-1/knowledge/topic.md",
+                "overwritten",
+            )
+            zf.writestr(
+                "files/kb_media/kb-1/index/wiki.db",
+                b"overwritten",
+            )
+
+        try:
+            with zipfile.ZipFile(zip_path) as zf:
+                await importer._import_knowledge_bases(
+                    zf,
+                    {
+                        "knowledge_bases": [
+                            {
+                                "kb_id": "kb-1",
+                                "kb_name": "Safe KB",
+                            }
+                        ],
+                        "kb_documents": [],
+                        "kb_media": [],
+                    },
+                    ImportResult(),
+                )
+        finally:
+            await kb_database.close()
+
+        kb_dir = tmp_path / "knowledge-base" / "kb-1"
+        assert (
+            kb_dir / "medias" / "kb-1" / "doc-1" / "image.bin"
+        ).read_bytes() == b"media"
+        assert not (kb_dir / "knowledge" / "topic.md").exists()
+        assert not (kb_dir / "index" / "wiki.db").exists()
+        kb_manager.load_kbs.assert_awaited_once()
+
+    def test_import_kb_wiki_files_preserves_auxiliary_only_payload(self, tmp_path):
+        """Auxiliary files survive without suppressing legacy document fallback."""
+        zip_path = tmp_path / "wiki.zip"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr("files/kb_wiki/kb-1/assets/image.bin", b"asset")
+            zf.writestr("files/kb_wiki/kb-1/sources/raw.txt", "source")
+            zf.writestr("files/kb_wiki/kb-1/../../escaped.txt", "escaped")
+
+        importer = AstrBotImporter(
+            main_db=MagicMock(),
+            kb_root_dir=str(tmp_path / "knowledge-base"),
+        )
+        kb_dir = importer._resolve_kb_dir("kb-1")
+        with zipfile.ZipFile(zip_path) as zf:
+            count, restored = importer._import_kb_wiki_files(zf, "kb-1", kb_dir)
+
+        assert count == 2
+        assert restored is False
+        assert (kb_dir / "assets" / "image.bin").read_bytes() == b"asset"
+        assert (kb_dir / "sources" / "raw.txt").read_text() == "source"
+        assert not (tmp_path / "knowledge-base" / "escaped.txt").exists()
+
+    def test_import_kb_wiki_files_rejects_invalid_database_only_payload(self, tmp_path):
+        """A database without Markdown truth cannot suppress legacy fallback."""
+        zip_path = tmp_path / "wiki.zip"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr("files/kb_wiki/kb-1/index/wiki.db", b"not sqlite")
+
+        importer = AstrBotImporter(
+            main_db=MagicMock(),
+            kb_root_dir=str(tmp_path / "knowledge-base"),
+        )
+        kb_dir = importer._resolve_kb_dir("kb-1")
+        with zipfile.ZipFile(zip_path) as zf:
+            count, restored = importer._import_kb_wiki_files(zf, "kb-1", kb_dir)
+
+        assert count == 0
+        assert restored is False
+        assert not kb_dir.exists()
+
+    def test_import_kb_wiki_files_drops_corrupt_index_with_markdown(self, tmp_path):
+        """Corrupt derived indexes are discarded while Markdown is restored."""
+        zip_path = tmp_path / "wiki.zip"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr("files/kb_wiki/kb-1/knowledge/topic.md", "# Topic\n")
+            zf.writestr("files/kb_wiki/kb-1/index/wiki.db", b"not sqlite")
+
+        importer = AstrBotImporter(
+            main_db=MagicMock(),
+            kb_root_dir=str(tmp_path / "knowledge-base"),
+        )
+        kb_dir = importer._resolve_kb_dir("kb-1")
+        with zipfile.ZipFile(zip_path) as zf:
+            count, restored = importer._import_kb_wiki_files(zf, "kb-1", kb_dir)
+
+        assert count == 2
+        assert restored is True
+        assert (kb_dir / "knowledge" / "topic.md").is_file()
+        assert not (kb_dir / "index").exists()
+
+    def test_import_kb_wiki_files_drops_incomplete_schema_with_markdown(
+        self,
+        tmp_path,
+    ):
+        """Tables without the WikiStore columns are not accepted as an index."""
+        page_content = "# Topic\n"
+        database_path = tmp_path / "wiki.db"
+        database = sqlite3.connect(database_path)
+        try:
+            database.executescript(
+                """
+                CREATE TABLE pages(path TEXT, content_hash TEXT);
+                CREATE TABLE chunks(id INTEGER);
+                CREATE TABLE graph_nodes(id TEXT);
+                CREATE TABLE graph_edges(id TEXT);
+                """
+            )
+            database.execute(
+                "INSERT INTO pages VALUES (?, ?)",
+                ("topic.md", hashlib.sha256(page_content.encode()).hexdigest()),
+            )
+            database.commit()
+        finally:
+            database.close()
+
+        zip_path = tmp_path / "wiki.zip"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr(
+                "files/kb_wiki/kb-1/knowledge/topic.md",
+                page_content,
+            )
+            zf.write(database_path, "files/kb_wiki/kb-1/index/wiki.db")
+
+        importer = AstrBotImporter(
+            main_db=MagicMock(),
+            kb_root_dir=str(tmp_path / "knowledge-base"),
+        )
+        kb_dir = importer._resolve_kb_dir("kb-1")
+        with zipfile.ZipFile(zip_path) as zf:
+            count, restored = importer._import_kb_wiki_files(zf, "kb-1", kb_dir)
+
+        assert count == 2
+        assert restored is True
+        assert (kb_dir / "knowledge" / "topic.md").is_file()
+        assert not (kb_dir / "index").exists()
+
+    def test_import_kb_wiki_files_drops_stale_index_with_markdown(self, tmp_path):
+        """A content-hash mismatch forces startup to rebuild from Markdown."""
+        database_path = tmp_path / "wiki.db"
+        database = sqlite3.connect(database_path)
+        try:
+            database.executescript(
+                """
+                CREATE TABLE pages(path TEXT, content_hash TEXT);
+                CREATE TABLE chunks(id INTEGER);
+                CREATE TABLE graph_nodes(id TEXT);
+                CREATE TABLE graph_edges(id TEXT);
+                """
+            )
+            database.execute("INSERT INTO pages VALUES ('topic.md', 'stale-hash')")
+            database.commit()
+        finally:
+            database.close()
+
+        zip_path = tmp_path / "wiki.zip"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr("files/kb_wiki/kb-1/knowledge/topic.md", "# Topic\n")
+            zf.write(database_path, "files/kb_wiki/kb-1/index/wiki.db")
+
+        importer = AstrBotImporter(
+            main_db=MagicMock(),
+            kb_root_dir=str(tmp_path / "knowledge-base"),
+        )
+        kb_dir = importer._resolve_kb_dir("kb-1")
+        with zipfile.ZipFile(zip_path) as zf:
+            count, restored = importer._import_kb_wiki_files(zf, "kb-1", kb_dir)
+
+        assert count == 2
+        assert restored is True
+        assert (kb_dir / "knowledge" / "topic.md").is_file()
+        assert not (kb_dir / "index").exists()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("documents", "error"),
+        [
+            (
+                [
+                    {
+                        "doc_id": "chunk-1",
+                        "text": "text",
+                        "metadata": json.dumps(
+                            {
+                                "kb_id": "other-kb",
+                                "kb_doc_id": "doc-1",
+                                "chunk_index": 0,
+                            }
+                        ),
+                    }
+                ],
+                "another knowledge base",
+            ),
+            (
+                [
+                    {
+                        "doc_id": "chunk-1",
+                        "text": "text",
+                        "metadata": json.dumps({"kb_id": "kb-1", "chunk_index": 0}),
+                    }
+                ],
+                "missing kb_doc_id",
+            ),
+            (
+                [
+                    {
+                        "doc_id": "chunk-1",
+                        "text": "one",
+                        "metadata": json.dumps(
+                            {
+                                "kb_id": "kb-1",
+                                "kb_doc_id": "doc-1",
+                                "chunk_index": 0,
+                            }
+                        ),
+                    },
+                    {
+                        "doc_id": "chunk-2",
+                        "text": "two",
+                        "metadata": json.dumps(
+                            {
+                                "kb_id": "kb-1",
+                                "kb_doc_id": "doc-1",
+                                "chunk_index": 0,
+                            }
+                        ),
+                    },
+                ],
+                "duplicate chunk indexes",
+            ),
+        ],
+    )
+    async def test_import_legacy_kb_documents_rejects_invalid_chunks(
+        self, tmp_path, documents, error
+    ):
+        """Legacy conversion rejects unsafe or ambiguous chunk metadata."""
+        importer = AstrBotImporter(
+            main_db=MagicMock(),
+            kb_root_dir=str(tmp_path / "knowledge-base"),
+        )
+
+        with pytest.raises(ValueError, match=error):
+            await importer._import_legacy_kb_documents("kb-1", {"documents": documents})
+
+    @pytest.mark.asyncio
+    async def test_import_legacy_kb_documents_preflights_before_writing(
+        self,
+        tmp_path,
+    ):
+        """A later invalid document cannot leave earlier converted pages behind."""
+        importer = AstrBotImporter(
+            main_db=MagicMock(),
+            kb_root_dir=str(tmp_path / "knowledge-base"),
+        )
+        documents = [
+            {
+                "doc_id": "valid-chunk",
+                "text": "valid",
+                "metadata": json.dumps(
+                    {
+                        "kb_id": "kb-1",
+                        "kb_doc_id": "doc-a",
+                        "chunk_index": 0,
+                    }
+                ),
+            },
+            {
+                "doc_id": "invalid-chunk-1",
+                "text": "one",
+                "metadata": json.dumps(
+                    {
+                        "kb_id": "kb-1",
+                        "kb_doc_id": "doc-b",
+                        "chunk_index": 0,
+                    }
+                ),
+            },
+            {
+                "doc_id": "invalid-chunk-2",
+                "text": "two",
+                "metadata": json.dumps(
+                    {
+                        "kb_id": "kb-1",
+                        "kb_doc_id": "doc-b",
+                        "chunk_index": 0,
+                    }
+                ),
+            },
+        ]
+
+        with pytest.raises(ValueError, match="duplicate chunk indexes"):
+            await importer._import_legacy_kb_documents(
+                "kb-1",
+                {"documents": documents},
+            )
+
+        assert not (tmp_path / "knowledge-base" / "kb-1").exists()
 
     def test_merge_platform_stats_rows(self):
         """测试 platform_stats 重复键会在导入前聚合"""

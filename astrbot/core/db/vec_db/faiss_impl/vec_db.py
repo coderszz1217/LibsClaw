@@ -203,6 +203,7 @@ class FaissVecDB(BaseVecDB):
         fetch_k: int = 20,
         rerank: bool = False,
         metadata_filters: dict | None = None,
+        **kwargs,
     ) -> list[Result]:
         """搜索最相似的文档。
 
@@ -212,11 +213,14 @@ class FaissVecDB(BaseVecDB):
             fetch_k (int): 在根据 metadata 过滤前从 FAISS 中获取的数量
             rerank (bool): 是否使用重排序。这需要在实例化时提供 rerank_provider, 如果未提供并且 rerank 为 True, 不会抛出异常。
             metadata_filters (dict): 元数据过滤器
+            kwargs: Optional compatibility arguments such as ``top_k``.
 
         Returns:
             List[Result]: 查询结果
 
         """
+        if "top_k" in kwargs:
+            k = int(kwargs["top_k"])
         embedding = await self.embedding_provider.get_embedding(query)
         scores, indices = await self.embedding_storage.search(
             vector=np.array([embedding]).astype("float32"),

@@ -401,6 +401,89 @@ class TestApplyKb:
         await module._apply_kb(mock_event, req, mock_context, config)
 
         assert req.func_tool is not None
+        assert req.func_tool.get_tool("astr_kb_search") is not None
+
+    @pytest.mark.asyncio
+    async def test_apply_kb_non_agentic_adds_import_tool_for_admin_file(
+        self,
+        mock_event,
+        mock_context,
+    ):
+        """Add the import tool for an administrator attachment in RAG mode."""
+        module = ama
+        mock_event.role = "admin"
+        mock_event.message_obj.message = [File(name="wiki.zip", file="/tmp/wiki.zip")]
+        req = ProviderRequest(prompt="import this knowledge base")
+        config = module.MainAgentBuildConfig(
+            tool_call_timeout=60,
+            kb_agentic_mode=False,
+        )
+
+        with patch(
+            "astrbot.core.astr_main_agent.retrieve_knowledge_base",
+            AsyncMock(return_value=None),
+        ):
+            await module._apply_kb(mock_event, req, mock_context, config)
+
+        assert req.func_tool is not None
+        assert req.func_tool.get_tool("astr_kb_import_attachment") is not None
+        assert req.func_tool.get_tool("astr_kb_search") is None
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("role", "has_attachment"),
+        [("member", True), ("admin", False)],
+    )
+    async def test_apply_kb_non_agentic_skips_import_tool_without_permission_or_file(
+        self,
+        role,
+        has_attachment,
+        mock_event,
+        mock_context,
+    ):
+        """Do not expose the import tool without both admin role and a file."""
+        module = ama
+        mock_event.role = role
+        mock_event.message_obj.message = (
+            [File(name="wiki.zip", file="/tmp/wiki.zip")]
+            if has_attachment
+            else [Plain(text="Hello")]
+        )
+        req = ProviderRequest(prompt="test question")
+        config = module.MainAgentBuildConfig(
+            tool_call_timeout=60,
+            kb_agentic_mode=False,
+        )
+
+        with patch(
+            "astrbot.core.astr_main_agent.retrieve_knowledge_base",
+            AsyncMock(return_value=None),
+        ):
+            await module._apply_kb(mock_event, req, mock_context, config)
+
+        assert req.func_tool is None
+
+    @pytest.mark.asyncio
+    async def test_apply_kb_agentic_keeps_query_tool_with_admin_import_tool(
+        self,
+        mock_event,
+        mock_context,
+    ):
+        """Expose both query and import tools for an administrator attachment."""
+        module = ama
+        mock_event.role = "admin"
+        mock_event.message_obj.message = [File(name="wiki.zip", file="/tmp/wiki.zip")]
+        req = ProviderRequest(prompt="import and query this knowledge base")
+        config = module.MainAgentBuildConfig(
+            tool_call_timeout=60,
+            kb_agentic_mode=True,
+        )
+
+        await module._apply_kb(mock_event, req, mock_context, config)
+
+        assert req.func_tool is not None
+        assert req.func_tool.get_tool("astr_kb_import_attachment") is not None
+        assert req.func_tool.get_tool("astr_kb_search") is not None
 
     @pytest.mark.asyncio
     async def test_apply_kb_no_prompt(self, mock_event, mock_context):
@@ -1478,6 +1561,61 @@ class TestBuildMainAgent:
             )
 
         assert result is not None
+
+    @pytest.mark.asyncio
+    async def test_build_main_agent_file_attachment_hints_omit_local_paths(
+        self,
+        mock_event,
+        mock_context,
+        mock_provider,
+        tmp_path,
+    ):
+        """Expose attachment names to the provider without local filesystem paths."""
+        module = ama
+        current_path = tmp_path / "current.zip"
+        quoted_path = tmp_path / "quoted.md"
+        current_path.write_bytes(b"zip fixture")
+        quoted_path.write_text("# Quoted", encoding="utf-8")
+        mock_event.role = "member"
+        mock_event.message_obj.message = [
+            File(name=str(current_path), file=str(current_path)),
+            Reply(
+                id="reply-1",
+                chain=[File(name=r"folder\quoted.md", file=str(quoted_path))],
+                sender_nickname="Alice",
+                message_str="quoted file",
+            ),
+        ]
+
+        mock_context.get_provider_by_id.return_value = None
+        mock_context.get_using_provider.return_value = mock_provider
+        mock_context.get_config.return_value = {}
+        _setup_conversation_for_build(mock_context.conversation_manager)
+
+        with (
+            patch("astrbot.core.astr_main_agent.AgentRunner") as mock_runner_cls,
+            patch("astrbot.core.astr_main_agent.AstrAgentContext"),
+        ):
+            mock_runner = MagicMock()
+            mock_runner.reset = AsyncMock()
+            mock_runner_cls.return_value = mock_runner
+
+            result = await module.build_main_agent(
+                event=mock_event,
+                plugin_context=mock_context,
+                config=module.MainAgentBuildConfig(tool_call_timeout=60),
+            )
+
+        assert result is not None
+        texts = [part.text for part in result.provider_request.extra_user_content_parts]
+        assert "[File Attachment: name current.zip]" in texts
+        assert "[File Attachment in quoted message: name quoted.md]" in texts
+        provider_text = "\n".join(texts)
+        assert str(current_path) not in provider_text
+        assert str(quoted_path) not in provider_text
+        assembled = await result.provider_request.assemble_context()
+        assert str(current_path) not in str(assembled)
+        assert str(quoted_path) not in str(assembled)
 
     @pytest.mark.asyncio
     async def test_build_main_agent_skips_caption_when_main_provider_supports_images(

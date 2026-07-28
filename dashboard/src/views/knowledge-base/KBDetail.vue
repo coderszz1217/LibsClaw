@@ -18,6 +18,14 @@
           {{ t('tabs.documents') }}
           <v-chip class="ml-2" size="small" variant="tonal">{{ kb.doc_count || 0 }}</v-chip>
         </v-tab>
+        <v-tab value="wiki">
+          <v-icon start>mdi-folder-multiple-outline</v-icon>
+          文件管理
+        </v-tab>
+        <v-tab value="graph">
+          <v-icon start>mdi-graph-outline</v-icon>
+          知识图谱
+        </v-tab>
         <v-tab value="retrieval">
           <v-icon start>mdi-magnify</v-icon>
           {{ t('tabs.retrieval') }}
@@ -29,7 +37,7 @@
       </v-tabs>
 
       <!-- 标签页内容 -->
-      <v-window v-model="activeTab" style="padding: 8px;">
+      <v-window v-model="activeTab" style="padding: 8px">
         <!-- 概览 -->
         <v-window-item value="overview">
           <v-row>
@@ -91,14 +99,18 @@
                       <div class="stat-box">
                         <v-icon size="48" color="primary">mdi-file-document</v-icon>
                         <div class="stat-value">{{ kb.doc_count || 0 }}</div>
-                        <div class="stat-label">{{ t('overview.docCount') }}</div>
+                        <div class="stat-label">
+                          {{ t('overview.docCount') }}
+                        </div>
                       </div>
                     </v-col>
                     <v-col cols="6">
                       <div class="stat-box">
                         <v-icon size="48" color="secondary">mdi-text-box</v-icon>
                         <div class="stat-value">{{ kb.chunk_count || 0 }}</div>
-                        <div class="stat-label">{{ t('overview.chunkCount') }}</div>
+                        <div class="stat-label">
+                          {{ t('overview.chunkCount') }}
+                        </div>
                       </div>
                     </v-col>
                   </v-row>
@@ -136,9 +148,17 @@
           <DocumentsTab :kb-id="kbId" :kb="kb" @refresh="loadKB" />
         </v-window-item>
 
+        <v-window-item value="wiki">
+          <WikiTab :kb-id="kbId" :requested-page="requestedWikiPage" @refresh="loadKB" />
+        </v-window-item>
+
+        <v-window-item value="graph">
+          <KnowledgeGraphTab :kb-id="kbId" @open-page="openWikiPage" />
+        </v-window-item>
+
         <!-- 知识库检索 -->
         <v-window-item value="retrieval">
-          <RetrievalTab :kb-id="kbId" :kb-name="kb.kb_name"/>
+          <RetrievalTab :kb-id="kbId" />
         </v-window-item>
 
         <!-- 设置 -->
@@ -156,13 +176,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { knowledgeApi } from '@/api/v1'
 import { useModuleI18n } from '@/i18n/composables'
 import DocumentsTab from './components/DocumentsTab.vue'
+import KnowledgeGraphTab from './components/KnowledgeGraphTab.vue'
 import RetrievalTab from './components/RetrievalTab.vue'
 import SettingsTab from './components/SettingsTab.vue'
+import WikiTab from './components/WikiTab.vue'
 
 const { tm: t } = useModuleI18n('features/knowledge-base/detail')
 const route = useRoute()
@@ -179,7 +201,7 @@ const kb = ref<any>({})
 const snackbar = ref({
   show: false,
   text: '',
-  color: 'success'
+  color: 'success',
 })
 
 const showSnackbar = (text: string, color: string = 'success') => {
@@ -188,9 +210,17 @@ const showSnackbar = (text: string, color: string = 'success') => {
   snackbar.value.show = true
 }
 
+const requestedWikiPage = ref<{ path: string; requestId: number } | null>(null)
+let wikiRequestId = 0
+
+const openWikiPage = (path: string) => {
+  wikiRequestId += 1
+  requestedWikiPage.value = { path, requestId: wikiRequestId }
+  activeTab.value = 'wiki'
+}
+
 // 加载知识库详情
 const loadKB = async () => {
-  loading.value = true
   try {
     const response = await knowledgeApi.get(kbId.value)
     if (response.data.status === 'ok') {
@@ -216,7 +246,7 @@ const formatDate = (dateStr: string) => {
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
   })
 }
 

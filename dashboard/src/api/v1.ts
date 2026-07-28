@@ -69,6 +69,116 @@ export interface ApiEnvelope<T> {
   data: T;
 }
 
+export interface WikiTreeNode {
+  name: string;
+  path: string;
+  type: 'directory' | 'page';
+  title?: string;
+  category?: string;
+  node_type?: string;
+  source?: string | null;
+  summary?: string | null;
+  size?: number;
+  updated_at?: string;
+  children?: WikiTreeNode[];
+}
+
+export interface WikiTreeData {
+  tree: WikiTreeNode;
+  page_count: number;
+  total_size: number;
+}
+
+export interface WikiPageData {
+  path: string;
+  content: string;
+  metadata: Record<string, unknown>;
+  links: Array<Record<string, unknown>>;
+  backlinks: Array<Record<string, unknown>>;
+}
+
+export interface WikiPageWriteData {
+  path: string;
+  doc_id: string;
+  title: string;
+  category: string;
+  node_type: string;
+  source?: string | null;
+  summary?: string | null;
+  chunk_count: number;
+  updated_at: string;
+}
+
+export interface WikiGraphNode {
+  id: string;
+  label: string;
+  node_type: string;
+  category: string;
+  page_path?: string | null;
+  source?: string | null;
+  evidence?: string | null;
+  confidence?: number | null;
+  metadata?: string;
+}
+
+export interface WikiGraphEdge {
+  id: string;
+  source: string;
+  target: string;
+  relation: string;
+  evidence?: string | null;
+  confidence?: number | null;
+  metadata?: string;
+}
+
+export interface WikiGraphData {
+  nodes: WikiGraphNode[];
+  edges: WikiGraphEdge[];
+}
+
+export interface WikiRebuildData {
+  pages: number;
+  chunks: number;
+}
+
+export interface WikiMoveData {
+  source_path: string;
+  target_path: string;
+  entry_type: 'page' | 'directory';
+  moved: Array<{
+    doc_id: string;
+    title: string;
+    old_path: string;
+    new_path: string;
+  }>;
+  rebuild: WikiRebuildData;
+  parent_path: string;
+}
+
+export interface WikiDeleteData {
+  entry_type: 'page' | 'directory';
+  deleted: Array<{
+    doc_id: string;
+    path: string;
+    title: string;
+  }>;
+  rebuild: WikiRebuildData | null;
+}
+
+export interface WikiImportTaskData {
+  task_id: string;
+  file_count: number;
+  message: string;
+}
+
+export interface WikiImportResult {
+  task_id: string;
+  imported: Array<WikiPageWriteData & { size?: number }>;
+  skipped: string[];
+  success_count: number;
+  failed_count: number;
+}
+
 export const UPGRADE_RECOVERY_EVENT = 'astrbot-upgrade-recovery';
 export const UPGRADE_RECOVERY_TOKEN_KEY = 'astrbot-upgrade-recovery-token';
 
@@ -1485,6 +1595,82 @@ export const knowledgeApi = {
         path: { kb_id: kbId },
         body: payload as any,
       }),
+    );
+  },
+  wikiTree(kbId: string) {
+    return typed<WikiTreeData>(
+      openApiV1.getKnowledgeWikiTree({ path: { kb_id: kbId } }),
+    );
+  },
+  wikiPage(kbId: string, path: string) {
+    return typed<WikiPageData>(
+      openApiV1.getKnowledgeWikiPage({
+        path: { kb_id: kbId },
+        query: { path },
+      }),
+    );
+  },
+  saveWikiPage(
+    kbId: string,
+    path: string,
+    content: string,
+    originalPath?: string,
+  ) {
+    if (originalPath) {
+      return typed<WikiPageWriteData>(
+        openApiV1.updateKnowledgeWikiPage({
+          path: { kb_id: kbId },
+          body: { path, content, original_path: originalPath },
+        }),
+      );
+    }
+    return typed<WikiPageWriteData>(
+      openApiV1.createKnowledgeWikiPage({
+        path: { kb_id: kbId },
+        body: { path, content },
+      }),
+    );
+  },
+  deleteWikiPage(kbId: string, path: string) {
+    return typed<null>(
+      openApiV1.deleteKnowledgeWikiPage({
+        path: { kb_id: kbId },
+        query: { path },
+      }),
+    );
+  },
+  moveWikiPath(kbId: string, sourcePath: string, targetPath: string) {
+    return typed<WikiMoveData>(
+      openApiV1.moveKnowledgeWikiPath({
+        path: { kb_id: kbId },
+        body: { source_path: sourcePath, target_path: targetPath },
+      }),
+    );
+  },
+  deleteWikiPath(kbId: string, path: string, recursive = false) {
+    return typed<WikiDeleteData>(
+      openApiV1.deleteKnowledgeWikiPath({
+        path: { kb_id: kbId },
+        query: { path, recursive },
+      }),
+    );
+  },
+  rebuildWiki(kbId: string) {
+    return typed<WikiRebuildData>(
+      openApiV1.rebuildKnowledgeWikiIndex({ path: { kb_id: kbId } }),
+    );
+  },
+  importWiki(kbId: string, formData: FormData) {
+    return typed<WikiImportTaskData>(
+      openApiV1.importKnowledgeWiki({
+        path: { kb_id: kbId },
+        body: generatedFormData(formData),
+      }),
+    );
+  },
+  wikiGraph(kbId: string) {
+    return typed<WikiGraphData>(
+      openApiV1.getKnowledgeWikiGraph({ path: { kb_id: kbId } }),
     );
   },
 };

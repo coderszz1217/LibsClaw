@@ -77,6 +77,7 @@ from astrbot.core.tools.computer_tools import (
 )
 from astrbot.core.tools.cron_tools import FutureTaskTool
 from astrbot.core.tools.knowledge_base_tools import (
+    KnowledgeBaseImportAttachmentTool,
     KnowledgeBaseQueryTool,
     retrieve_knowledge_base,
 )
@@ -274,6 +275,24 @@ async def _apply_kb(
     plugin_context: Context,
     config: MainAgentBuildConfig,
 ) -> None:
+    has_file_attachment = any(
+        isinstance(component, File)
+        or (
+            isinstance(component, Reply)
+            and component.chain
+            and any(isinstance(item, File) for item in component.chain)
+        )
+        for component in event.message_obj.message
+    )
+    if has_file_attachment and event.role == "admin":
+        if req.func_tool is None:
+            req.func_tool = ToolSet()
+        req.func_tool.add_tool(
+            plugin_context.get_llm_tool_manager().get_builtin_tool(
+                KnowledgeBaseImportAttachmentTool
+            )
+        )
+
     if not config.kb_agentic_mode:
         if req.prompt is None or not req.prompt.strip():
             return
@@ -1416,11 +1435,14 @@ async def build_main_agent(
                     _append_audio_attachment(req, audio_path)
                 elif isinstance(comp, File):
                     file_path = await comp.get_file()
-                    file_name = comp.name or os.path.basename(file_path)
+                    file_name = (
+                        os.path.basename(str(comp.name or file_path).replace("\\", "/"))
+                        or "file"
+                    )
                     req.extra_user_content_parts.append(
                         TextPart(
-                            text=f"[File Attachment: name {file_name}, path {file_path}]"
-                        )
+                            text=f"[File Attachment: name {file_name}]"
+                        ).mark_as_temp()
                     )
                 elif isinstance(comp, Video):
                     await _append_video_attachment(req, comp)
@@ -1453,14 +1475,19 @@ async def build_main_agent(
                             _append_quoted_audio_attachment(req, audio_path)
                         elif isinstance(reply_comp, File):
                             file_path = await reply_comp.get_file()
-                            file_name = reply_comp.name or os.path.basename(file_path)
+                            file_name = (
+                                os.path.basename(
+                                    str(reply_comp.name or file_path).replace("\\", "/")
+                                )
+                                or "file"
+                            )
                             req.extra_user_content_parts.append(
                                 TextPart(
                                     text=(
                                         f"[File Attachment in quoted message: "
-                                        f"name {file_name}, path {file_path}]"
+                                        f"name {file_name}]"
                                     )
-                                )
+                                ).mark_as_temp()
                             )
                         elif isinstance(reply_comp, Video):
                             await _append_video_attachment(req, reply_comp, quoted=True)

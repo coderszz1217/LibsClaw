@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from astrbot.core.message.components import Image, Plain, Reply
+from astrbot.core.message.components import File, Image, Plain, Reply
 from astrbot.core.pipeline.preprocess_stage import stage as preprocess_stage
 from astrbot.core.pipeline.preprocess_stage.stage import PreProcessStage
 from astrbot.core.utils import media_utils
@@ -124,3 +124,46 @@ async def test_preprocess_path_mapping_accepts_file_uri(tmp_path):
     image = event.get_messages()[0]
     assert isinstance(image, Image)
     assert image.file == image.path == image.url == str(target_image)
+
+
+@pytest.mark.asyncio
+async def test_preprocess_tracks_only_temp_file_attachments(tmp_path, monkeypatch):
+    """Track current and quoted file attachments only inside LibsClaw temp."""
+    temp_dir = tmp_path / "temp"
+    temp_dir.mkdir()
+    current_file = temp_dir / "current.zip"
+    quoted_file = temp_dir / "quoted.md"
+    external_file = tmp_path / "external.md"
+    current_file.write_bytes(b"zip fixture")
+    quoted_file.write_text("# Quoted", encoding="utf-8")
+    external_file.write_text("# External", encoding="utf-8")
+    monkeypatch.setattr(
+        preprocess_stage,
+        "get_astrbot_temp_path",
+        lambda: str(temp_dir),
+    )
+
+    event = FakeEvent(
+        [
+            File(name=current_file.name, file=str(current_file)),
+            File(name=external_file.name, file=str(external_file)),
+            Reply(
+                id="reply-1",
+                chain=[File(name=quoted_file.name, file=quoted_file.as_uri())],
+                sender_nickname="Alice",
+                message_str="quoted",
+            ),
+        ]
+    )
+    stage = PreProcessStage()
+    stage.config = {}
+    stage.platform_settings = {}
+    stage.stt_settings = {"enable": False}
+
+    await stage.process(event)
+
+    assert set(event.temporary_local_files) == {
+        str(current_file.resolve()),
+        str(quoted_file.resolve()),
+    }
+    assert str(external_file.resolve()) not in event.temporary_local_files

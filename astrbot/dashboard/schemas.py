@@ -248,7 +248,7 @@ class KnowledgeBaseCreateRequest(KnowledgeBaseRequest):
     model_config = ConfigDict(
         populate_by_name=True,
         extra="allow",
-        json_schema_extra={"required": ["name", "embedding_provider_id"]},
+        json_schema_extra={"required": ["name"]},
     )
 
 
@@ -271,9 +271,25 @@ class KnowledgeBaseUrlImportRequest(OpenModel):
 
 class KnowledgeBaseRetrieveRequest(OpenModel):
     query: str | None = None
+    kb_ids: list[str] | None = None
+    kb_names: list[str] | None = None
     top_k: int | None = None
     threshold: float | None = None
     rerank: bool | None = None
+
+
+class KnowledgeWikiPageCreateRequest(OpenModel):
+    path: str
+    content: str
+
+
+class KnowledgeWikiPageUpdateRequest(KnowledgeWikiPageCreateRequest):
+    original_path: str
+
+
+class KnowledgeWikiMoveRequest(OpenModel):
+    source_path: str
+    target_path: str
 
 
 class ToolEnabledRequest(BaseModel):

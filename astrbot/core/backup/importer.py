@@ -7,9 +7,12 @@
 - 版本匹配时也需要用户确认
 """
 
+import hashlib
 import json
 import os
 import shutil
+import sqlite3
+import tempfile
 import zipfile
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -225,7 +228,8 @@ class AstrBotImporter:
 
     导入备份文件中的所有数据，包括：
     - 主数据库所有表
-    - 知识库元数据和文档
+    - 知识库元数据、Wiki 真源和派生索引
+    - 旧版文档块和 FAISS 数据（兼容项）
     - 配置文件
     - 附件文件
     - 知识库多媒体文件
@@ -248,6 +252,34 @@ class AstrBotImporter:
         self.kb_manager = kb_manager
         self.config_path = config_path
         self.kb_root_dir = kb_root_dir
+
+    def _resolve_kb_dir(self, kb_id: Any) -> Path:
+        """Resolve a safe direct child directory for a knowledge base.
+
+        Args:
+            kb_id: Knowledge base identifier read from backup metadata.
+
+        Returns:
+            Resolved destination directory under the configured KB root.
+
+        Raises:
+            ValueError: If the identifier is not one safe path component.
+        """
+        if (
+            not isinstance(kb_id, str)
+            or not kb_id
+            or kb_id in {".", ".."}
+            or "/" in kb_id
+            or "\\" in kb_id
+            or "\x00" in kb_id
+            or Path(kb_id).is_absolute()
+        ):
+            raise ValueError(f"Invalid knowledge base ID in backup: {kb_id!r}")
+        kb_root = Path(self.kb_root_dir).resolve(strict=False)
+        kb_dir = (kb_root / kb_id).resolve(strict=False)
+        if kb_dir.parent != kb_root:
+            raise ValueError(f"Knowledge base path escapes backup root: {kb_id!r}")
+        return kb_dir
 
     def pre_check(self, zip_path: str) -> ImportPreCheckResult:
         """预检查备份文件
@@ -275,7 +307,9 @@ class AstrBotImporter:
                     manifest_data = zf.read("manifest.json")
                     manifest = json.loads(manifest_data)
                 except KeyError:
-                    result.error = "备份文件缺少 manifest.json，不是有效的 LibsClaw 备份"
+                    result.error = (
+                        "备份文件缺少 manifest.json，不是有效的 LibsClaw 备份"
+                    )
                     return result
                 except json.JSONDecodeError as e:
                     result.error = f"manifest.json 格式错误: {e}"
@@ -721,10 +755,38 @@ class AstrBotImporter:
         if not self.kb_manager:
             return
 
+        safe_kb_ids: set[str] = set()
+        for kb_data in kb_meta_data.get("knowledge_bases", []):
+            kb_id = kb_data.get("kb_id")
+            try:
+                self._resolve_kb_dir(kb_id)
+            except ValueError as exc:
+                result.add_warning(str(exc))
+                continue
+            safe_kb_ids.add(kb_id)
+
+        filtered_metadata: dict[str, list[dict]] = {}
+        for table_name, rows in kb_meta_data.items():
+            filtered_metadata[table_name] = [
+                row
+                for row in rows
+                if isinstance(row, dict) and row.get("kb_id") in safe_kb_ids
+            ]
+        known_document_ids = {
+            row.get("doc_id")
+            for row in filtered_metadata.get("kb_documents", [])
+            if row.get("doc_id")
+        }
+        filtered_metadata["kb_media"] = [
+            row
+            for row in filtered_metadata.get("kb_media", [])
+            if row.get("doc_id") in known_document_ids
+        ]
+
         # 1. 导入知识库元数据
         async with self.kb_manager.kb_db.get_db() as session:
             async with session.begin():
-                for table_name, rows in kb_meta_data.items():
+                for table_name, rows in filtered_metadata.items():
                     model_class = KB_METADATA_MODELS.get(table_name)
                     if not model_class:
                         continue
@@ -744,29 +806,45 @@ class AstrBotImporter:
         # 2. 导入每个知识库的文档和文件
         for kb_data in kb_meta_data.get("knowledge_bases", []):
             kb_id = kb_data.get("kb_id")
-            if not kb_id:
+            if kb_id not in safe_kb_ids:
                 continue
 
-            # 创建知识库目录
-            kb_dir = Path(self.kb_root_dir) / kb_id
-            kb_dir.mkdir(parents=True, exist_ok=True)
+            kb_dir = self._resolve_kb_dir(kb_id)
 
-            # 导入文档数据
+            wiki_prefix = f"files/kb_wiki/{kb_id}/"
+            has_wiki_files = any(
+                name.startswith(wiki_prefix) and name != wiki_prefix
+                for name in zf.namelist()
+            )
+            wiki_restored = False
+            if has_wiki_files:
+                try:
+                    imported_count, wiki_restored = self._import_kb_wiki_files(
+                        zf,
+                        kb_id,
+                        kb_dir,
+                    )
+                    if imported_count:
+                        result.imported_files[f"kb_wiki_{kb_id}"] = imported_count
+                except Exception as e:
+                    result.add_warning(f"导入知识库 {kb_id} 的 Wiki 文件失败: {e}")
+
+            # Legacy backups contain only documents.json and optional FAISS data.
             doc_path = f"databases/kb_{kb_id}/documents.json"
-            if doc_path in zf.namelist():
+            if not wiki_restored and doc_path in zf.namelist():
                 try:
                     doc_content = zf.read(doc_path)
                     doc_data = json.loads(doc_content)
-
-                    # 导入到文档存储数据库
-                    await self._import_kb_documents(kb_id, doc_data)
+                    await self._import_legacy_kb_documents(kb_id, doc_data)
                 except Exception as e:
                     result.add_warning(f"导入知识库 {kb_id} 的文档失败: {e}")
 
-            # 导入 FAISS 索引
+            # Preserve the old index file for rollback tooling, but the Wiki
+            # store rebuilt above is the active knowledge base index.
             faiss_path = f"databases/kb_{kb_id}/index.faiss"
-            if faiss_path in zf.namelist():
+            if not wiki_restored and faiss_path in zf.namelist():
                 try:
+                    kb_dir.mkdir(parents=True, exist_ok=True)
                     target_path = kb_dir / "index.faiss"
                     with zf.open(faiss_path) as src, open(target_path, "wb") as dst:
                         dst.write(src.read())
@@ -776,13 +854,20 @@ class AstrBotImporter:
             # 导入媒体文件
             media_prefix = f"files/kb_media/{kb_id}/"
             for name in zf.namelist():
-                if name.startswith(media_prefix):
+                if name.startswith(media_prefix) and name != media_prefix:
                     try:
                         rel_path = name[len(media_prefix) :]
                         target_path = kb_dir / rel_path
-                        # Validate path is within kb directory (CWE-22)
-                        if not _validate_path_within(target_path, kb_dir):
-                            logger.warning(f"媒体文件路径越界，已跳过: {target_path}")
+                        media_dir = kb_dir / "medias" / kb_id
+                        if not _validate_path_within(
+                            target_path, media_dir
+                        ) or target_path.resolve(strict=False) == media_dir.resolve(
+                            strict=False
+                        ):
+                            logger.warning(
+                                f"Skipping media file outside the expected directory: "
+                                f"{target_path}"
+                            )
                             continue
                         target_path.parent.mkdir(parents=True, exist_ok=True)
                         with zf.open(name) as src, open(target_path, "wb") as dst:
@@ -793,30 +878,359 @@ class AstrBotImporter:
         # 3. 重新加载知识库实例
         await self.kb_manager.load_kbs()
 
-    async def _import_kb_documents(self, kb_id: str, doc_data: dict) -> None:
-        """导入知识库文档到向量数据库"""
-        from astrbot.core.db.vec_db.faiss_impl.document_storage import DocumentStorage
+    def _import_kb_wiki_files(
+        self,
+        zf: zipfile.ZipFile,
+        kb_id: str,
+        kb_dir: Path,
+    ) -> tuple[int, bool]:
+        """Restore the file-backed Wiki for one knowledge base.
 
-        kb_dir = Path(self.kb_root_dir) / kb_id
-        doc_db_path = kb_dir / "doc.db"
+        Args:
+            zf: Source backup archive.
+            kb_id: Stable knowledge base identifier.
+            kb_dir: Destination directory for this knowledge base.
 
-        # 初始化文档存储
-        doc_storage = DocumentStorage(str(doc_db_path))
-        await doc_storage.initialize()
+        Returns:
+            Restored file count and whether valid Markdown truth was restored.
+        """
+        prefix = f"files/kb_wiki/{kb_id}/"
+        count = 0
+        kb_dir = self._resolve_kb_dir(kb_id)
+        Path(self.kb_root_dir).mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(
+            prefix=f".{kb_id}-restore-",
+            dir=self.kb_root_dir,
+        ) as temp_dir_name:
+            temp_dir = Path(temp_dir_name)
+            for name in zf.namelist():
+                if not name.startswith(prefix) or name == prefix or name.endswith("/"):
+                    continue
+                rel_path = name[len(prefix) :]
+                target_path = temp_dir / rel_path
+                if not _validate_path_within(target_path, temp_dir):
+                    logger.warning(f"Wiki file path escapes knowledge base: {name}")
+                    continue
+                target_path.parent.mkdir(parents=True, exist_ok=True)
+                with zf.open(name) as src, open(target_path, "wb") as dst:
+                    shutil.copyfileobj(src, dst)
+                count += 1
 
-        try:
-            documents = doc_data.get("documents", [])
-            for doc in documents:
-                try:
-                    await doc_storage.insert_document(
-                        doc_id=doc.get("doc_id", ""),
-                        text=doc.get("text", ""),
-                        metadata=json.loads(doc.get("metadata", "{}")),
+            has_markdown = (
+                any(
+                    path.name not in {"index.md", "log.md"}
+                    for path in (temp_dir / "knowledge").rglob("*.md")
+                )
+                if (temp_dir / "knowledge").is_dir()
+                else False
+            )
+            if not has_markdown:
+                preserved_count = 0
+                for directory_name in ("sources", "assets"):
+                    source_dir = temp_dir / directory_name
+                    if not source_dir.exists():
+                        continue
+                    kb_dir.mkdir(parents=True, exist_ok=True)
+                    preserved_count += sum(
+                        1 for path in source_dir.rglob("*") if path.is_file()
                     )
-                except Exception as e:
-                    logger.warning(f"导入文档块失败: {e}")
-        finally:
-            await doc_storage.close()
+                    target_dir = kb_dir / directory_name
+                    if target_dir.exists():
+                        shutil.rmtree(target_dir)
+                    source_dir.replace(target_dir)
+                return preserved_count, False
+
+            wiki_db_path = temp_dir / "index" / "wiki.db"
+            valid_database = False
+            if wiki_db_path.is_file():
+                try:
+                    connection = sqlite3.connect(
+                        f"file:{wiki_db_path.as_posix()}?mode=ro",
+                        uri=True,
+                    )
+                    try:
+                        quick_check = connection.execute(
+                            "PRAGMA quick_check"
+                        ).fetchone()
+                        table_names = {
+                            row[0]
+                            for row in connection.execute(
+                                "SELECT name FROM sqlite_master WHERE type='table'"
+                            ).fetchall()
+                        }
+                        required_columns = {
+                            "pages": {
+                                "path",
+                                "doc_id",
+                                "title",
+                                "category",
+                                "node_type",
+                                "source",
+                                "summary",
+                                "content_hash",
+                                "size",
+                                "created_at",
+                                "updated_at",
+                            },
+                            "chunks": {
+                                "id",
+                                "chunk_id",
+                                "doc_id",
+                                "kb_id",
+                                "page_path",
+                                "chunk_index",
+                                "text",
+                                "search_text",
+                                "embedding",
+                                "metadata",
+                                "created_at",
+                                "updated_at",
+                            },
+                            "graph_nodes": {
+                                "id",
+                                "label",
+                                "node_type",
+                                "category",
+                                "page_path",
+                                "source",
+                                "evidence",
+                                "confidence",
+                                "metadata",
+                            },
+                            "graph_edges": {
+                                "id",
+                                "source",
+                                "target",
+                                "relation",
+                                "evidence",
+                                "confidence",
+                                "metadata",
+                            },
+                        }
+                        valid_database = quick_check == ("ok",) and set(
+                            required_columns
+                        ).issubset(table_names)
+                        if valid_database:
+                            valid_database = all(
+                                required.issubset(
+                                    {
+                                        row[1]
+                                        for row in connection.execute(
+                                            f'PRAGMA table_info("{table_name}")'
+                                        ).fetchall()
+                                    }
+                                )
+                                for table_name, required in required_columns.items()
+                            )
+                        if valid_database:
+                            indexed_hashes = dict(
+                                connection.execute(
+                                    "SELECT path, content_hash FROM pages"
+                                ).fetchall()
+                            )
+                            markdown_hashes = {
+                                path.relative_to(
+                                    temp_dir / "knowledge"
+                                ).as_posix(): hashlib.sha256(
+                                    path.read_bytes()
+                                ).hexdigest()
+                                for path in (temp_dir / "knowledge").rglob("*.md")
+                                if path.name not in {"index.md", "log.md"}
+                            }
+                            valid_database = indexed_hashes == markdown_hashes
+                    finally:
+                        connection.close()
+                except (OSError, sqlite3.DatabaseError):
+                    valid_database = False
+
+            if not valid_database:
+                index_dir = temp_dir / "index"
+                if index_dir.exists():
+                    shutil.rmtree(index_dir)
+
+            kb_dir.mkdir(parents=True, exist_ok=True)
+            for directory_name in (
+                "knowledge",
+                "sources",
+                "assets",
+                "index",
+                ".migrations",
+            ):
+                source_dir = temp_dir / directory_name
+                if not source_dir.exists():
+                    continue
+                target_dir = kb_dir / directory_name
+                if target_dir.exists():
+                    shutil.rmtree(target_dir)
+                source_dir.replace(target_dir)
+            return count, True
+
+    async def _import_legacy_kb_documents(
+        self,
+        kb_id: str,
+        doc_data: dict,
+    ) -> None:
+        """Convert validated legacy chunks into Markdown knowledge truth.
+
+        No derived index is created here. ``KnowledgeBaseManager.load_kbs``
+        initializes each helper with its configured embedding provider and the
+        Wiki store rebuilds the missing index from these Markdown pages.
+
+        Args:
+            kb_id: Stable knowledge base identifier.
+            doc_data: Legacy ``documents.json`` payload.
+
+        Raises:
+            ValueError: If legacy document or chunk metadata is invalid.
+        """
+        from astrbot.core.knowledge_base.wiki import (
+            _LEGACY_CHUNK_SEPARATOR,
+            _LEGACY_MIGRATION_VERSION,
+            _LEGACY_PAGE_NOTE,
+        )
+
+        kb_dir = self._resolve_kb_dir(kb_id)
+        chunks_by_document: dict[str, list[tuple[int, str, str]]] = {}
+        if not isinstance(doc_data, dict):
+            raise ValueError("Legacy documents payload must be an object")
+        documents = doc_data.get("documents", [])
+        if not isinstance(documents, list):
+            raise ValueError("Legacy documents payload must be a list")
+        seen_chunk_ids: set[str] = set()
+        for doc in documents:
+            if not isinstance(doc, dict):
+                raise ValueError("Legacy document chunk must be an object")
+            raw_metadata = doc.get("metadata") or {}
+            if isinstance(raw_metadata, str):
+                try:
+                    metadata = json.loads(raw_metadata)
+                except json.JSONDecodeError as exc:
+                    raise ValueError("Legacy chunk metadata is invalid JSON") from exc
+            elif isinstance(raw_metadata, dict):
+                metadata = raw_metadata
+            else:
+                raise ValueError("Legacy chunk metadata must be an object")
+
+            metadata_kb_id = metadata.get("kb_id")
+            if metadata_kb_id and str(metadata_kb_id) != kb_id:
+                raise ValueError("Legacy chunk belongs to another knowledge base")
+            document_id = str(metadata.get("kb_doc_id") or "").strip()
+            if not document_id:
+                raise ValueError("Legacy chunk is missing kb_doc_id")
+            chunk_id = str(doc.get("doc_id") or "").strip()
+            if not chunk_id:
+                raise ValueError("Legacy chunk is missing chunk ID")
+            if chunk_id in seen_chunk_ids:
+                raise ValueError(f"Duplicate legacy chunk ID: {chunk_id}")
+            seen_chunk_ids.add(chunk_id)
+            try:
+                chunk_index = int(metadata["chunk_index"])
+            except (KeyError, TypeError, ValueError) as exc:
+                raise ValueError("Legacy chunk has invalid chunk_index") from exc
+            if chunk_index < 0:
+                raise ValueError("Legacy chunk_index cannot be negative")
+            chunks_by_document.setdefault(document_id, []).append(
+                (chunk_index, str(doc.get("text", "")), chunk_id)
+            )
+
+        prepared_documents: list[dict[str, Any]] = []
+        for document_id, rows in sorted(chunks_by_document.items()):
+            ordered = sorted(rows, key=lambda row: (row[0], row[2]))
+            indexes = [row[0] for row in ordered]
+            if len(indexes) != len(set(indexes)):
+                raise ValueError(
+                    f"Legacy document {document_id} has duplicate chunk indexes"
+                )
+            page_name = hashlib.sha256(document_id.encode("utf-8")).hexdigest()[:24]
+            chunks = [row[1] for row in ordered]
+            prepared_documents.append(
+                {
+                    "doc_id": document_id,
+                    "page_name": page_name,
+                    "chunks": chunks,
+                    "chunk_ids": [row[2] for row in ordered],
+                    "chunk_sha256": [
+                        hashlib.sha256(chunk.encode("utf-8")).hexdigest()
+                        for chunk in chunks
+                    ],
+                }
+            )
+
+        Path(self.kb_root_dir).mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(
+            prefix=f".{kb_id}-legacy-restore-",
+            dir=self.kb_root_dir,
+        ) as temp_dir_name:
+            temp_dir = Path(temp_dir_name)
+            staged_legacy_dir = temp_dir / "knowledge" / "legacy"
+            staged_legacy_dir.mkdir(parents=True, exist_ok=True)
+            marker_documents: dict[str, dict[str, Any]] = {}
+            for prepared in prepared_documents:
+                document_id = prepared["doc_id"]
+                chunks = prepared["chunks"]
+                page_content = (
+                    "---\n"
+                    f"doc_id: {document_id}\n"
+                    "type: source\n"
+                    "source: legacy backup\n"
+                    "---\n\n"
+                    f"# {document_id}\n\n"
+                    f"{_LEGACY_PAGE_NOTE}\n\n"
+                    + _LEGACY_CHUNK_SEPARATOR.join(chunks)
+                    + "\n"
+                )
+                page_path = staged_legacy_dir / f"{prepared['page_name']}.md"
+                page_path.write_text(page_content, encoding="utf-8")
+                marker_documents[document_id] = {
+                    "doc_id": document_id,
+                    "chunk_ids": prepared["chunk_ids"],
+                    "chunk_sha256": prepared["chunk_sha256"],
+                }
+
+            now = datetime.now(timezone.utc).isoformat()
+            marker = {
+                "migration": "faiss-docdb-to-wiki",
+                "version": _LEGACY_MIGRATION_VERSION,
+                "kb_id": kb_id,
+                "state": "complete",
+                "source": {
+                    "path": "documents.json",
+                    "row_count": len(documents),
+                },
+                "progress": {
+                    "documents_done": len(prepared_documents),
+                    "chunks_done": len(documents),
+                },
+                "documents": marker_documents,
+                "result": {
+                    "pages": len(prepared_documents),
+                    "chunks": len(documents),
+                },
+                "last_error": None,
+                "updated_at": now,
+            }
+            staged_marker = temp_dir / ".migrations" / "faiss-to-wiki-v1.json"
+            staged_marker.parent.mkdir(parents=True, exist_ok=True)
+            staged_marker.write_text(
+                json.dumps(marker, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+
+            kb_dir.mkdir(parents=True, exist_ok=True)
+            knowledge_dir = kb_dir / "knowledge"
+            if knowledge_dir.exists():
+                shutil.rmtree(knowledge_dir)
+            (temp_dir / "knowledge").replace(knowledge_dir)
+
+            migrations_dir = kb_dir / ".migrations"
+            migrations_dir.mkdir(parents=True, exist_ok=True)
+            target_marker = migrations_dir / staged_marker.name
+            target_marker.unlink(missing_ok=True)
+            staged_marker.replace(target_marker)
+
+            index_dir = kb_dir / "index"
+            if index_dir.exists():
+                shutil.rmtree(index_dir)
 
     async def _import_attachments(
         self,

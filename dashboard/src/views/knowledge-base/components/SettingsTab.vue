@@ -76,7 +76,7 @@
                 variant="outlined"
                 density="comfortable"
                 @update:model-value="handleEmbeddingProviderChange"
-                :disabled="true"
+                clearable
               />
             </v-col>
             <v-col cols="12" md="6">
@@ -98,7 +98,7 @@
           </v-alert>
 
           <v-alert type="warning" variant="tonal" class="mt-4" v-if="showEmbeddingWarning">
-            <strong>注意:</strong> 修改嵌入模型会导致现有的向量数据失效,建议重新上传文档。不同的嵌入模型生成的向量不兼容,可能导致检索结果不准确。
+            <strong>注意:</strong> 保存后系统会从 Markdown 真源重建全部派生索引，完成前请勿重复修改设置。
           </v-alert>
         </v-form>
       </v-card-text>
@@ -131,16 +131,16 @@
         </v-card-title>
         <v-card-text class="pa-6">
           <v-alert type="warning" variant="tonal" class="mb-4">
-            <strong>警告:</strong> 修改嵌入模型将导致以下影响:
+            <strong>提示:</strong> 修改嵌入模型将触发以下操作:
           </v-alert>
           <ul class="text-body-2">
-            <li>现有的向量数据将失效</li>
-            <li>检索功能可能无法正常工作</li>
-            <li>建议删除现有文档后重新上传</li>
-            <li>不同嵌入模型生成的向量不兼容</li>
+            <li>系统会从 Markdown 真源重新分块并生成索引</li>
+            <li>页面和原始资料不会被删除</li>
+            <li>页面较多时保存可能需要一些时间</li>
+            <li>清空模型后将切换为纯关键词检索</li>
           </ul>
           <div class="mt-4 text-body-2">
-            您确定要将嵌入模型从 <strong>{{ originalEmbeddingProvider }}</strong> 修改为 <strong>{{ pendingEmbeddingProvider }}</strong> 吗?
+            您确定要将嵌入模型从 <strong>{{ originalEmbeddingProvider || '未配置' }}</strong> 修改为 <strong>{{ pendingEmbeddingProvider || '未配置' }}</strong> 吗?
           </div>
         </v-card-text>
         <v-card-actions class="pa-4">
@@ -194,8 +194,8 @@ const showSnackbar = (text: string, color: string = 'success') => {
 
 // 表单数据
 const formData = ref({
-  chunk_size: 512,
-  chunk_overlap: 50,
+  chunk_size: 800,
+  chunk_overlap: 80,
   top_k_dense: 50,
   top_k_sparse: 50,
   embedding_provider_id: '',
@@ -206,8 +206,8 @@ const formData = ref({
 watch(() => props.kb, (kb) => {
   if (kb) {
     formData.value = {
-      chunk_size: kb.chunk_size || 512,
-      chunk_overlap: kb.chunk_overlap || 50,
+      chunk_size: kb.chunk_size ?? 800,
+      chunk_overlap: kb.chunk_overlap ?? 80,
       top_k_dense: kb.top_k_dense || 50,
       top_k_sparse: kb.top_k_sparse || 50,
       // top_m_final: kb.top_m_final || 5,
@@ -237,11 +237,12 @@ const loadProviders = async () => {
 }
 
 // 处理embedding provider变更
-const handleEmbeddingProviderChange = (newValue: string) => {
-  if (newValue && newValue !== originalEmbeddingProvider.value) {
+const handleEmbeddingProviderChange = (newValue: string | null) => {
+  const normalizedValue = newValue || ''
+  if (normalizedValue !== originalEmbeddingProvider.value) {
     // 显示警告并需要确认
     showEmbeddingWarning.value = true
-    pendingEmbeddingProvider.value = newValue
+    pendingEmbeddingProvider.value = normalizedValue
     embeddingChangeDialog.value = true
   } else {
     showEmbeddingWarning.value = false
@@ -276,6 +277,7 @@ const saveSettings = async () => {
       top_k_dense: formData.value.top_k_dense,
       top_k_sparse: formData.value.top_k_sparse,
       // top_m_final: formData.value.top_m_final,
+      embedding_provider_id: formData.value.embedding_provider_id || null,
       rerank_provider_id: formData.value.rerank_provider_id
     })
 

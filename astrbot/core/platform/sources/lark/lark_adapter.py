@@ -602,13 +602,33 @@ class LarkPlatformAdapter(Platform):
         Returns:
             Created Lark message event.
         """
-        return LarkMessageEvent(
+        lark_event = LarkMessageEvent(
             message_str=message.message_str,
             message_obj=message,
             platform_meta=self.meta(),
             session_id=message.session_id,
             bot=self.lark_api,
         )
+        file_components: list[Comp.File] = []
+        for component in message.message:
+            if isinstance(component, Comp.File):
+                file_components.append(component)
+            elif isinstance(component, Comp.Reply) and component.chain:
+                file_components.extend(
+                    item for item in component.chain if isinstance(item, Comp.File)
+                )
+
+        temp_dir = Path(get_astrbot_temp_path()).resolve()
+        for component in file_components:
+            if not component.file_:
+                continue
+            try:
+                file_path = Path(component.file_).resolve()
+                file_path.relative_to(temp_dir)
+            except (OSError, ValueError):
+                continue
+            lark_event.track_temporary_local_file(str(file_path))
+        return lark_event
 
     async def handle_msg(self, abm: AstrBotMessage) -> None:
         self.commit_event(self.create_event(abm))

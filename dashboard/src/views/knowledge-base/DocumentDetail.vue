@@ -97,6 +97,16 @@
         </v-card-title>
 
         <v-card-text class="pa-0">
+          <v-alert
+            class="ma-4"
+            color="info"
+            icon="mdi-language-markdown"
+            type="info"
+            variant="tonal"
+          >
+            {{ t('chunks.derivedNotice') }}
+          </v-alert>
+
           <v-data-table
             :headers="headers"
             :items="filteredChunks"
@@ -129,14 +139,6 @@
                 size="small"
                 color="info"
                 @click="viewChunk(item)"
-              />
-              <!-- 删除 -->
-              <v-btn
-                icon="mdi-delete"
-                variant="text"
-                size="small"
-                color="error"
-                @click="deleteChunk(item)"
               />
             </template>
 
@@ -237,12 +239,9 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { knowledgeApi } from '@/api/v1'
 import { useModuleI18n } from '@/i18n/composables'
-import { askForConfirmation, useConfirmDialog } from '@/utils/confirmDialog'
 
 const { tm: t } = useModuleI18n('features/knowledge-base/document')
 const route = useRoute()
-
-const confirmDialog = useConfirmDialog()
 
 const kbId = ref(route.params.kbId as string)
 const docId = ref(route.params.docId as string)
@@ -278,7 +277,7 @@ const headers = [
   { title: t('chunks.index'), key: 'chunk_index', width: 100 },
   { title: t('chunks.content'), key: 'content', sortable: false },
   { title: t('chunks.charCount'), key: 'char_count', width: 150 },
-  { title: t('chunks.actions'), key: 'actions', sortable: false, width: 150 }
+  { title: t('chunks.actions'), key: 'actions', sortable: false, width: 96 }
 ]
 
 // 过滤分块
@@ -343,23 +342,6 @@ const handlePageSizeChange = (newPageSize: number) => {
 const viewChunk = (chunk: any) => {
   selectedChunk.value = chunk
   showViewDialog.value = true
-}
-
-// 删除分块
-const deleteChunk = async (chunk: any) => {
-  if (!(await askForConfirmation(t('chunks.deleteConfirm'), confirmDialog))) return
-  try {
-    const response = await knowledgeApi.deleteChunk(kbId.value, chunk.chunk_id, docId.value)
-    if (response.data.status === 'ok') {
-      showSnackbar(t('chunks.deleteSuccess'))
-      loadChunks()
-    } else {
-      showSnackbar(t('chunks.deleteFailed'), 'error')
-    }
-  } catch (error) {
-    console.error('Failed to delete chunk:', error)
-    showSnackbar(t('chunks.deleteFailed'), 'error')
-  }
 }
 
 // 工具函数

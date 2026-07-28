@@ -32,7 +32,7 @@ class BaseVecDB:
         tasks_limit: int = 3,
         max_retries: int = 3,
         progress_callback=None,
-    ) -> int:
+    ) -> list[int]:
         """批量插入文本和其对应向量，自动生成 ID 并保持一致性。
 
         Args:
@@ -45,29 +45,53 @@ class BaseVecDB:
     async def retrieve(
         self,
         query: str,
-        top_k: int = 5,
+        k: int = 5,
         fetch_k: int = 20,
         rerank: bool = False,
         metadata_filters: dict | None = None,
+        **kwargs,
     ) -> list[Result]:
         """搜索最相似的文档。
         Args:
             query (str): 查询文本
-            top_k (int): 返回的最相似文档的数量
+            k (int): 返回的最相似文档的数量
+            kwargs: Optional compatibility arguments such as ``top_k``.
         Returns:
             List[Result]: 查询结果
         """
         ...
 
     @abc.abstractmethod
-    async def delete(self, doc_id: str) -> bool:
+    async def delete(self, doc_id: str) -> None:
         """删除指定文档。
         Args:
             doc_id (str): 要删除的文档 ID
         Returns:
-            bool: 删除是否成功
+            None.
         """
         ...
+
+    async def delete_documents(self, metadata_filters: dict) -> None:
+        """Delete documents matching metadata filters when supported.
+
+        Args:
+            metadata_filters: Metadata equality filters.
+
+        Raises:
+            NotImplementedError: If the concrete store does not support it.
+        """
+        raise NotImplementedError
+
+    async def count_documents(self, metadata_filter: dict | None = None) -> int:
+        """Count documents matching metadata filters when supported.
+
+        Args:
+            metadata_filter: Metadata equality filters.
+
+        Raises:
+            NotImplementedError: If the concrete store does not support it.
+        """
+        raise NotImplementedError
 
     @abc.abstractmethod
     async def close(self): ...

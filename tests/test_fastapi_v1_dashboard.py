@@ -1193,17 +1193,34 @@ async def test_v1_openapi_uses_pydantic_request_bodies(
 
 
 @pytest.mark.asyncio
-async def test_v1_knowledge_base_create_validation_uses_api_error_shape(
+async def test_v1_knowledge_base_create_validation_and_keyword_only_creation(
     asgi_client: httpx.AsyncClient,
+    fake_core_lifecycle,
 ):
     headers = _jwt_headers()
+    created_payload: dict[str, object] = {}
+
+    async def create_kb(**kwargs):
+        """Return a minimal keyword-only knowledge base for the API contract."""
+        created_payload.update(kwargs)
+        return SimpleNamespace(
+            kb=SimpleNamespace(
+                model_dump=lambda: {
+                    "kb_id": "kb-keyword",
+                    "kb_name": kwargs["kb_name"],
+                    "embedding_provider_id": kwargs["embedding_provider_id"],
+                }
+            )
+        )
+
+    fake_core_lifecycle.kb_manager = SimpleNamespace(create_kb=create_kb)
 
     missing_name_response = await asgi_client.post(
         "/api/v1/knowledge-bases",
         json={"embedding_provider_id": "embedding-1"},
         headers=headers,
     )
-    missing_provider_response = await asgi_client.post(
+    keyword_only_response = await asgi_client.post(
         "/api/v1/knowledge-bases",
         json={"name": "Docs"},
         headers=headers,
@@ -1212,11 +1229,43 @@ async def test_v1_knowledge_base_create_validation_uses_api_error_shape(
     assert missing_name_response.status_code == 200
     assert missing_name_response.json()["status"] == "error"
     assert missing_name_response.json()["message"] == "知识库名称不能为空"
-    assert missing_provider_response.status_code == 200
-    assert missing_provider_response.json()["status"] == "error"
-    assert (
-        missing_provider_response.json()["message"] == "缺少参数 embedding_provider_id"
+    assert keyword_only_response.status_code == 200
+    assert keyword_only_response.json()["status"] == "ok"
+    assert keyword_only_response.json()["message"] == "创建知识库成功"
+    assert keyword_only_response.json()["data"] == {
+        "kb_id": "kb-keyword",
+        "kb_name": "Docs",
+        "embedding_provider_id": None,
+    }
+    assert created_payload["embedding_provider_id"] is None
+
+
+@pytest.mark.asyncio
+async def test_v1_wiki_import_accepts_more_than_starlette_default_part_counts(
+    asgi_client: httpx.AsyncClient,
+    fake_core_lifecycle,
+):
+    """Do not apply Starlette's default 1000-file or 1000-field limits."""
+
+    async def get_kb(_kb_id: str):
+        return None
+
+    fake_core_lifecycle.kb_manager = SimpleNamespace(get_kb=get_kb)
+    multipart = []
+    for index in range(1001):
+        file_name = f"page-{index}.md"
+        multipart.append(("files", (file_name, b"# Page", "text/markdown")))
+        multipart.append(("paths", (None, f"folder/{file_name}")))
+
+    response = await asgi_client.post(
+        "/api/v1/knowledge-bases/kb-many/wiki/import",
+        files=multipart,
+        headers=_jwt_headers(),
     )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "error"
+    assert response.json()["message"] == "知识库不存在"
 
 
 @pytest.mark.asyncio
@@ -2745,6 +2794,77 @@ async def test_multipart_parts_preserves_duplicate_form_values():
 
     assert form.getlist("tag") == ["one", "two"]
     assert not files
+
+
+@pytest.mark.asyncio
+async def test_multipart_parts_forwards_count_limit_overrides():
+    from starlette.datastructures import FormData
+
+    from astrbot.dashboard.api.multipart import multipart_parts
+
+    captured: dict[str, object] = {}
+
+    class FakeRequest:
+        async def form(self, **kwargs):
+            captured.update(kwargs)
+            return FormData()
+
+    await multipart_parts(
+        FakeRequest(),
+        max_files=float("inf"),
+        max_fields=float("inf"),
+    )
+
+    assert captured == {"max_files": float("inf"), "max_fields": float("inf")}
+
+
+@pytest.mark.asyncio
+async def test_multipart_parts_rejects_streamed_body_over_limit():
+    from astrbot.dashboard.api.multipart import multipart_parts
+
+    body = b"--test-boundary\r\n" + b"x" * 64
+    messages = [{"type": "http.request", "body": body, "more_body": False}]
+
+    async def receive():
+        return messages.pop(0)
+
+    request = Request(
+        {
+            "type": "http",
+            "method": "POST",
+            "path": "/upload",
+            "query_string": b"",
+            "headers": [
+                (
+                    b"content-type",
+                    b"multipart/form-data; boundary=test-boundary",
+                )
+            ],
+        },
+        receive,
+    )
+
+    with pytest.raises(ValueError, match="安全上限"):
+        await multipart_parts(request, max_body_size=32)
+
+
+@pytest.mark.asyncio
+async def test_upload_file_adapter_enforces_save_limit(tmp_path):
+    from io import BytesIO
+
+    from starlette.datastructures import UploadFile
+
+    from astrbot.dashboard.api.multipart import UploadFileAdapter
+
+    adapter = UploadFileAdapter(
+        UploadFile(file=BytesIO(b"12345"), filename="oversized.md")
+    )
+    destination = tmp_path / "oversized.md"
+
+    with pytest.raises(ValueError, match="configured size limit"):
+        await adapter.save(destination, max_bytes=4)
+
+    assert destination.read_bytes() == b""
 
 
 @pytest.mark.asyncio

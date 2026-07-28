@@ -5,7 +5,7 @@ from collections.abc import AsyncGenerator
 from pathlib import Path
 
 from astrbot.core import logger
-from astrbot.core.message.components import Image, Plain, Record, Reply
+from astrbot.core.message.components import File, Image, Plain, Record, Reply
 from astrbot.core.platform.astr_message_event import AstrMessageEvent
 from astrbot.core.utils.astrbot_path import get_astrbot_temp_path
 from astrbot.core.utils.media_utils import (
@@ -40,7 +40,10 @@ class PreProcessStage(Stage):
         """
 
         try:
-            path = Path(media_path).resolve()
+            local_path = (
+                file_uri_to_path(media_path) if is_file_uri(media_path) else media_path
+            )
+            path = Path(local_path).resolve()
             temp_dir = Path(get_astrbot_temp_path()).resolve()
             path.relative_to(temp_dir)
         except (OSError, ValueError):
@@ -126,6 +129,8 @@ class PreProcessStage(Stage):
                         describe_media_ref(media_ref),
                         e,
                     )
+            elif isinstance(component, File) and component.file_:
+                self._track_temp_media(event, component.file_)
 
         # Also normalize media components inside Reply chains.
         for component in event.get_messages():
@@ -162,6 +167,8 @@ class PreProcessStage(Stage):
                                 describe_media_ref(media_ref),
                                 e,
                             )
+                    elif isinstance(reply_comp, File) and reply_comp.file_:
+                        self._track_temp_media(event, reply_comp.file_)
 
         # STT
         if self.stt_settings.get("enable", False):

@@ -161,9 +161,9 @@
 
             <v-select v-model="formData.embedding_provider_id" :items="embeddingProviders"
               :item-title="item => item.embedding_model || item.id" :item-value="'id'"
-              :label="t('create.embeddingModelLabel')" variant="outlined" class="mb-4" :disabled="editingKB !== null"
-              :rules="[v => editingKB !== null || !!v || t('create.embeddingModelRequired')]" required
-              hint="嵌入模型选择后无法修改，如需更换请创建新的知识库。" persistent-hint>
+              :label="t('create.embeddingModelLabel')" variant="outlined" class="mb-4"
+              clearable
+              hint="可选。修改后会从 Markdown 自动重建索引；未配置时使用关键词检索。" persistent-hint>
               <template #item="{ props, item }">
                 <v-list-item v-bind="props">
                   <template #subtitle>
@@ -285,10 +285,6 @@ const pageSize = ref(20)
 const total = ref(0)
 const embeddingProviders = ref<any[]>([])
 const rerankProviders = ref<any[]>([])
-const originalEmbeddingProvider = ref<string | null>(null)
-const showEmbeddingWarning = ref(false)
-const embeddingChangeDialog = ref(false)
-const pendingEmbeddingProvider = ref<string | null>(null)
 
 // 对话框
 const showCreateDialog = ref(false)
@@ -386,7 +382,6 @@ const navigateToDetail = (kbId: string) => {
 // 编辑知识库
 const editKB = (kb: any) => {
   editingKB.value = kb
-  originalEmbeddingProvider.value = kb.embedding_provider_id
   formData.value = {
     kb_name: kb.kb_name,
     description: kb.description || '',
@@ -457,10 +452,7 @@ const submitForm = async () => {
     if (editingKB.value) {
       response = await knowledgeApi.update(editingKB.value.kb_id, payload)
     } else {
-      response = await knowledgeApi.create({
-        ...payload,
-        embedding_provider_id: formData.value.embedding_provider_id!
-      })
+      response = await knowledgeApi.create(payload)
     }
 
     if (response.data.status === 'ok') {
@@ -482,9 +474,6 @@ const submitForm = async () => {
 const closeCreateDialog = () => {
   showCreateDialog.value = false
   editingKB.value = null
-  originalEmbeddingProvider.value = null
-  showEmbeddingWarning.value = false
-  pendingEmbeddingProvider.value = null
   formData.value = {
     kb_name: '',
     description: '',

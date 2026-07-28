@@ -87,6 +87,16 @@ def mock_embedding_provider():
     return provider
 
 
+def test_knowledge_base_default_chunk_configuration():
+    """Use the Wiki-oriented chunk defaults for new knowledge bases."""
+    from astrbot.core.knowledge_base.models import KnowledgeBase
+
+    kb = KnowledgeBase(kb_name="default_chunks")
+
+    assert kb.chunk_size == 800
+    assert kb.chunk_overlap == 80
+
+
 @pytest.mark.asyncio
 async def test_update_kb_preserves_old_instance_when_reinit_fails(
     stub_provider_manager_module,
@@ -205,7 +215,7 @@ async def test_update_kb_switches_instance_only_after_new_reinit_success(
         result = await kb_mgr.update_kb(
             kb_id=mock_knowledge_base.kb_id,
             kb_name="updated_kb",
-            embedding_provider_id="new-embedding-provider",
+            embedding_provider_id="test-embedding-provider",
         )
 
         # Verify: a new helper should be returned
@@ -220,6 +230,7 @@ async def test_update_kb_switches_instance_only_after_new_reinit_success(
 
 @pytest.mark.asyncio
 async def test_ensure_vec_db_clears_stale_init_error(
+    tmp_path: Path,
     stub_provider_manager_module,
     mock_provider_manager,
     mock_kb_db,
@@ -235,33 +246,33 @@ async def test_ensure_vec_db_clears_stale_init_error(
 
     # Setup: create KBHelper with stale init_error
     mock_provider_manager.get_provider_by_id.return_value = mock_embedding_provider
+    mock_knowledge_base.chunk_overlap = 0
 
     helper = KBHelper.__new__(KBHelper)
     helper.kb = mock_knowledge_base
     helper.prov_mgr = mock_provider_manager
     helper.kb_db = mock_kb_db
-    helper.kb_root_dir = "/tmp/test_kb"
+    helper.kb_root_dir = str(tmp_path)
     helper.chunker = MagicMock()
     helper.init_error = "Previous initialization failed"
-    helper.kb_dir = Path("/tmp/test_kb") / mock_knowledge_base.kb_id
+    helper.kb_dir = tmp_path / mock_knowledge_base.kb_id
     helper.kb_medias_dir = helper.kb_dir / "medias" / mock_knowledge_base.kb_id
     helper.kb_files_dir = helper.kb_dir / "files" / mock_knowledge_base.kb_id
 
-    # Mock FaissVecDB initialization
-    mock_vec_db = MagicMock()
-    mock_vec_db.initialize = AsyncMock()
-    mock_vec_db.close = AsyncMock()
+    from astrbot.core.knowledge_base.wiki import WikiStore
 
-    with patch(
-        "astrbot.core.db.vec_db.faiss_impl.vec_db.FaissVecDB",
-        return_value=mock_vec_db,
-    ):
-        # Execute _ensure_vec_db
-        await helper._ensure_vec_db()
+    store = await helper._ensure_vec_db()
+    try:
+        reused_store = await helper._ensure_vec_db()
 
-        # Verify: init_error should be cleared
         assert helper.init_error is None
-        assert helper.vec_db is mock_vec_db
+        assert isinstance(store, WikiStore)
+        assert store.chunk_overlap == 0
+        assert helper.vec_db is store
+        assert helper.wiki_store is store
+        assert reused_store is store
+    finally:
+        await store.close()
 
 
 @pytest.mark.asyncio
@@ -303,3 +314,206 @@ async def test_ensure_vec_db_sets_init_error_on_failure(
         # Verify: init_error should NOT be cleared (still has previous error)
         # Note: _ensure_vec_db doesn't set init_error; that's done by the caller
         assert helper.init_error is not None
+
+
+@pytest.mark.asyncio
+async def test_update_kb_clears_embedding_provider_and_rebuilds_index(
+    stub_provider_manager_module,
+    mock_provider_manager,
+    mock_kb_db,
+    mock_knowledge_base,
+):
+    from astrbot.core.knowledge_base.kb_helper import KBHelper
+    from astrbot.core.knowledge_base.kb_mgr import KnowledgeBaseManager
+
+    old_helper = KBHelper.__new__(KBHelper)
+    old_helper.kb = mock_knowledge_base
+    old_helper.init_error = None
+    old_helper.terminate = AsyncMock()
+
+    candidate_helper = MagicMock()
+    candidate_helper.initialize = AsyncMock()
+    candidate_helper.terminate = AsyncMock()
+    candidate_helper.wiki_store = MagicMock()
+    candidate_helper.wiki_store.rebuild_index = AsyncMock(return_value={})
+
+    session = MagicMock()
+    session.add = MagicMock()
+    session.commit = AsyncMock()
+    db_context = MagicMock()
+    db_context.__aenter__ = AsyncMock(return_value=session)
+    db_context.__aexit__ = AsyncMock(return_value=False)
+    mock_kb_db.get_db.return_value = db_context
+
+    manager = KnowledgeBaseManager.__new__(KnowledgeBaseManager)
+    manager.provider_manager = mock_provider_manager
+    manager.kb_db = mock_kb_db
+    manager.kb_insts = {mock_knowledge_base.kb_id: old_helper}
+
+    with patch(
+        "astrbot.core.knowledge_base.kb_mgr.KBHelper",
+        return_value=candidate_helper,
+    ) as helper_class:
+        result = await manager.update_kb(
+            kb_id=mock_knowledge_base.kb_id,
+            kb_name=mock_knowledge_base.kb_name,
+            embedding_provider_id=None,
+        )
+
+    candidate_kb = helper_class.call_args.kwargs["kb"]
+    assert candidate_kb.embedding_provider_id is None
+    assert result is candidate_helper
+    assert result.kb.embedding_provider_id is None
+    candidate_helper.wiki_store.rebuild_index.assert_awaited_once()
+    candidate_helper.terminate.assert_not_awaited()
+    old_helper.terminate.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_update_kb_omitted_embedding_provider_keeps_existing_value(
+    stub_provider_manager_module,
+    mock_provider_manager,
+    mock_kb_db,
+    mock_knowledge_base,
+):
+    from astrbot.core.knowledge_base.kb_helper import KBHelper
+    from astrbot.core.knowledge_base.kb_mgr import KnowledgeBaseManager
+
+    old_helper = KBHelper.__new__(KBHelper)
+    old_helper.kb = mock_knowledge_base
+    old_helper.init_error = None
+    old_helper.terminate = AsyncMock()
+
+    candidate_helper = MagicMock()
+    candidate_helper.initialize = AsyncMock()
+    candidate_helper.terminate = AsyncMock()
+
+    session = MagicMock()
+    session.add = MagicMock()
+    session.commit = AsyncMock()
+    db_context = MagicMock()
+    db_context.__aenter__ = AsyncMock(return_value=session)
+    db_context.__aexit__ = AsyncMock()
+    mock_kb_db.get_db.return_value = db_context
+
+    manager = KnowledgeBaseManager.__new__(KnowledgeBaseManager)
+    manager.provider_manager = mock_provider_manager
+    manager.kb_db = mock_kb_db
+    manager.kb_insts = {mock_knowledge_base.kb_id: old_helper}
+
+    with patch(
+        "astrbot.core.knowledge_base.kb_mgr.KBHelper",
+        return_value=candidate_helper,
+    ) as helper_class:
+        result = await manager.update_kb(
+            kb_id=mock_knowledge_base.kb_id,
+            kb_name="renamed-kb",
+        )
+
+    candidate_kb = helper_class.call_args.kwargs["kb"]
+    assert candidate_kb.embedding_provider_id == "test-embedding-provider"
+    assert result is candidate_helper
+    assert result.kb.embedding_provider_id == "test-embedding-provider"
+
+
+@pytest.mark.asyncio
+async def test_update_kb_rebuild_failure_closes_candidate_and_keeps_old_state(
+    stub_provider_manager_module,
+    mock_provider_manager,
+    mock_kb_db,
+    mock_knowledge_base,
+):
+    from astrbot.core.knowledge_base.kb_helper import KBHelper
+    from astrbot.core.knowledge_base.kb_mgr import KnowledgeBaseManager
+
+    old_helper = KBHelper.__new__(KBHelper)
+    old_helper.kb = mock_knowledge_base
+    old_helper.init_error = None
+    old_helper.terminate = AsyncMock()
+    old_helper.wiki_store = MagicMock()
+    old_helper.wiki_store.rebuild_index = AsyncMock(return_value={})
+
+    candidate_helper = MagicMock()
+    candidate_helper.initialize = AsyncMock()
+    candidate_helper.terminate = AsyncMock()
+    candidate_helper.wiki_store = MagicMock()
+    candidate_helper.wiki_store.rebuild_index = AsyncMock(
+        side_effect=RuntimeError("embedding rebuild failed")
+    )
+
+    manager = KnowledgeBaseManager.__new__(KnowledgeBaseManager)
+    manager.provider_manager = mock_provider_manager
+    manager.kb_db = mock_kb_db
+    manager.kb_insts = {mock_knowledge_base.kb_id: old_helper}
+
+    with patch(
+        "astrbot.core.knowledge_base.kb_mgr.KBHelper",
+        return_value=candidate_helper,
+    ):
+        result = await manager.update_kb(
+            kb_id=mock_knowledge_base.kb_id,
+            kb_name=mock_knowledge_base.kb_name,
+            embedding_provider_id="replacement-provider",
+        )
+
+    assert result is old_helper
+    assert mock_knowledge_base.embedding_provider_id == "test-embedding-provider"
+    assert manager.kb_insts[mock_knowledge_base.kb_id] is old_helper
+    candidate_helper.terminate.assert_awaited_once()
+    old_helper.terminate.assert_not_awaited()
+    old_helper.wiki_store.rebuild_index.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_update_kb_commit_failure_closes_candidate_and_restores_old_index(
+    stub_provider_manager_module,
+    mock_provider_manager,
+    mock_kb_db,
+    mock_knowledge_base,
+):
+    from astrbot.core.knowledge_base.kb_helper import KBHelper
+    from astrbot.core.knowledge_base.kb_mgr import KnowledgeBaseManager
+
+    old_helper = KBHelper.__new__(KBHelper)
+    old_helper.kb = mock_knowledge_base
+    old_helper.init_error = None
+    old_helper.terminate = AsyncMock()
+    old_helper.wiki_store = MagicMock()
+    old_helper.wiki_store.rebuild_index = AsyncMock(return_value={})
+
+    candidate_helper = MagicMock()
+    candidate_helper.initialize = AsyncMock()
+    candidate_helper.terminate = AsyncMock()
+    candidate_helper.wiki_store = MagicMock()
+    candidate_helper.wiki_store.rebuild_index = AsyncMock(return_value={})
+
+    session = MagicMock()
+    session.add = MagicMock()
+    session.commit = AsyncMock(side_effect=RuntimeError("kb metadata commit failed"))
+    db_context = MagicMock()
+    db_context.__aenter__ = AsyncMock(return_value=session)
+    db_context.__aexit__ = AsyncMock(return_value=False)
+    mock_kb_db.get_db.return_value = db_context
+
+    manager = KnowledgeBaseManager.__new__(KnowledgeBaseManager)
+    manager.provider_manager = mock_provider_manager
+    manager.kb_db = mock_kb_db
+    manager.kb_insts = {mock_knowledge_base.kb_id: old_helper}
+
+    with (
+        patch(
+            "astrbot.core.knowledge_base.kb_mgr.KBHelper",
+            return_value=candidate_helper,
+        ),
+        pytest.raises(RuntimeError, match="metadata commit failed"),
+    ):
+        await manager.update_kb(
+            kb_id=mock_knowledge_base.kb_id,
+            kb_name=mock_knowledge_base.kb_name,
+            embedding_provider_id="replacement-provider",
+        )
+
+    assert mock_knowledge_base.embedding_provider_id == "test-embedding-provider"
+    assert manager.kb_insts[mock_knowledge_base.kb_id] is old_helper
+    candidate_helper.terminate.assert_awaited_once()
+    old_helper.wiki_store.rebuild_index.assert_awaited_once()

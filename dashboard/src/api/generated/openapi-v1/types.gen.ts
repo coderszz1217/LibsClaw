@@ -261,7 +261,7 @@ export type JsonSchema = {
 
 export type KnowledgeBaseCreateRequest = KnowledgeBaseRequest & {
     kb_name: string;
-    embedding_provider_id: string;
+    embedding_provider_id?: (string) | null;
 };
 
 export type KnowledgeBaseRequest = {
@@ -283,7 +283,7 @@ export type KnowledgeDocumentImportRequest = {
 };
 
 export type KnowledgeDocumentUploadRequest = {
-    file: (Blob | File);
+    files: Array<((Blob | File))>;
 };
 
 export type KnowledgeDocumentUrlImportRequest = {
@@ -295,6 +295,44 @@ export type KnowledgeRetrieveRequest = {
     query: string;
     top_k?: number;
     score_threshold?: number;
+};
+
+export type KnowledgeWikiImportRequest = {
+    /**
+     * Markdown files or ZIP archives.
+     */
+    files: Array<((Blob | File))>;
+    /**
+     * Wiki-relative path paired with each uploaded file.
+     */
+    paths?: Array<(string)>;
+    /**
+     * Replace pages that already exist at the same path.
+     */
+    overwrite?: boolean;
+};
+
+export type KnowledgeWikiMoveRequest = {
+    source_path: string;
+    target_path: string;
+};
+
+export type KnowledgeWikiPageCreateRequest = {
+    /**
+     * Markdown page path relative to the knowledge directory.
+     */
+    path: string;
+    /**
+     * Complete Markdown page content.
+     */
+    content: string;
+};
+
+export type KnowledgeWikiPageUpdateRequest = KnowledgeWikiPageCreateRequest & {
+    /**
+     * Existing page path when updating or renaming a page.
+     */
+    original_path: string;
 };
 
 export type LoginRequest = {
@@ -2676,6 +2714,120 @@ export type GetKnowledgeBaseStatsData = {
 export type GetKnowledgeBaseStatsResponse = (SuccessEnvelope);
 
 export type GetKnowledgeBaseStatsError = unknown;
+
+export type GetKnowledgeWikiTreeData = {
+    path: {
+        kb_id: string;
+    };
+};
+
+export type GetKnowledgeWikiTreeResponse = (SuccessEnvelope);
+
+export type GetKnowledgeWikiTreeError = unknown;
+
+export type GetKnowledgeWikiPageData = {
+    path: {
+        kb_id: string;
+    };
+    query: {
+        path: string;
+    };
+};
+
+export type GetKnowledgeWikiPageResponse = (SuccessEnvelope);
+
+export type GetKnowledgeWikiPageError = unknown;
+
+export type CreateKnowledgeWikiPageData = {
+    body: KnowledgeWikiPageCreateRequest;
+    path: {
+        kb_id: string;
+    };
+};
+
+export type CreateKnowledgeWikiPageResponse = (SuccessEnvelope);
+
+export type CreateKnowledgeWikiPageError = unknown;
+
+export type UpdateKnowledgeWikiPageData = {
+    body: KnowledgeWikiPageUpdateRequest;
+    path: {
+        kb_id: string;
+    };
+};
+
+export type UpdateKnowledgeWikiPageResponse = (SuccessEnvelope);
+
+export type UpdateKnowledgeWikiPageError = unknown;
+
+export type DeleteKnowledgeWikiPageData = {
+    path: {
+        kb_id: string;
+    };
+    query: {
+        path: string;
+    };
+};
+
+export type DeleteKnowledgeWikiPageResponse = (SuccessEnvelope);
+
+export type DeleteKnowledgeWikiPageError = unknown;
+
+export type RebuildKnowledgeWikiIndexData = {
+    path: {
+        kb_id: string;
+    };
+};
+
+export type RebuildKnowledgeWikiIndexResponse = (SuccessEnvelope);
+
+export type RebuildKnowledgeWikiIndexError = unknown;
+
+export type MoveKnowledgeWikiPathData = {
+    body: KnowledgeWikiMoveRequest;
+    path: {
+        kb_id: string;
+    };
+};
+
+export type MoveKnowledgeWikiPathResponse = (SuccessEnvelope);
+
+export type MoveKnowledgeWikiPathError = unknown;
+
+export type DeleteKnowledgeWikiPathData = {
+    path: {
+        kb_id: string;
+    };
+    query: {
+        path: string;
+        recursive?: boolean;
+    };
+};
+
+export type DeleteKnowledgeWikiPathResponse = (SuccessEnvelope);
+
+export type DeleteKnowledgeWikiPathError = unknown;
+
+export type ImportKnowledgeWikiData = {
+    body: KnowledgeWikiImportRequest;
+    path: {
+        kb_id: string;
+    };
+};
+
+export type ImportKnowledgeWikiResponse = (SuccessEnvelope);
+
+export type ImportKnowledgeWikiError = unknown;
+
+export type GetKnowledgeWikiGraphData = {
+    path: {
+        kb_id: string;
+    };
+};
+
+export type GetKnowledgeWikiGraphResponse = (SuccessEnvelope);
+
+export type GetKnowledgeWikiGraphError = unknown;
 
 export type ListKnowledgeDocumentsData = {
     path: {
