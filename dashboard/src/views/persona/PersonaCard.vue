@@ -14,6 +14,12 @@
                         </template>
                         <v-list-item-title>{{ tm('buttons.edit') }}</v-list-item-title>
                     </v-list-item>
+                    <v-list-item @click.stop="$emit('memory')">
+                        <template v-slot:prepend>
+                            <v-icon size="small">mdi-brain</v-icon>
+                        </template>
+                        <v-list-item-title>{{ tm('memory.menu') }}</v-list-item-title>
+                    </v-list-item>
                     <v-list-item @click.stop="$emit('move')">
                         <template v-slot:prepend>
                             <v-icon size="small">mdi-folder-move</v-icon>
@@ -46,6 +52,9 @@
                 <v-chip v-if="persona.begin_dialogs && persona.begin_dialogs.length > 0" size="small" color="secondary"
                     variant="tonal" prepend-icon="mdi-chat">
                     {{ tm('labels.presetDialogs', { count: persona.begin_dialogs.length / 2 }) }}
+                </v-chip>
+                <v-chip v-if="persona.memory" size="small" color="info" variant="tonal" prepend-icon="mdi-brain">
+                    {{ tm('memory.menu') }}
                 </v-chip>
                 <v-chip v-if="persona.tools === null" size="small" color="success" variant="tonal"
                     prepend-icon="mdi-tools">
@@ -89,6 +98,7 @@ import {
 interface Persona {
     persona_id: string;
     system_prompt: string;
+    memory?: string;
     custom_error_message?: string | null;
     begin_dialogs?: string[] | null;
     tools?: string[] | null;
@@ -107,7 +117,7 @@ export default defineComponent({
             required: true
         }
     },
-    emits: ['view', 'edit', 'move', 'delete', 'export'],
+    emits: ['view', 'edit', 'memory', 'move', 'delete', 'export'],
     setup() {
         const { tm } = useModuleI18n('features/persona');
         const confirmDialog = useConfirmDialog();
@@ -156,10 +166,10 @@ export default defineComponent({
             if (!confirmed) return;
 
             try {
-                // 仅导出 persona_id, system_prompt, begin_dialogs
                 const exportData = {
                     persona_id: this.persona.persona_id,
                     system_prompt: this.persona.system_prompt,
+                    memory: this.persona.memory || '',
                     begin_dialogs: this.persona.begin_dialogs || []
                 };
 

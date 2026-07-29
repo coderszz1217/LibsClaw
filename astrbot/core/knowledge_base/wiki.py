@@ -43,6 +43,18 @@ from astrbot.core.provider.provider import EmbeddingProvider, RerankProvider
 _MARKDOWN_LINK_RE = re.compile(r"(?<!!)\[([^\]]+)\]\(([^)]+)\)")
 _WIKI_LINK_RE = re.compile(r"\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|([^\]]+))?\]\]")
 _WIKI_LINK_FULL_RE = re.compile(r"\[\[([^\]|#]+)(#[^\]|]+)?(?:\|([^\]]+))?\]\]")
+_RELATION_WIKI_LINK_RE = re.compile(
+    r"^[ \t]*[-*][ \t]*([^:：\n]{1,80})[ \t]*[:：][ \t]*"
+    r"\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|([^\]]+))?\]\]"
+    r"(?:[ \t]*[—-][ \t]*([^\n]+?))?[ \t]*$",
+    re.MULTILINE,
+)
+_RELATION_MARKDOWN_LINK_RE = re.compile(
+    r"^[ \t]*[-*][ \t]*([^:：\n]{1,80})[ \t]*[:：][ \t]*"
+    r"\[([^\]]+)\]\(([^)]+)\)"
+    r"(?:[ \t]*[—-][ \t]*([^\n]+?))?[ \t]*$",
+    re.MULTILINE,
+)
 _TITLE_RE = re.compile(r"^#\s+(.+?)\s*$", re.MULTILINE)
 _SOURCE_RE = re.compile(
     r"^>\s*(?:\*\*)?(?:Source|来源)(?:\*\*)?\s*[:：]\s*(.+?)\s*$",
@@ -395,8 +407,11 @@ class WikiStore(BaseVecDB):
                 metadata["summary"],
             )
             markdown_edges.update(
-                (rel_path, target, "links_to", label)
-                for target, label in self._extract_links(rel_path, content)
+                (rel_path, target, relation, evidence or label)
+                for target, label, relation, evidence in self._extract_links(
+                    rel_path,
+                    content,
+                )
             )
 
         db = self._require_db()
@@ -2134,23 +2149,34 @@ class WikiStore(BaseVecDB):
                     updated_at,
                 ),
             )
-        for target, label in links:
+        for target, label, relation, evidence in links:
             edge_id = hashlib.sha256(
-                f"{rel_path}\0{target}\0links_to".encode()
+                f"{rel_path}\0{target}\0{relation}".encode()
             ).hexdigest()
             await db.execute(
                 """
                 INSERT OR IGNORE INTO graph_edges(
                     id, source, target, relation, evidence, confidence, metadata
-                ) VALUES (?, ?, ?, 'links_to', ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     edge_id,
                     rel_path,
                     target,
-                    label,
+                    relation,
+                    evidence or label,
                     1.0,
-                    json.dumps({"kind": "markdown_link"}, ensure_ascii=False),
+                    json.dumps(
+                        {
+                            "kind": (
+                                "typed_knowledge_relation"
+                                if relation != "links_to"
+                                else "markdown_link"
+                            ),
+                            "label": label,
+                        },
+                        ensure_ascii=False,
+                    ),
                 ),
             )
 
@@ -2278,25 +2304,78 @@ class WikiStore(BaseVecDB):
                 return normalized_candidate
         return normalized_candidates[0]
 
-    def _extract_links(self, source_path: str, content: str) -> list[tuple[str, str]]:
-        links: list[tuple[str, str]] = []
-        seen: set[str] = set()
+    def _extract_links(
+        self,
+        source_path: str,
+        content: str,
+    ) -> list[tuple[str, str, str, str]]:
+        """Extract generic links and persistent typed knowledge relations.
+
+        Args:
+            source_path: Wiki page containing the links.
+            content: Complete Markdown page content.
+
+        Returns:
+            Tuples containing target path, label, relation, and evidence.
+        """
+        links: list[tuple[str, str, str, str]] = []
+        seen: set[tuple[str, str]] = set()
+        typed_targets: set[str] = set()
         candidates = [
-            (raw_target, label)
-            for label, raw_target in _MARKDOWN_LINK_RE.findall(content)
+            (
+                raw_target,
+                alias or raw_target,
+                relation,
+                evidence or alias or raw_target,
+            )
+            for relation, raw_target, alias, evidence in _RELATION_WIKI_LINK_RE.findall(
+                content
+            )
         ]
         candidates.extend(
-            (raw_target, alias or raw_target)
+            (raw_target, label, relation, evidence or label)
+            for relation, label, raw_target, evidence in _RELATION_MARKDOWN_LINK_RE.findall(
+                content
+            )
+        )
+        candidates.extend(
+            (raw_target, label, "links_to", label)
+            for label, raw_target in _MARKDOWN_LINK_RE.findall(content)
+        )
+        candidates.extend(
+            (raw_target, alias or raw_target, "links_to", alias or raw_target)
             for raw_target, alias in _WIKI_LINK_RE.findall(content)
         )
-        for raw_target, label in candidates:
+        for raw_target, label, raw_relation, evidence in candidates:
             rel_target = self._resolve_link_target(source_path, raw_target)
             if rel_target is None:
                 continue
-            if rel_target == source_path or rel_target in seen:
+            relation = (
+                re.sub(
+                    r"[\s/\\:：]+",
+                    "_",
+                    raw_relation.strip().casefold(),
+                )[:80]
+                or "links_to"
+            )
+            if rel_target == source_path:
                 continue
-            seen.add(rel_target)
-            links.append((rel_target, label.strip()))
+            if relation == "links_to" and rel_target in typed_targets:
+                continue
+            relation_key = (rel_target, relation)
+            if relation_key in seen:
+                continue
+            seen.add(relation_key)
+            if relation != "links_to":
+                typed_targets.add(rel_target)
+            links.append(
+                (
+                    rel_target,
+                    label.strip(),
+                    relation,
+                    " ".join(evidence.split()).strip()[:600],
+                )
+            )
         return links
 
     def _rewrite_links_for_move(

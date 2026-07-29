@@ -63,6 +63,7 @@ class SQLiteDatabase(BaseDatabase):
             await self._ensure_persona_folder_columns(conn)
             await self._ensure_persona_skills_column(conn)
             await self._ensure_persona_custom_error_message_column(conn)
+            await self._ensure_persona_memory_column(conn)
             await self._ensure_platform_message_history_checkpoint_column(conn)
             await self._ensure_chatui_project_workspace_columns(conn)
             await conn.commit()
@@ -107,6 +108,20 @@ class SQLiteDatabase(BaseDatabase):
         if "custom_error_message" not in columns:
             await conn.execute(
                 text("ALTER TABLE personas ADD COLUMN custom_error_message TEXT")
+            )
+
+    async def _ensure_persona_memory_column(self, conn) -> None:
+        """Ensure legacy persona tables have the persistent memory column.
+
+        Args:
+            conn: Active asynchronous database connection.
+        """
+        result = await conn.execute(text("PRAGMA table_info(personas)"))
+        columns = {row[1] for row in result.fetchall()}
+
+        if "memory" not in columns:
+            await conn.execute(
+                text("ALTER TABLE personas ADD COLUMN memory TEXT NOT NULL DEFAULT ''")
             )
 
     async def _ensure_platform_message_history_checkpoint_column(self, conn) -> None:
@@ -946,6 +961,7 @@ class SQLiteDatabase(BaseDatabase):
         custom_error_message=None,
         folder_id=None,
         sort_order=0,
+        memory="",
     ):
         """Insert a new persona record."""
         async with self.get_db() as session:
@@ -954,6 +970,7 @@ class SQLiteDatabase(BaseDatabase):
                 new_persona = Persona(
                     persona_id=persona_id,
                     system_prompt=system_prompt,
+                    memory=memory,
                     begin_dialogs=begin_dialogs or [],
                     tools=tools,
                     skills=skills,
@@ -990,8 +1007,9 @@ class SQLiteDatabase(BaseDatabase):
         tools=NOT_GIVEN,
         skills=NOT_GIVEN,
         custom_error_message=NOT_GIVEN,
+        memory=NOT_GIVEN,
     ):
-        """Update a persona's system prompt or begin dialogs."""
+        """Update explicitly provided persona fields."""
         async with self.get_db() as session:
             session: AsyncSession
             async with session.begin():
@@ -1001,6 +1019,8 @@ class SQLiteDatabase(BaseDatabase):
                     values["system_prompt"] = system_prompt
                 if begin_dialogs is not None:
                     values["begin_dialogs"] = begin_dialogs
+                if memory is not NOT_GIVEN:
+                    values["memory"] = memory
                 if tools is not NOT_GIVEN:
                     values["tools"] = tools
                 if skills is not NOT_GIVEN:

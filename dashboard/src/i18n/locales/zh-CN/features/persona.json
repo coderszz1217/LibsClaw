@@ -86,7 +86,7 @@
     "deleteConfirm": "确定要删除人格 \"{id}\" 吗？此操作不可撤销。",
     "deleteSuccess": "删除成功",
     "deleteError": "删除失败",
-    "exportConfirm": "导出仅包含系统提示词和预设对话，不包含工具和 Skills 配置。是否继续导出？",
+    "exportConfirm": "导出包含系统提示词、人格记忆和预设对话，不包含工具和 Skills 配置。是否继续导出？",
     "exportSuccess": "导出成功",
     "exportError": "导出失败：{error}",
     "importSuccess": "人格导入成功，请手动配置工具和 Skills",
@@ -94,6 +94,19 @@
     "importFormatError": "文件格式错误，请选择有效的人格导出文件",
     "importMissingPrompt": "文件内容不完整，缺少系统提示词",
     "importIdExists": "人格名称已存在，已重命名为 \"{id}\""
+  },
+  "memory": {
+    "menu": "记忆",
+    "add": "添加记忆",
+    "empty": "这个人格还没有记忆。可以手动添加，之后 AI 也会在管理员对话中判断是否需要更新。",
+    "title": "{id} 的记忆",
+    "description": "这些内容会在使用该人格时作为长期背景传给 AI，但不会覆盖系统提示词或当前请求。AI 会在管理员对话中自行判断是否保存稳定偏好、长期事实和明确要求记住的内容。",
+    "fieldLabel": "人格记忆",
+    "fieldHint": "建议使用简短、明确的陈述句；不要填写密码、API Key、临时任务进度或短期信息。",
+    "autoSaveHint": "AI 自动更新只对管理员消息生效。",
+    "loadError": "加载人格记忆失败",
+    "saveSuccess": "人格记忆保存成功",
+    "saveError": "人格记忆保存失败"
   },
   "persona": {
     "personasTitle": "人格",

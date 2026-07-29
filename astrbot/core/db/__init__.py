@@ -414,6 +414,7 @@ class BaseDatabase(abc.ABC):
         custom_error_message: str | None = None,
         folder_id: str | None = None,
         sort_order: int = 0,
+        memory: str = "",
     ) -> Persona:
         """Insert a new persona record.
 
@@ -426,6 +427,7 @@ class BaseDatabase(abc.ABC):
             custom_error_message: Optional persona-level fallback error message
             folder_id: Optional folder ID to place the persona in (None means root)
             sort_order: Sort order within the folder (default 0)
+            memory: Persistent text memory for the persona
         """
         ...
 
@@ -448,6 +450,7 @@ class BaseDatabase(abc.ABC):
         tools: list[str] | None | object = NOT_GIVEN,
         skills: list[str] | None | object = NOT_GIVEN,
         custom_error_message: str | None | object = NOT_GIVEN,
+        memory: str | object = NOT_GIVEN,
     ) -> Persona | None:
         """Update a persona record.
 
@@ -458,6 +461,7 @@ class BaseDatabase(abc.ABC):
             tools: Tool names, None for all tools, or NOT_GIVEN to leave unchanged.
             skills: Skill names, None for all skills, or NOT_GIVEN to leave unchanged.
             custom_error_message: Custom fallback message, None to clear, or NOT_GIVEN to leave unchanged.
+            memory: Persistent memory text, or NOT_GIVEN to leave unchanged.
 
         Returns:
             Updated persona, or None when no fields were updated.

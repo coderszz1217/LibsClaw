@@ -473,6 +473,7 @@ export type PersonaMoveRequest = {
 export type PersonaRequest = {
     persona_id: string;
     system_prompt: string;
+    memory?: string;
     begin_dialogs?: Array<(string)>;
     folder_id?: string;
     tools?: Array<(string)>;

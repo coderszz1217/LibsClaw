@@ -332,6 +332,7 @@ class T2iActiveTemplateRequest(BaseModel):
 class PersonaRequest(OpenModel):
     persona_id: str | None = None
     system_prompt: str | None = None
+    memory: str | None = None
     begin_dialogs: list[Any] | None = None
     tools: list[str] | None = None
     skills: list[str] | None = None

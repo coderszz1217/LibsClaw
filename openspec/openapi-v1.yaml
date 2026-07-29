@@ -6039,6 +6039,9 @@ components:
           type: string
         system_prompt:
           type: string
+        memory:
+          type: string
+          maxLength: 32000
         begin_dialogs:
           type: array
           items:

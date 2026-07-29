@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from astrbot.core.core_lifecycle import AstrBotCoreLifecycle
+from astrbot.core.db.po import PERSONA_MEMORY_MAX_CHARS
 from astrbot.core.sentinels import NOT_GIVEN
 
 
@@ -47,6 +48,7 @@ class PersonaService:
             str(raw_system_prompt).strip() if raw_system_prompt is not None else ""
         )
         begin_dialogs = payload.get("begin_dialogs", [])
+        raw_memory = payload.get("memory", "")
         tools = payload.get("tools")
         skills = payload.get("skills")
         custom_error_message = self._normalize_custom_error_message(
@@ -59,12 +61,20 @@ class PersonaService:
             raise PersonaServiceError("人格ID不能为空")
         if not system_prompt:
             raise PersonaServiceError("系统提示词不能为空")
+        if raw_memory is not None and not isinstance(raw_memory, str):
+            raise PersonaServiceError("人格记忆必须是字符串")
+        memory = (raw_memory or "").strip()
+        if len(memory) > PERSONA_MEMORY_MAX_CHARS:
+            raise PersonaServiceError(
+                f"人格记忆不能超过 {PERSONA_MEMORY_MAX_CHARS} 个字符"
+            )
 
         self._validate_begin_dialogs(begin_dialogs)
 
         persona = await self.persona_mgr.create_persona(
             persona_id=persona_id,
             system_prompt=system_prompt,
+            memory=memory,
             begin_dialogs=begin_dialogs if begin_dialogs else None,
             tools=tools if tools else None,
             skills=skills if skills else None,
@@ -83,6 +93,8 @@ class PersonaService:
         persona_id = payload.get("persona_id")
         system_prompt = payload.get("system_prompt")
         begin_dialogs = payload.get("begin_dialogs")
+        has_memory = "memory" in payload
+        memory = payload.get("memory")
         has_tools = "tools" in payload
         tools = payload.get("tools")
         has_skills = "skills" in payload
@@ -100,6 +112,14 @@ class PersonaService:
 
         if begin_dialogs is not None:
             self._validate_begin_dialogs(begin_dialogs)
+        if has_memory:
+            if memory is not None and not isinstance(memory, str):
+                raise PersonaServiceError("人格记忆必须是字符串")
+            memory = (memory or "").strip()
+            if len(memory) > PERSONA_MEMORY_MAX_CHARS:
+                raise PersonaServiceError(
+                    f"人格记忆不能超过 {PERSONA_MEMORY_MAX_CHARS} 个字符"
+                )
 
         update_kwargs = {
             "persona_id": persona_id,
@@ -108,6 +128,8 @@ class PersonaService:
         }
         if has_tools:
             update_kwargs["tools"] = tools
+        if has_memory:
+            update_kwargs["memory"] = memory
         if has_skills:
             update_kwargs["skills"] = skills
         if has_custom_error_message:
@@ -237,6 +259,7 @@ class PersonaService:
         return {
             "persona_id": persona.persona_id,
             "system_prompt": persona.system_prompt,
+            "memory": persona.memory or "",
             "begin_dialogs": persona.begin_dialogs or [],
             "tools": (persona.tools or []) if empty_lists_for_tools else persona.tools,
             "skills": (persona.skills or [])

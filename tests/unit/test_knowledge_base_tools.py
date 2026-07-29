@@ -113,6 +113,7 @@ def _make_kb_helper(kb_id: str, kb_name: str):
         export_wiki_archive=MagicMock(),
         upload_document=AsyncMock(
             return_value=SimpleNamespace(
+                doc_id="doc-uploaded",
                 file_path="sources/article.md",
                 chunk_count=12,
             )
@@ -160,11 +161,15 @@ def _make_context(components, kb_manager, *, role: str = "admin", config=None):
 
 
 @pytest.mark.asyncio
-async def test_save_text_requires_administrator():
-    """Reject Wiki page writes from non-administrator users."""
+async def test_save_text_allows_member_for_selected_kb(monkeypatch):
+    """Allow an ordinary user to save into the session-selected knowledge base."""
     helper = _make_kb_helper("kb-1", "Docs")
     manager = _make_kb_manager(helper)
     context = _make_context([], manager, role="member")
+    monkeypatch.setattr(
+        "astrbot.core.tools.knowledge_base_tools.sp.session_get",
+        AsyncMock(return_value={"kb_ids": ["kb-1"]}),
+    )
 
     result = await KnowledgeBaseWritePageTool().call(
         context,
@@ -173,8 +178,33 @@ async def test_save_text_requires_administrator():
         knowledge_base="kb-1",
     )
 
-    assert result == "error: Only administrators can save knowledge base pages."
-    helper.upload_document.assert_not_awaited()
+    assert "Saved Wiki page to Docs (kb-1)." in result
+    helper.upload_document.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_member_cannot_save_to_unselected_kb(monkeypatch):
+    """Keep ordinary users inside the knowledge bases selected for their session."""
+    docs = _make_kb_helper("kb-1", "Docs")
+    private = _make_kb_helper("kb-2", "Private")
+    manager = _make_kb_manager(docs, private)
+    context = _make_context([], manager, role="member")
+    monkeypatch.setattr(
+        "astrbot.core.tools.knowledge_base_tools.sp.session_get",
+        AsyncMock(return_value={"kb_ids": ["kb-1"]}),
+    )
+
+    result = await KnowledgeBaseWritePageTool().call(
+        context,
+        title="Article",
+        content="Article body",
+        knowledge_base="kb-2",
+    )
+
+    assert result == (
+        "error: Knowledge base 'Private' is not selected for the current session."
+    )
+    private.upload_document.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -204,6 +234,203 @@ async def test_save_text_works_without_embedding_provider():
         chunk_overlap=80,
         source_label="https://example.com/article",
     )
+
+
+@pytest.mark.asyncio
+async def test_save_text_builds_structured_entity_concept_pages():
+    """Create persistent structured pages and relations while saving an article."""
+    helper = _make_kb_helper("kb-1", "Docs")
+    helper.wiki_store.get_page_metadata.return_value = None
+    manager = _make_kb_manager(helper)
+    context = _make_context([], manager)
+
+    result = await KnowledgeBaseWritePageTool().call(
+        context,
+        title="小米澎程发布会邀请函曝光",
+        content="# 原文\n\n小米澎程是一款增程汽车。",
+        source="https://mp.weixin.qq.com/s/example",
+        summary="小米澎程发布会邀请函展示了产品空间设计线索。",
+        category="汽车科技",
+        entities=[
+            {
+                "name": "小米集团",
+                "entity_type": "company",
+                "summary": "智能汽车和消费电子企业。",
+            },
+            {
+                "name": "小米澎程",
+                "entity_type": "product",
+                "summary": "小米旗下增程车型。",
+            },
+        ],
+        concepts=[
+            {
+                "name": "增程汽车",
+                "summary": "使用增程器补充电能的电驱汽车。",
+            }
+        ],
+        relations=[
+            {
+                "source": "source",
+                "target": "小米澎程",
+                "relation": "introduces",
+                "evidence": "文章介绍发布会邀请函。",
+            },
+            {
+                "source": "小米澎程",
+                "target": "小米集团",
+                "relation": "属于",
+                "evidence": "文章将其描述为小米产品。",
+            },
+            {
+                "source": "小米澎程",
+                "target": "增程汽车",
+                "relation": "采用",
+                "evidence": "文章称其为增程车型。",
+            },
+        ],
+        knowledge_base="Docs",
+    )
+
+    upload_kwargs = helper.upload_document.await_args.kwargs
+    uploaded_content = upload_kwargs["file_content"].decode()
+    assert "## Summary" in uploaded_content
+    assert "[[../entities/小米集团.md|小米集团]]" in uploaded_content
+    assert "- introduces: [[../entities/小米澎程.md|小米澎程]]" in uploaded_content
+    written_pages = {
+        call.args[0]: call.args[1]
+        for call in helper.wiki_store.write_page.await_args_list
+    }
+    assert set(written_pages) == {
+        "concepts/汽车科技.md",
+        "entities/小米集团.md",
+        "entities/小米澎程.md",
+        "concepts/增程汽车.md",
+    }
+    assert "type: entity" in written_pages["entities/小米澎程.md"]
+    assert "- 属于: [[小米集团.md|小米集团]]" in written_pages["entities/小米澎程.md"]
+    assert (
+        "- 采用: [[../concepts/增程汽车.md|增程汽车]]"
+        in written_pages["entities/小米澎程.md"]
+    )
+    assert "Structured nodes updated: 4" in result
+    manager.kb_db.update_kb_stats.assert_awaited_once()
+    helper.refresh_kb.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_save_text_structured_graph_works_with_real_wiki_store(tmp_path):
+    """Persist source, entity, concept, and typed edges end to end."""
+    store = WikiStore(tmp_path / "kb", "kb-1")
+    await store.initialize()
+    try:
+        helper = _make_kb_helper("kb-1", "Docs")
+        helper.wiki_store = store
+        helper._ensure_vec_db = AsyncMock(return_value=store)
+
+        async def upload_document(**kwargs):
+            source_content = kwargs["file_content"].decode()
+            page = await store.upsert_document(
+                doc_id="doc-source",
+                file_name=kwargs["file_name"],
+                source=kwargs["source_label"],
+                content=source_content,
+                chunks=[source_content],
+            )
+            return SimpleNamespace(
+                doc_id="doc-source",
+                file_path=page["path"],
+                chunk_count=page["chunk_count"],
+            )
+
+        helper.upload_document = AsyncMock(side_effect=upload_document)
+        manager = _make_kb_manager(helper)
+        context = _make_context([], manager)
+
+        result = await KnowledgeBaseWritePageTool().call(
+            context,
+            title="Product article",
+            content="Complete article body.",
+            source="https://example.com/product",
+            summary="A product announcement.",
+            category="Automotive",
+            entities=[
+                {
+                    "name": "Product X",
+                    "entity_type": "product",
+                    "summary": "A new vehicle.",
+                }
+            ],
+            concepts=[
+                {
+                    "name": "Range Extender",
+                    "summary": "A vehicle powertrain concept.",
+                }
+            ],
+            relations=[
+                {
+                    "source": "Product X",
+                    "target": "Range Extender",
+                    "relation": "uses",
+                    "evidence": "The article describes the powertrain.",
+                }
+            ],
+            knowledge_base="Docs",
+        )
+
+        graph = await store.get_graph()
+        nodes = {node["id"]: node for node in graph["nodes"]}
+        edges = {
+            (edge["source"], edge["target"], edge["relation"])
+            for edge in graph["edges"]
+        }
+        source_path = next(path for path in nodes if path.startswith("sources/"))
+
+        assert "Structured nodes updated: 3" in result
+        assert nodes[source_path]["node_type"] == "source"
+        assert nodes["entities/product-x.md"]["node_type"] == "entity"
+        assert nodes["concepts/range-extender.md"]["node_type"] == "concept"
+        product_edges = [
+            edge for edge in graph["edges"] if edge["target"] == "entities/product-x.md"
+        ]
+        assert (source_path, "entities/product-x.md", "mentions") in edges, (
+            product_edges
+        )
+        assert (
+            "entities/product-x.md",
+            "concepts/range-extender.md",
+            "uses",
+        ) in edges
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
+async def test_save_text_rolls_back_source_when_graph_enrichment_fails():
+    """Remove the new source and partial nodes if structured enrichment fails."""
+    helper = _make_kb_helper("kb-1", "Docs")
+    helper.wiki_store.get_page_metadata.return_value = None
+    helper.wiki_store.write_page.side_effect = [
+        {"path": "entities/first.md"},
+        RuntimeError("graph write failed"),
+    ]
+    manager = _make_kb_manager(helper)
+    context = _make_context([], manager)
+
+    result = await KnowledgeBaseWritePageTool().call(
+        context,
+        title="Article",
+        content="Article body",
+        entities=[{"name": "First"}, {"name": "Second"}],
+        knowledge_base="Docs",
+    )
+
+    assert result == (
+        "error: Knowledge graph enrichment failed; the new source was rolled back. "
+        "Please retry."
+    )
+    helper.wiki_store.delete_page.assert_awaited_once_with("entities/first.md")
+    helper.delete_document.assert_awaited_once_with("doc-uploaded")
 
 
 @pytest.mark.asyncio
@@ -380,19 +607,27 @@ async def test_delete_page_removes_document_and_derived_indexes():
 
 
 @pytest.mark.asyncio
-async def test_export_requires_administrator():
-    """Reject knowledge base exports from non-administrator users."""
+async def test_export_allows_member_for_selected_kb(tmp_path, monkeypatch):
+    """Allow an ordinary user to export the session-selected knowledge base."""
+    archive_path = tmp_path / "Docs.zip"
+    archive_path.write_bytes(b"zip fixture")
     helper = _make_kb_helper("kb-1", "Docs")
+    helper.export_wiki_archive.return_value = (archive_path, "Docs.zip", 1)
     manager = _make_kb_manager(helper)
     context = _make_context([], manager, role="member")
+    monkeypatch.setattr(
+        "astrbot.core.tools.knowledge_base_tools.sp.session_get",
+        AsyncMock(return_value={"kb_ids": ["kb-1"]}),
+    )
 
     result = await KnowledgeBaseExportTool().call(
         context,
         knowledge_base="kb-1",
     )
 
-    assert result == "error: Only administrators can export knowledge bases."
-    helper.export_wiki_archive.assert_not_called()
+    assert isinstance(result, MessageEventResult)
+    assert result.get_plain_text() == "Exported 1 Markdown pages from Docs (kb-1)."
+    helper.export_wiki_archive.assert_called_once_with()
 
 
 @pytest.mark.asyncio
@@ -423,8 +658,11 @@ async def test_export_sends_zip_as_direct_file_result(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_import_attachment_requires_administrator(tmp_path):
-    """Reject knowledge imports from non-administrator users."""
+async def test_import_attachment_allows_member_for_selected_kb(
+    tmp_path,
+    monkeypatch,
+):
+    """Allow an ordinary user to import into the session-selected knowledge base."""
     source = tmp_path / "guide.md"
     source.write_text("# Guide", encoding="utf-8")
     helper = _make_kb_helper("kb-1", "Docs")
@@ -434,15 +672,18 @@ async def test_import_attachment_requires_administrator(tmp_path):
         manager,
         role="member",
     )
+    monkeypatch.setattr(
+        "astrbot.core.tools.knowledge_base_tools.sp.session_get",
+        AsyncMock(return_value={"kb_ids": ["kb-1"]}),
+    )
 
     result = await KnowledgeBaseImportAttachmentTool().call(
         context,
         knowledge_base="kb-1",
     )
 
-    assert result == "error: Only administrators can import knowledge base attachments."
-    manager.get_kb.assert_not_awaited()
-    helper.import_wiki_sources.assert_not_awaited()
+    assert result.startswith("Imported 1 Wiki pages into Docs (kb-1).")
+    helper.import_wiki_sources.assert_awaited_once()
 
 
 @pytest.mark.asyncio

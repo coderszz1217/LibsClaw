@@ -98,6 +98,70 @@ def test_knowledge_base_default_chunk_configuration():
 
 
 @pytest.mark.asyncio
+async def test_update_kb_loaded_model_updates_chunk_settings_without_orm_copy_error(
+    tmp_path: Path,
+    stub_provider_manager_module,
+):
+    """Update settings on an ORM-loaded knowledge base without broken copy state."""
+    from astrbot.core.knowledge_base.kb_db_sqlite import KBSQLiteDatabase
+    from astrbot.core.knowledge_base.kb_mgr import KnowledgeBaseManager
+    from astrbot.core.knowledge_base.models import KnowledgeBase
+
+    kb_db = KBSQLiteDatabase(str(tmp_path / "kb.db"))
+    await kb_db.initialize()
+    await kb_db.migrate_to_v1()
+    try:
+        original = KnowledgeBase(
+            kb_name="loaded-kb",
+            chunk_size=512,
+            chunk_overlap=50,
+        )
+        async with kb_db.get_db() as session:
+            session.add(original)
+            await session.commit()
+
+        loaded = await kb_db.get_kb_by_id(original.kb_id)
+        assert loaded is not None
+        old_helper = types.SimpleNamespace(
+            kb=loaded,
+            init_error=None,
+            terminate=AsyncMock(),
+        )
+        candidate_helper = types.SimpleNamespace(
+            initialize=AsyncMock(),
+            terminate=AsyncMock(),
+            wiki_store=types.SimpleNamespace(
+                rebuild_index=AsyncMock(return_value={}),
+                _last_initialize_rebuilt=False,
+            ),
+            init_error=None,
+        )
+        manager = KnowledgeBaseManager.__new__(KnowledgeBaseManager)
+        manager.provider_manager = MagicMock()
+        manager.kb_db = kb_db
+        manager.kb_insts = {loaded.kb_id: old_helper}
+
+        with patch(
+            "astrbot.core.knowledge_base.kb_mgr.KBHelper",
+            return_value=candidate_helper,
+        ):
+            result = await manager.update_kb(
+                kb_id=loaded.kb_id,
+                kb_name=loaded.kb_name,
+                chunk_size=800,
+                chunk_overlap=80,
+            )
+
+        persisted = await kb_db.get_kb_by_id(loaded.kb_id)
+        assert result is candidate_helper
+        assert persisted is not None
+        assert persisted.chunk_size == 800
+        assert persisted.chunk_overlap == 80
+    finally:
+        await kb_db.close()
+
+
+@pytest.mark.asyncio
 async def test_update_kb_preserves_old_instance_when_reinit_fails(
     stub_provider_manager_module,
     mock_provider_manager,

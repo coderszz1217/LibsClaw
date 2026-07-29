@@ -233,7 +233,9 @@ class KnowledgeBaseManager:
             "top_m_final": kb.top_m_final,
         }
         previous_init_error = kb_helper.init_error
-        candidate_kb = kb.model_copy(deep=True)
+        # Rebuild the SQLModel instance so SQLAlchemy creates fresh ORM state.
+        # Deep-copying a loaded entity leaves the copy with broken weak references.
+        candidate_kb = KnowledgeBase.model_validate(kb.model_dump())
         if kb_name is not None:
             candidate_kb.kb_name = kb_name
         if description is not None:

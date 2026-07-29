@@ -1,14 +1,22 @@
+import asyncio
+
 from astrbot import logger
 from astrbot.api import sp
 from astrbot.core.astrbot_config_mgr import AstrBotConfigManager
 from astrbot.core.db import BaseDatabase
-from astrbot.core.db.po import Persona, PersonaFolder, Personality
+from astrbot.core.db.po import (
+    PERSONA_MEMORY_MAX_CHARS,
+    Persona,
+    PersonaFolder,
+    Personality,
+)
 from astrbot.core.platform.message_session import MessageSession
 from astrbot.core.sentinels import NOT_GIVEN
 
 DEFAULT_PERSONALITY = Personality(
     prompt="You are a helpful and friendly assistant.",
     name="default",
+    memory="",
     begin_dialogs=[],
     mood_imitation_dialogs=[],
     tools=None,
@@ -31,6 +39,7 @@ class PersonaManager:
         self.personas_v3: list[Personality] = []
         self.selected_default_persona_v3: Personality | None = None
         self.persona_v3_config: list[dict] = []
+        self._memory_lock = asyncio.Lock()
 
     async def initialize(self) -> None:
         self.personas = await self.get_all_personas()
@@ -142,6 +151,7 @@ class PersonaManager:
         tools: list[str] | None | object = NOT_GIVEN,
         skills: list[str] | None | object = NOT_GIVEN,
         custom_error_message: str | None | object = NOT_GIVEN,
+        memory: str | object = NOT_GIVEN,
     ):
         """更新指定 persona 的信息。tools 参数为 None 时表示使用所有工具，空列表表示不使用任何工具"""
         existing_persona = await self.db.get_persona_by_id(persona_id)
@@ -150,6 +160,8 @@ class PersonaManager:
         update_kwargs = {}
         if tools is not NOT_GIVEN:
             update_kwargs["tools"] = tools
+        if memory is not NOT_GIVEN:
+            update_kwargs["memory"] = memory
         if skills is not NOT_GIVEN:
             update_kwargs["skills"] = skills
         if custom_error_message is not NOT_GIVEN:
@@ -168,6 +180,72 @@ class PersonaManager:
                     break
         self.get_v3_persona_data()
         return persona
+
+    async def mutate_memory(
+        self,
+        persona_id: str,
+        action: str,
+        content: str = "",
+        target: str = "",
+    ) -> tuple[str, bool]:
+        """Mutate one persona's memory with serialized read-modify-write semantics.
+
+        Args:
+            persona_id: Active persona identifier.
+            action: One of add, replace, or remove.
+            content: New declarative memory text for add or replace.
+            target: Unique existing substring for replace or remove.
+
+        Returns:
+            A tuple containing the updated memory and whether it changed.
+
+        Raises:
+            ValueError: If the action, content, target, or resulting size is invalid.
+        """
+        async with self._memory_lock:
+            persona = await self.get_persona(persona_id)
+            current = (persona.memory or "").strip()
+            content = content.strip()
+            target = target.strip()
+
+            if action == "add":
+                if not content:
+                    raise ValueError("Memory content cannot be empty.")
+                normalized_content = " ".join(content.split()).casefold()
+                normalized_current = " ".join(current.split()).casefold()
+                if normalized_content in normalized_current:
+                    return current, False
+                updated = f"{current}\n\n{content}" if current else content
+            elif action in {"replace", "remove"}:
+                if not target:
+                    raise ValueError("A unique target substring is required.")
+                occurrence_count = current.count(target)
+                if occurrence_count != 1:
+                    raise ValueError(
+                        "The target substring must match exactly once in persona memory."
+                    )
+                if action == "replace":
+                    if not content:
+                        raise ValueError("Replacement content cannot be empty.")
+                    updated = current.replace(target, content, 1)
+                else:
+                    updated = current.replace(target, "", 1)
+                    updated = "\n\n".join(
+                        part.strip() for part in updated.split("\n\n") if part.strip()
+                    )
+            else:
+                raise ValueError(f"Unsupported memory action: {action}")
+
+            updated = updated.strip()
+            if len(updated) > PERSONA_MEMORY_MAX_CHARS:
+                raise ValueError(
+                    f"Persona memory cannot exceed {PERSONA_MEMORY_MAX_CHARS} characters."
+                )
+            if updated == current:
+                return current, False
+
+            await self.update_persona(persona_id=persona_id, memory=updated)
+            return updated, True
 
     async def get_all_personas(self) -> list[Persona]:
         """获取所有 personas"""
@@ -322,6 +400,7 @@ class PersonaManager:
         custom_error_message: str | None = None,
         folder_id: str | None = None,
         sort_order: int = 0,
+        memory: str = "",
     ) -> Persona:
         """创建新的 persona。
 
@@ -333,6 +412,7 @@ class PersonaManager:
             skills: Skills 列表，None 表示使用所有 Skills，空列表表示不使用任何 Skills
             folder_id: 所属文件夹 ID，None 表示根目录
             sort_order: 排序顺序
+            memory: Persistent text memory associated with the persona
         """
         if await self.db.get_persona_by_id(persona_id):
             raise ValueError(f"Persona with ID {persona_id} already exists.")
@@ -345,6 +425,7 @@ class PersonaManager:
             custom_error_message=custom_error_message,
             folder_id=folder_id,
             sort_order=sort_order,
+            memory=memory,
         )
         self.personas.append(new_persona)
         self.get_v3_persona_data()
@@ -365,6 +446,7 @@ class PersonaManager:
             {
                 "prompt": persona.system_prompt,
                 "name": persona.persona_id,
+                "memory": persona.memory or "",
                 "begin_dialogs": persona.begin_dialogs or [],
                 "mood_imitation_dialogs": [],  # deprecated
                 "tools": persona.tools,
@@ -423,6 +505,7 @@ class PersonaManager:
         self.selected_default_persona = Persona(
             persona_id=selected_default_persona["name"],
             system_prompt=selected_default_persona["prompt"],
+            memory=selected_default_persona.get("memory", ""),
             begin_dialogs=selected_default_persona["begin_dialogs"],
             tools=selected_default_persona["tools"] or None,
             skills=selected_default_persona["skills"] or None,

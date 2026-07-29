@@ -420,6 +420,7 @@ class FakePersonaManager:
         *,
         persona_id: str,
         system_prompt: str,
+        memory: str = "",
         begin_dialogs: list | None = None,
         tools: list[str] | None = None,
         skills: list[str] | None = None,
@@ -430,6 +431,7 @@ class FakePersonaManager:
         return SimpleNamespace(
             persona_id=persona_id,
             system_prompt=system_prompt,
+            memory=memory,
             begin_dialogs=begin_dialogs,
             tools=tools,
             skills=skills,
@@ -3479,6 +3481,37 @@ async def test_v1_persona_by_id_update_preserves_explicit_null_tools_and_skills(
     assert response.json()["data"] == {"message": "人格更新成功"}
     assert persona.tools is None
     assert persona.skills is None
+
+
+@pytest.mark.asyncio
+async def test_v1_persona_memory_can_be_updated_and_cleared(
+    asgi_client: httpx.AsyncClient,
+    fake_core_lifecycle,
+):
+    persona_id = "persona/foo"
+    headers = _jwt_headers()
+
+    update_response = await asgi_client.put(
+        "/api/v1/personas/by-id",
+        json={"persona_id": persona_id, "memory": "User prefers concise replies."},
+        headers=headers,
+    )
+    detail_response = await asgi_client.get(
+        "/api/v1/personas/by-id",
+        params={"persona_id": persona_id},
+        headers=headers,
+    )
+    clear_response = await asgi_client.put(
+        "/api/v1/personas/by-id",
+        json={"persona_id": persona_id, "memory": ""},
+        headers=headers,
+    )
+
+    assert update_response.status_code == 200
+    assert detail_response.status_code == 200
+    assert detail_response.json()["data"]["memory"] == "User prefers concise replies."
+    assert clear_response.status_code == 200
+    assert fake_core_lifecycle.persona_mgr.personas[persona_id].memory == ""
 
 
 @pytest.mark.asyncio

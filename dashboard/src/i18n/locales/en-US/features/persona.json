@@ -86,7 +86,7 @@
     "deleteConfirm": "Are you sure you want to delete persona \"{id}\"? This action cannot be undone.",
     "deleteSuccess": "Deleted successfully",
     "deleteError": "Delete failed",
-    "exportConfirm": "Export only includes system prompt and preset dialogs, not tools and Skills config. Continue?",
+    "exportConfirm": "The export includes the system prompt, persona memory, and preset dialogs, but not tools or Skills settings. Continue?",
     "exportSuccess": "Exported successfully",
     "exportError": "Export failed: {error}",
     "importSuccess": "Persona imported successfully, please configure tools and Skills manually",
@@ -94,6 +94,19 @@
     "importFormatError": "Invalid file format, please select a valid persona export file",
     "importMissingPrompt": "Incomplete file content, missing system prompt",
     "importIdExists": "Persona name already exists, renamed to \"{id}\""
+  },
+  "memory": {
+    "menu": "Memory",
+    "add": "Add memory",
+    "empty": "This persona has no memory yet. You can add it manually, and the AI may update it during administrator conversations.",
+    "title": "Memory for {id}",
+    "description": "This text is sent to the AI as durable background whenever the persona is active, but it cannot override the system prompt or current request. During administrator conversations, the AI may save stable preferences, durable facts, and explicit remember requests.",
+    "fieldLabel": "Persona memory",
+    "fieldHint": "Use short declarative facts. Do not store passwords, API keys, temporary task progress, or short-lived information.",
+    "autoSaveHint": "Automatic AI updates are available only for administrator messages.",
+    "loadError": "Failed to load persona memory",
+    "saveSuccess": "Persona memory saved",
+    "saveError": "Failed to save persona memory"
   },
   "persona": {
     "personasTitle": "Personas",

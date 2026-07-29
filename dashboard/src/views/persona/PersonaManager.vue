@@ -85,7 +85,8 @@
                             <v-col v-for="persona in currentPersonas" :key="persona.persona_id" cols="12" sm="6" lg="6"
                                 xl="4">
                                 <PersonaCard :persona="persona" @view="viewPersona(persona)"
-                                    @edit="editPersona(persona)" @move="openMovePersonaDialog(persona)"
+                                    @edit="editPersona(persona)" @memory="openMemoryDialog(persona)"
+                                    @move="openMovePersonaDialog(persona)"
                                     @delete="confirmDeletePersona(persona)" @export="handlePersonaExport" />
                             </v-col>
                         </v-row>
@@ -118,12 +119,24 @@
             :current-folder-id="currentFolderId ?? undefined" :current-folder-name="currentFolderName ?? undefined"
             @saved="handlePersonaSaved" @deleted="handlePersonaDeleted" @error="showError" />
 
+        <PersonaMemoryPanel v-model="showMemoryDialog" :persona-id="memoryPersonaId"
+            @saved="handleMemorySaved" />
+
         <!-- 查看 Persona 详情对话框 -->
         <v-dialog v-model="showViewDialog" max-width="700px">
             <v-card v-if="viewingPersona">
                 <v-card-title class="text-h3 pa-4 pb-0 pl-6 d-flex justify-space-between align-center">
                     <span>{{ viewingPersona.persona_id }}</span>
                     <div class="d-flex align-center ga-1">
+                        <v-btn
+                            color="info"
+                            variant="tonal"
+                            size="small"
+                            prepend-icon="mdi-brain"
+                            @click="openMemoryFromViewDialog"
+                        >
+                            {{ tm('memory.menu') }}
+                        </v-btn>
                         <v-btn
                             color="primary"
                             variant="tonal"
@@ -146,6 +159,19 @@
                     <div v-if="viewingPersona.custom_error_message" class="mb-4">
                         <h4 class="text-h6 mb-2">{{ tm('form.customErrorMessage') }}</h4>
                         <pre class="system-prompt-content">{{ viewingPersona.custom_error_message }}</pre>
+                    </div>
+
+                    <div class="mb-4">
+                        <h4 class="text-h6 mb-2">{{ tm('memory.menu') }}</h4>
+                        <pre v-if="viewingPersona.memory" class="system-prompt-content">{{ viewingPersona.memory }}</pre>
+                        <v-card v-else variant="outlined"
+                            class="pa-4 d-flex align-center justify-space-between flex-wrap ga-3">
+                            <span class="text-body-2 text-medium-emphasis">{{ tm('memory.empty') }}</span>
+                            <v-btn color="info" variant="tonal" size="small" prepend-icon="mdi-brain"
+                                @click="openMemoryFromViewDialog">
+                                {{ tm('memory.add') }}
+                            </v-btn>
+                        </v-card>
                     </div>
 
                     <div v-if="viewingPersona.begin_dialogs && viewingPersona.begin_dialogs.length > 0" class="mb-4">
@@ -280,6 +306,7 @@ import FolderTree from './FolderTree.vue';
 import FolderBreadcrumb from './FolderBreadcrumb.vue';
 import FolderCard from './FolderCard.vue';
 import PersonaCard from './PersonaCard.vue';
+import PersonaMemoryPanel from './PersonaMemoryPanel.vue';
 import PersonaForm from '@/components/shared/PersonaForm.vue';
 import CreateFolderDialog from './CreateFolderDialog.vue';
 import MoveToFolderDialog from './MoveToFolderDialog.vue';
@@ -293,6 +320,7 @@ import type { Folder, FolderTreeNode } from '@/components/folder/types';
 interface Persona {
     persona_id: string;
     system_prompt: string;
+    memory?: string;
     custom_error_message?: string | null;
     begin_dialogs?: string[] | null;
     tools?: string[] | null;
@@ -315,6 +343,7 @@ export default defineComponent({
         FolderBreadcrumb,
         FolderCard,
         PersonaCard,
+        PersonaMemoryPanel,
         PersonaForm,
         CreateFolderDialog,
         MoveToFolderDialog
@@ -330,8 +359,10 @@ export default defineComponent({
             // Persona 相关
             showPersonaDialog: false,
             showViewDialog: false,
+            showMemoryDialog: false,
             editingPersona: null as Persona | null,
             viewingPersona: null as Persona | null,
+            memoryPersonaId: '',
 
             // 文件夹相关
             showCreateFolderDialog: false,
@@ -431,6 +462,23 @@ export default defineComponent({
         editPersona(persona: Persona) {
             this.editingPersona = persona;
             this.showPersonaDialog = true;
+        },
+
+        openMemoryDialog(persona: Persona) {
+            this.memoryPersonaId = persona.persona_id;
+            this.showMemoryDialog = true;
+        },
+
+        openMemoryFromViewDialog() {
+            if (!this.viewingPersona) return;
+            const persona = this.viewingPersona;
+            this.showViewDialog = false;
+            this.openMemoryDialog(persona);
+        },
+
+        async handleMemorySaved(message: string) {
+            this.showSuccess(message);
+            await this.refreshCurrentFolder();
         },
 
         viewPersona(persona: Persona) {
@@ -602,6 +650,7 @@ export default defineComponent({
                 const newPersona = {
                     persona_id: personaId,
                     system_prompt: data.system_prompt,
+                    memory: typeof data.memory === 'string' ? data.memory : '',
                     begin_dialogs: data.begin_dialogs || [],
                     tools: null, // 默认使用所有工具
                     skills: null, // 默认使用所有 Skills

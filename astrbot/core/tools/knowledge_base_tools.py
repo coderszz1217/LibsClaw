@@ -1,8 +1,10 @@
 import asyncio
+import hashlib
+import posixpath
 import re
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
-from pydantic import Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from pydantic.dataclasses import dataclass
 
 from astrbot.api import logger, sp
@@ -26,6 +28,103 @@ _KNOWLEDGE_BASE_TOOL_CONFIG = {
 }
 
 
+class _KnowledgeEntityInput(BaseModel):
+    """Validated entity extracted from one knowledge source."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    name: str = Field(min_length=1, max_length=120)
+    entity_type: str = Field(default="other", max_length=80)
+    summary: str = Field(default="", max_length=600)
+
+
+class _KnowledgeConceptInput(BaseModel):
+    """Validated concept extracted from one knowledge source."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    name: str = Field(min_length=1, max_length=120)
+    summary: str = Field(default="", max_length=600)
+
+
+class _KnowledgeRelationInput(BaseModel):
+    """Validated directed relationship between extracted knowledge nodes."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    source: str = Field(min_length=1, max_length=120)
+    target: str = Field(min_length=1, max_length=120)
+    relation: str = Field(min_length=1, max_length=80)
+    evidence: str = Field(default="", max_length=600)
+
+
+class _KnowledgeAnalysisInput(BaseModel):
+    """Validated structured analysis supplied with an ingested source."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    summary: str = Field(default="", max_length=1200)
+    category: str = Field(default="", max_length=120)
+    entities: list[_KnowledgeEntityInput] = Field(
+        default_factory=list,
+        max_length=40,
+    )
+    concepts: list[_KnowledgeConceptInput] = Field(
+        default_factory=list,
+        max_length=30,
+    )
+    relations: list[_KnowledgeRelationInput] = Field(
+        default_factory=list,
+        max_length=80,
+    )
+
+
+def _knowledge_page_slug(value: str) -> str:
+    """Return a stable, readable, Wiki-safe slug for a knowledge node.
+
+    Args:
+        value: Entity, concept, or category display name.
+
+    Returns:
+        A lowercase path segment that preserves readable CJK characters.
+    """
+    normalized = re.sub(r"\s+", "-", value.strip().casefold())
+    normalized = re.sub(r'[\x00-\x1f/\\:*?"<>|#%]+', "-", normalized)
+    normalized = normalized.strip(" .-_")
+    if normalized:
+        return normalized[:100]
+    digest = hashlib.sha256(value.encode("utf-8")).hexdigest()[:12]
+    return f"node-{digest}"
+
+
+def _knowledge_relation_name(value: str) -> str:
+    """Normalize a relationship label for graph persistence.
+
+    Args:
+        value: Human- or model-generated relationship label.
+
+    Returns:
+        A compact relationship identifier.
+    """
+    normalized = re.sub(r"[\s/\\:：]+", "_", value.strip().casefold())
+    normalized = re.sub(r"[^\w\-\u3400-\u9fff]", "", normalized)
+    return normalized[:80] or "related_to"
+
+
+def _relative_wiki_target(source_path: str, target_path: str) -> str:
+    """Return a page-relative target that resolves before the target exists.
+
+    Args:
+        source_path: Page path containing the Wiki link.
+        target_path: Target page path relative to the Wiki root.
+
+    Returns:
+        POSIX relative path from the source page directory to the target page.
+    """
+    source_parent = PurePosixPath(source_path).parent.as_posix()
+    return posixpath.relpath(target_path, start=source_parent)
+
+
 async def _resolve_target_knowledge_base(
     event: AstrMessageEvent,
     plugin_context: Context,
@@ -42,13 +141,15 @@ async def _resolve_target_knowledge_base(
         A tuple containing the resolved helper and an optional user-facing error.
     """
     kb_manager = plugin_context.kb_manager
+    selected_helper = None
     if selector:
-        kb_helper = await kb_manager.get_kb(selector)
-        if kb_helper is None:
-            kb_helper = await kb_manager.get_kb_by_name(selector)
-        if kb_helper is None:
+        selected_helper = await kb_manager.get_kb(selector)
+        if selected_helper is None:
+            selected_helper = await kb_manager.get_kb_by_name(selector)
+        if selected_helper is None:
             return None, f"error: Knowledge base {selector!r} does not exist."
-        return kb_helper, None
+        if getattr(event, "role", None) == "admin":
+            return selected_helper, None
 
     configured_helpers = []
     session_config = await sp.session_get(
@@ -77,6 +178,13 @@ async def _resolve_target_knowledge_base(
             helper = await kb_manager.get_kb(only_kb.kb_id)
             if helper is not None:
                 unique_helpers[only_kb.kb_id] = helper
+    if selected_helper is not None:
+        if selected_helper.kb.kb_id not in unique_helpers:
+            return None, (
+                f"error: Knowledge base {selected_helper.kb.kb_name!r} is not "
+                "selected for the current session."
+            )
+        return selected_helper, None
     if len(unique_helpers) != 1:
         names = ", ".join(helper.kb.kb_name for helper in unique_helpers.values())
         suffix = f" Current candidates: {names}." if names else ""
@@ -85,6 +193,171 @@ async def _resolve_target_knowledge_base(
             f"session does not resolve to exactly one.{suffix}"
         )
     return next(iter(unique_helpers.values())), None
+
+
+async def _write_structured_knowledge_pages(
+    kb_helper: KBHelper,
+    plugin_context: Context,
+    document: KBDocument,
+    title: str,
+    source_label: str,
+    nodes: list[dict[str, str]],
+    relations: list[_KnowledgeRelationInput],
+) -> dict[str, int]:
+    """Create or enrich entity and concept pages for one ingested source.
+
+    Existing pages are preserved and receive only missing relationship lines.
+    Every changed page is snapshotted so a later failure can restore the Wiki to
+    its state before enrichment.
+
+    Args:
+        kb_helper: Active knowledge base helper.
+        plugin_context: Runtime context used to refresh knowledge base statistics.
+        document: Newly persisted source document.
+        title: Source article title.
+        source_label: Source URL or provenance label.
+        nodes: Deduplicated entity and concept page specifications.
+        relations: Directed relationships extracted from the source.
+
+    Returns:
+        Counts of changed node pages and persisted relationship lines.
+
+    Raises:
+        Exception: If a page write or statistics refresh fails after rollback.
+    """
+    if not nodes:
+        return {"nodes": 0, "relations": 0}
+
+    wiki_store = await kb_helper._ensure_vec_db()
+    source_path = document.file_path
+    aliases: dict[str, tuple[str, str]] = {
+        "source": (source_path, title),
+        "article": (source_path, title),
+        "文章": (source_path, title),
+        title.casefold(): (source_path, title),
+    }
+    for node in nodes:
+        aliases[node["name"].casefold()] = (node["path"], node["name"])
+
+    outgoing_lines: dict[str, list[str]] = {node["path"]: [] for node in nodes}
+    for node in nodes:
+        source_target = _relative_wiki_target(node["path"], source_path)
+        outgoing_lines[node["path"]].append(
+            f"- sourced_from: [[{source_target}|{title}]]"
+        )
+
+    for relation in relations:
+        resolved_source = aliases.get(relation.source.strip().casefold())
+        resolved_target = aliases.get(relation.target.strip().casefold())
+        if (
+            resolved_source is None
+            or resolved_target is None
+            or resolved_source[0] == resolved_target[0]
+            or resolved_source[0] == source_path
+        ):
+            continue
+        relation_name = _knowledge_relation_name(relation.relation)
+        evidence = " ".join(relation.evidence.split()).strip()[:300]
+        evidence_suffix = f" — {evidence}" if evidence else ""
+        relative_target = _relative_wiki_target(
+            resolved_source[0],
+            resolved_target[0],
+        )
+        outgoing_lines.setdefault(resolved_source[0], []).append(
+            f"- {relation_name}: "
+            f"[[{relative_target}|{resolved_target[1]}]]{evidence_suffix}"
+        )
+
+    previous_content: dict[str, str | None] = {}
+    changed_paths: list[str] = []
+    relationship_count = 0
+    try:
+        for node in nodes:
+            path = node["path"]
+            metadata = await wiki_store.get_page_metadata(path)
+            if metadata is not None:
+                page = await wiki_store.read_page(path)
+                original_content = str(page.get("content") or "")
+            else:
+                original_content = None
+            previous_content[path] = original_content
+
+            unique_lines = []
+            for line in outgoing_lines.get(path, []):
+                if line not in unique_lines and (
+                    original_content is None or line not in original_content
+                ):
+                    unique_lines.append(line)
+            relationship_count += len(unique_lines)
+
+            if original_content is None:
+                summary = " ".join(node["summary"].split()).strip()
+                safe_summary = summary[:600] or (
+                    f"Knowledge {node['node_type']} extracted from {title}."
+                )
+                safe_source = " ".join(source_label.split()).strip() or title
+                type_detail = (
+                    f"\n\nEntity type: {node['entity_type']}"
+                    if node["node_type"] == "entity" and node["entity_type"]
+                    else ""
+                )
+                relation_block = "\n".join(unique_lines)
+                updated_content = (
+                    "---\n"
+                    f"type: {node['node_type']}\n"
+                    f"summary: {safe_summary}\n"
+                    f"source: {safe_source}\n"
+                    "---\n\n"
+                    f"# {node['name']}\n\n"
+                    f"{safe_summary}{type_detail}\n\n"
+                    "## Knowledge Relations\n\n"
+                    f"{relation_block}\n"
+                )
+            elif unique_lines:
+                separator = (
+                    "\n"
+                    if "## Knowledge Relations" in original_content
+                    else "\n\n## Knowledge Relations\n\n"
+                )
+                updated_content = (
+                    original_content.rstrip()
+                    + separator
+                    + "\n".join(unique_lines)
+                    + "\n"
+                )
+            else:
+                continue
+
+            await wiki_store.write_page(path, updated_content)
+            changed_paths.append(path)
+
+        kb_manager = plugin_context.kb_manager
+        await kb_manager.kb_db.update_kb_stats(
+            kb_id=kb_helper.kb.kb_id,
+            vec_db=wiki_store,
+        )
+        await kb_helper.refresh_kb()
+    except Exception:
+        for path in reversed(changed_paths):
+            original_content = previous_content[path]
+            try:
+                if original_content is None:
+                    await wiki_store.delete_page(path)
+                else:
+                    await wiki_store.write_page(path, original_content)
+            except Exception as restore_exc:  # noqa: BLE001
+                logger.error(
+                    "Failed to restore structured knowledge page %s: %s",
+                    path,
+                    restore_exc,
+                    exc_info=True,
+                )
+        raise
+
+    return {
+        "nodes": len(changed_paths),
+        "relations": relationship_count,
+    }
 
 
 async def retrieve_knowledge_base(
@@ -196,7 +469,7 @@ class KnowledgeBaseListPagesTool(FunctionTool[AstrAgentContext]):
     description: str = (
         "List Markdown Wiki pages and their exact paths in a knowledge base. "
         "Use this before reading, editing, or deleting a page when its path is "
-        "not already known. Only administrators can use this management tool."
+        "not already known. The target must be selected for the current session."
     )
     parameters: dict = Field(
         default_factory=lambda: {
@@ -228,7 +501,7 @@ class KnowledgeBaseListPagesTool(FunctionTool[AstrAgentContext]):
     async def call(
         self, context: ContextWrapper[AstrAgentContext], **kwargs
     ) -> ToolExecResult:
-        """List manageable Wiki pages for the current administrator.
+        """List manageable Wiki pages for the current conversation.
 
         Args:
             context: Current agent execution context.
@@ -239,9 +512,6 @@ class KnowledgeBaseListPagesTool(FunctionTool[AstrAgentContext]):
         """
         event = context.context.event
         plugin_context = context.context.context
-        if getattr(event, "role", None) != "admin":
-            return "error: Only administrators can list knowledge base pages."
-
         selector = str(kwargs.get("knowledge_base") or "").strip()
         kb_helper, error = await _resolve_target_knowledge_base(
             event,
@@ -316,8 +586,8 @@ class KnowledgeBaseReadPageTool(FunctionTool[AstrAgentContext]):
     name: str = "astr_kb_read_page"
     description: str = (
         "Read the complete Markdown content of one Wiki page by its exact path. "
-        "Use astr_kb_list_pages first if the path is unknown. Only administrators "
-        "can use this management tool."
+        "Use astr_kb_list_pages first if the path is unknown. The target must be "
+        "selected for the current session."
     )
     parameters: dict = Field(
         default_factory=lambda: {
@@ -353,9 +623,6 @@ class KnowledgeBaseReadPageTool(FunctionTool[AstrAgentContext]):
         """
         event = context.context.event
         plugin_context = context.context.context
-        if getattr(event, "role", None) != "admin":
-            return "error: Only administrators can read managed knowledge pages."
-
         path = str(kwargs.get("path") or "").strip()
         if not path:
             return "error: Wiki page path is empty."
@@ -404,7 +671,7 @@ class KnowledgeBaseEditPageTool(FunctionTool[AstrAgentContext]):
         "Edit an existing Markdown Wiki page and rebuild its keyword index, "
         "knowledge graph links, and optional vectors. Prefer exact old_text to "
         "replacement edits so the rest of the page remains unchanged. Use "
-        "full_content only when the administrator explicitly requests a complete "
+        "full_content only when the user explicitly requests a complete "
         "rewrite. No Embedding Provider is required."
     )
     parameters: dict = Field(
@@ -461,9 +728,6 @@ class KnowledgeBaseEditPageTool(FunctionTool[AstrAgentContext]):
         """
         event = context.context.event
         plugin_context = context.context.context
-        if getattr(event, "role", None) != "admin":
-            return "error: Only administrators can edit knowledge base pages."
-
         path = str(kwargs.get("path") or "").strip()
         if not path:
             return "error: Wiki page path is empty."
@@ -582,7 +846,7 @@ class KnowledgeBaseDeletePageTool(FunctionTool[AstrAgentContext]):
     name: str = "astr_kb_delete_page"
     description: str = (
         "Delete exactly one Markdown Wiki page and its derived chunks, graph node, "
-        "links, and optional vectors. Use only after the administrator explicitly "
+        "links, and optional vectors. Use only after the user explicitly "
         "requests deletion and the exact path has been verified with list/read. "
         "This tool cannot delete an entire knowledge base or a directory."
     )
@@ -604,7 +868,7 @@ class KnowledgeBaseDeletePageTool(FunctionTool[AstrAgentContext]):
                 "confirm": {
                     "type": "boolean",
                     "description": (
-                        "Must be true only after the administrator explicitly "
+                        "Must be true only after the user explicitly "
                         "confirmed deletion of this exact page."
                     ),
                 },
@@ -634,8 +898,6 @@ class KnowledgeBaseDeletePageTool(FunctionTool[AstrAgentContext]):
         """
         event = context.context.event
         plugin_context = context.context.context
-        if getattr(event, "role", None) != "admin":
-            return "error: Only administrators can delete knowledge base pages."
         if kwargs.get("confirm") is not True:
             return "error: Explicit deletion confirmation is required."
 
@@ -705,7 +967,11 @@ class KnowledgeBaseWritePageTool(FunctionTool[AstrAgentContext]):
     description: str = (
         "Save extracted web article content, notes, or other supplied text as a "
         "Markdown Wiki page in a knowledge base. Use this after opening a link "
-        "with browser or OpenCLI when an administrator asks to save the content. "
+        "with browser or OpenCLI when the user asks to save the content. "
+        "Before calling, analyze the complete source and populate summary, category, "
+        "entities, concepts, and relations. Use 'source' as a relation endpoint for "
+        "the article itself. The tool creates or enriches entity/concept pages and "
+        "persistent typed graph links automatically. "
         "An Embedding Provider is NOT required: Markdown storage and keyword "
         "indexing always work, and vector indexing is added only when configured. "
         "Never ask the user for an embedding API key before using this tool."
@@ -729,6 +995,74 @@ class KnowledgeBaseWritePageTool(FunctionTool[AstrAgentContext]):
                     "type": "string",
                     "description": "Optional source URL or provenance label.",
                 },
+                "summary": {
+                    "type": "string",
+                    "maxLength": 1200,
+                    "description": "Concise factual summary of the complete source.",
+                },
+                "category": {
+                    "type": "string",
+                    "maxLength": 120,
+                    "description": (
+                        "Primary stable topic category. It becomes a concept node."
+                    ),
+                },
+                "entities": {
+                    "type": "array",
+                    "maxItems": 40,
+                    "description": (
+                        "Important named people, organizations, products, places, "
+                        "events, or other concrete entities."
+                    ),
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string", "maxLength": 120},
+                            "entity_type": {
+                                "type": "string",
+                                "maxLength": 80,
+                            },
+                            "summary": {"type": "string", "maxLength": 600},
+                        },
+                        "required": ["name"],
+                        "additionalProperties": False,
+                    },
+                },
+                "concepts": {
+                    "type": "array",
+                    "maxItems": 30,
+                    "description": (
+                        "Reusable abstract topics, technologies, methods, or ideas."
+                    ),
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string", "maxLength": 120},
+                            "summary": {"type": "string", "maxLength": 600},
+                        },
+                        "required": ["name"],
+                        "additionalProperties": False,
+                    },
+                },
+                "relations": {
+                    "type": "array",
+                    "maxItems": 80,
+                    "description": (
+                        "Directed factual relations. Endpoints must match an entity "
+                        "or concept name, or use 'source' for the article."
+                    ),
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "source": {"type": "string", "maxLength": 120},
+                            "target": {"type": "string", "maxLength": 120},
+                            "relation": {"type": "string", "maxLength": 80},
+                            "evidence": {"type": "string", "maxLength": 600},
+                        },
+                        "required": ["source", "target", "relation"],
+                        "additionalProperties": False,
+                    },
+                },
                 "knowledge_base": {
                     "type": "string",
                     "description": (
@@ -738,6 +1072,7 @@ class KnowledgeBaseWritePageTool(FunctionTool[AstrAgentContext]):
                 },
             },
             "required": ["title", "content"],
+            "additionalProperties": False,
         }
     )
 
@@ -746,9 +1081,6 @@ class KnowledgeBaseWritePageTool(FunctionTool[AstrAgentContext]):
     ) -> ToolExecResult:
         event = context.context.event
         plugin_context = context.context.context
-        if event.role != "admin":
-            return "error: Only administrators can save knowledge base pages."
-
         title = " ".join(str(kwargs.get("title") or "").split()).strip()
         content = str(kwargs.get("content") or "").strip()
         source = " ".join(str(kwargs.get("source") or "").split()).strip()
@@ -756,6 +1088,119 @@ class KnowledgeBaseWritePageTool(FunctionTool[AstrAgentContext]):
             return "error: Page title is empty."
         if not content:
             return "error: Page content is empty."
+        try:
+            analysis = _KnowledgeAnalysisInput.model_validate(
+                {
+                    "summary": kwargs.get("summary", ""),
+                    "category": kwargs.get("category", ""),
+                    "entities": kwargs.get("entities", []),
+                    "concepts": kwargs.get("concepts", []),
+                    "relations": kwargs.get("relations", []),
+                }
+            )
+        except ValidationError as exc:
+            first_error = exc.errors(include_url=False)[0]
+            location = ".".join(str(part) for part in first_error.get("loc", ()))
+            return (
+                "error: Structured knowledge analysis is invalid at "
+                f"{location or 'input'}: {first_error.get('msg', 'validation failed')}."
+            )
+
+        nodes_by_name: dict[str, dict[str, str]] = {}
+        category = " ".join(analysis.category.split()).strip()
+        if category:
+            nodes_by_name[category.casefold()] = {
+                "name": category,
+                "path": f"concepts/{_knowledge_page_slug(category)}.md",
+                "node_type": "concept",
+                "entity_type": "",
+                "summary": f"Primary topic category extracted from {title}.",
+            }
+        for entity in analysis.entities:
+            name = " ".join(entity.name.split()).strip()
+            if not name:
+                continue
+            nodes_by_name[name.casefold()] = {
+                "name": name,
+                "path": f"entities/{_knowledge_page_slug(name)}.md",
+                "node_type": "entity",
+                "entity_type": " ".join(entity.entity_type.split()).strip()[:80],
+                "summary": " ".join(entity.summary.split()).strip()[:600],
+            }
+        for concept in analysis.concepts:
+            name = " ".join(concept.name.split()).strip()
+            if not name:
+                continue
+            existing = nodes_by_name.get(name.casefold())
+            if existing is None or existing["node_type"] != "entity":
+                nodes_by_name[name.casefold()] = {
+                    "name": name,
+                    "path": f"concepts/{_knowledge_page_slug(name)}.md",
+                    "node_type": "concept",
+                    "entity_type": "",
+                    "summary": " ".join(concept.summary.split()).strip()[:600],
+                }
+        nodes = list(nodes_by_name.values())
+
+        source_relation_lines = []
+        for node in nodes:
+            relation_name = (
+                "categorized_as"
+                if category and node["name"].casefold() == category.casefold()
+                else "mentions"
+                if node["node_type"] == "entity"
+                else "discusses"
+            )
+            source_target = _relative_wiki_target(
+                "sources/source.md",
+                node["path"],
+            )
+            source_relation_lines.append(
+                f"- {relation_name}: [[{source_target}|{node['name']}]]"
+            )
+        source_aliases = {"source", "article", "文章", title.casefold()}
+        for relation in analysis.relations:
+            target = nodes_by_name.get(relation.target.strip().casefold())
+            if (
+                relation.source.strip().casefold() not in source_aliases
+                or target is None
+            ):
+                continue
+            relation_name = _knowledge_relation_name(relation.relation)
+            evidence = " ".join(relation.evidence.split()).strip()[:300]
+            evidence_suffix = f" — {evidence}" if evidence else ""
+            source_target = _relative_wiki_target(
+                "sources/source.md",
+                target["path"],
+            )
+            source_relation_lines.append(
+                f"- {relation_name}: "
+                f"[[{source_target}|{target['name']}]]{evidence_suffix}"
+            )
+        source_relation_lines = list(dict.fromkeys(source_relation_lines))
+
+        analysis_sections = []
+        summary = " ".join(analysis.summary.split()).strip()
+        if summary:
+            analysis_sections.append(f"## Summary\n\n{summary}")
+        if category:
+            category_node = nodes_by_name[category.casefold()]
+            category_target = _relative_wiki_target(
+                "sources/source.md",
+                category_node["path"],
+            )
+            analysis_sections.append(
+                f"## Category\n\n[[{category_target}|{category_node['name']}]]"
+            )
+        if source_relation_lines:
+            analysis_sections.append(
+                "## Knowledge Relations\n\n" + "\n".join(source_relation_lines)
+            )
+        enriched_content = content
+        if analysis_sections:
+            enriched_content = (
+                "\n\n".join(analysis_sections) + "\n\n## Original Content\n\n" + content
+            )
 
         selector = str(kwargs.get("knowledge_base") or "").strip()
         kb_helper, error = await _resolve_target_knowledge_base(
@@ -775,7 +1220,7 @@ class KnowledgeBaseWritePageTool(FunctionTool[AstrAgentContext]):
         try:
             document = await kb_helper.upload_document(
                 file_name=file_name,
-                file_content=content.encode("utf-8"),
+                file_content=enriched_content.encode("utf-8"),
                 file_type="md",
                 chunk_size=(
                     chunk_size if chunk_size is not None else DEFAULT_CHUNK_SIZE
@@ -797,6 +1242,40 @@ class KnowledgeBaseWritePageTool(FunctionTool[AstrAgentContext]):
             error_message = str(exc).strip() or "Unknown save error"
             return f"error: Knowledge save failed: {error_message}"
 
+        graph_result = {"nodes": 0, "relations": 0}
+        if nodes:
+            try:
+                graph_result = await _write_structured_knowledge_pages(
+                    kb_helper=kb_helper,
+                    plugin_context=plugin_context,
+                    document=document,
+                    title=title,
+                    source_label=source or title,
+                    nodes=nodes,
+                    relations=analysis.relations,
+                )
+            except Exception as exc:
+                try:
+                    await kb_helper.delete_document(document.doc_id)
+                except Exception as rollback_exc:  # noqa: BLE001
+                    logger.error(
+                        "Failed to roll back source document %s after graph "
+                        "enrichment failure: %s",
+                        document.doc_id,
+                        rollback_exc,
+                        exc_info=True,
+                    )
+                logger.error(
+                    "Failed to enrich knowledge graph for source %s: %s",
+                    title,
+                    exc,
+                    exc_info=True,
+                )
+                return (
+                    "error: Knowledge graph enrichment failed; the new source was "
+                    "rolled back. Please retry."
+                )
+
         embedding_provider_id = getattr(
             kb_helper.kb,
             "embedding_provider_id",
@@ -810,7 +1289,9 @@ class KnowledgeBaseWritePageTool(FunctionTool[AstrAgentContext]):
         return (
             f"Saved Wiki page to {kb_helper.kb.kb_name} "
             f"({kb_helper.kb.kb_id}). Path: {document.file_path}. "
-            f"Chunks: {document.chunk_count}. Index mode: {index_mode}."
+            f"Chunks: {document.chunk_count}. Structured nodes updated: "
+            f"{graph_result['nodes']}. Relationships added: "
+            f"{graph_result['relations']}. Index mode: {index_mode}."
         )
 
 
@@ -821,7 +1302,7 @@ class KnowledgeBaseExportTool(FunctionTool[AstrAgentContext]):
     description: str = (
         "Export one knowledge base as a ZIP attachment containing its Markdown "
         "Wiki pages. Folder paths are preserved exactly relative to the knowledge "
-        "root. Use this when an administrator asks to download, export, or back up "
+        "root. Use this when the user asks to download, export, or back up "
         "a knowledge base. The ZIP is sent directly to the current conversation."
     )
     parameters: dict = Field(
@@ -854,9 +1335,6 @@ class KnowledgeBaseExportTool(FunctionTool[AstrAgentContext]):
         """
         event = context.context.event
         plugin_context = context.context.context
-        if event.role != "admin":
-            return "error: Only administrators can export knowledge bases."
-
         selector = str(kwargs.get("knowledge_base") or "").strip()
         kb_helper, error = await _resolve_target_knowledge_base(
             event,
@@ -899,7 +1377,7 @@ class KnowledgeBaseImportAttachmentTool(FunctionTool[AstrAgentContext]):
     description: str = (
         "Import a Markdown file or ZIP attachment from the current or quoted "
         "message into a knowledge base while preserving its folder structure. "
-        "Use this only when an administrator explicitly asks to save or import "
+        "Use this only when the user explicitly asks to save or import "
         "the attached knowledge files."
     )
     parameters: dict = Field(
@@ -937,9 +1415,6 @@ class KnowledgeBaseImportAttachmentTool(FunctionTool[AstrAgentContext]):
     ) -> ToolExecResult:
         event = context.context.event
         plugin_context = context.context.context
-        if event.role != "admin":
-            return "error: Only administrators can import knowledge base attachments."
-
         attachments: list[File] = []
         for component in event.message_obj.message:
             if isinstance(component, File):

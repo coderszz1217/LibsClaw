@@ -265,6 +265,121 @@ async def test_markdown_and_wiki_links_create_graph_edges_and_backlinks(wiki_sto
 
 
 @pytest.mark.asyncio
+async def test_typed_relation_lines_persist_graph_relation_and_evidence(wiki_store):
+    """Preserve LLM-extracted relationship types in rebuildable Markdown."""
+    await wiki_store.write_page(
+        "entities/xiaomi.md",
+        "# Xiaomi\n\nCompany.",
+        doc_id="doc-xiaomi",
+    )
+    await wiki_store.write_page(
+        "entities/pengcheng.md",
+        (
+            "# Pengcheng\n\n"
+            "## Knowledge Relations\n\n"
+            "- belongs_to: [[entities/xiaomi|Xiaomi]] — Described as a Xiaomi product."
+        ),
+        doc_id="doc-pengcheng",
+    )
+
+    page = await wiki_store.read_page("entities/pengcheng.md")
+    graph = await wiki_store.get_graph()
+
+    assert page["links"] == [
+        {
+            "target": "entities/xiaomi.md",
+            "relation": "belongs_to",
+            "evidence": "Described as a Xiaomi product.",
+            "confidence": 1.0,
+        }
+    ]
+    assert {
+        (edge["source"], edge["target"], edge["relation"], edge["evidence"])
+        for edge in graph["edges"]
+    } == {
+        (
+            "entities/pengcheng.md",
+            "entities/xiaomi.md",
+            "belongs_to",
+            "Described as a Xiaomi product.",
+        )
+    }
+
+
+@pytest.mark.asyncio
+async def test_initialize_validates_typed_relations_after_restart(tmp_path):
+    """Validate a persisted typed graph edge when reopening a wiki store."""
+    kb_dir = tmp_path / "kb-typed-restart"
+    store = WikiStore(kb_dir, "kb-typed-restart")
+    await store.initialize()
+    await store.write_page(
+        "entities/company.md",
+        "# Company\n\nCompany entity.",
+        doc_id="doc-company",
+    )
+    await store.write_page(
+        "entities/product.md",
+        (
+            "# Product\n\n"
+            "## Knowledge Relations\n\n"
+            "- belongs_to: [[company|Company]] — Product ownership evidence."
+        ),
+        doc_id="doc-product",
+    )
+    await store.close()
+
+    reopened = WikiStore(kb_dir, "kb-typed-restart")
+    await reopened.initialize()
+    try:
+        graph = await reopened.get_graph()
+
+        assert reopened._last_initialize_rebuilt is False
+        assert {
+            (
+                edge["source"],
+                edge["target"],
+                edge["relation"],
+                edge["evidence"],
+            )
+            for edge in graph["edges"]
+        } == {
+            (
+                "entities/product.md",
+                "entities/company.md",
+                "belongs_to",
+                "Product ownership evidence.",
+            )
+        }
+    finally:
+        await reopened.close()
+
+
+@pytest.mark.asyncio
+async def test_relative_relation_resolves_before_target_page_exists(wiki_store):
+    """Resolve structured source links correctly regardless of page write order."""
+    await wiki_store.write_page(
+        "sources/article.md",
+        (
+            "# Article\n\n"
+            "## Knowledge Relations\n\n"
+            "- mentions: [[../entities/xiaomi|Xiaomi]]"
+        ),
+        doc_id="doc-article",
+    )
+    await wiki_store.write_page(
+        "entities/xiaomi.md",
+        "# Xiaomi\n\nCompany.",
+        doc_id="doc-xiaomi",
+    )
+
+    graph = await wiki_store.get_graph()
+
+    assert {
+        (edge["source"], edge["target"], edge["relation"]) for edge in graph["edges"]
+    } == {("sources/article.md", "entities/xiaomi.md", "mentions")}
+
+
+@pytest.mark.asyncio
 async def test_metaclaw_directories_infer_graph_node_types(wiki_store):
     pages = {
         "entities/company.md": "# Company\n\nEntity page.",

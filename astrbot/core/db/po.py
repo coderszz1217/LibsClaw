@@ -5,6 +5,8 @@ from typing import TypedDict
 
 from sqlmodel import JSON, Field, SQLModel, Text, UniqueConstraint
 
+PERSONA_MEMORY_MAX_CHARS = 32_000
+
 
 class TimestampMixin(SQLModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -144,6 +146,8 @@ class Persona(TimestampMixin, SQLModel, table=True):
     )
     persona_id: str = Field(max_length=255, nullable=False)
     system_prompt: str = Field(sa_type=Text, nullable=False)
+    memory: str = Field(default="", sa_type=Text, nullable=False)
+    """Persistent text memory associated with this persona."""
     begin_dialogs: list | None = Field(default=None, sa_type=JSON)
     """a list of strings, each representing a dialog to start with"""
     tools: list | None = Field(default=None, sa_type=JSON)
@@ -564,6 +568,8 @@ class Personality(TypedDict):
 
     prompt: str
     name: str
+    memory: str
+    """Persistent text memory associated with this persona."""
     begin_dialogs: list[str]
     mood_imitation_dialogs: list[str]
     """情感模拟对话预设。在 v4.0.0 版本及之后，已被废弃。"""
