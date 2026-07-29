@@ -242,12 +242,17 @@
       </v-card>
     </v-dialog>
 
-    <v-dialog v-model="showProviderCfg" width="900" persistent>
-      <v-card>
-        <v-card-title class="text-h3 pa-4 pb-0 pl-6">
-          {{ updatingMode ? tm('dialogs.config.editTitle') : tm('dialogs.config.addTitle') + ` ${newSelectedProviderName} ` + tm('dialogs.config.provider') }}
+    <v-dialog v-model="showProviderCfg" width="920" persistent>
+      <v-card class="provider-modal">
+        <v-card-title class="text-h3 pa-4 pb-0 pl-6 provider-modal__title">
+          <span class="provider-modal__title-icon">
+            <v-icon size="22">mdi-tune-variant</v-icon>
+          </span>
+          <span class="provider-modal__title-text">
+            {{ updatingMode ? tm('dialogs.config.editTitle') : tm('dialogs.config.addTitle') + ` ${newSelectedProviderName} ` + tm('dialogs.config.provider') }}
+          </span>
         </v-card-title>
-        <v-card-text class="py-4">
+        <v-card-text class="py-4 provider-modal__body">
           <AstrBotConfig
             :iterable="newSelectedProviderConfig"
             :metadata="configSchema"
@@ -258,24 +263,27 @@
 
         <v-divider></v-divider>
 
-        <v-card-actions class="pa-4">
+        <v-card-actions class="pa-4 provider-modal__actions">
           <v-spacer></v-spacer>
-          <v-btn variant="text" :disabled="loading" @click="showProviderCfg = false">
+          <v-btn class="provider-modal__cancel" variant="text" :disabled="loading" @click="showProviderCfg = false">
             {{ tm('dialogs.config.cancel') }}
           </v-btn>
-          <v-btn color="primary" variant="tonal" :loading="loading" @click="newProvider">
+          <v-btn class="provider-modal__save" color="primary" variant="tonal" :loading="loading" @click="newProvider">
             {{ tm('dialogs.config.save') }}
           </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <v-dialog v-model="showProviderEditDialog" width="800">
-      <v-card>
-        <v-card-title class="text-h3 pa-4 pb-0 pl-6">
-          {{ providerEditDialogTitle }}
+    <v-dialog v-model="showProviderEditDialog" width="860">
+      <v-card class="provider-modal provider-modal--model">
+        <v-card-title class="text-h3 pa-4 pb-0 pl-6 provider-modal__title">
+          <span class="provider-modal__title-icon">
+            <v-icon size="22">mdi-cube-outline</v-icon>
+          </span>
+          <span class="provider-modal__title-text">{{ providerEditDialogTitle }}</span>
         </v-card-title>
-        <v-card-text class="py-4">
+        <v-card-text class="py-4 provider-modal__body">
           <AstrBotConfig
             v-if="providerEditData"
             :iterable="providerEditData"
@@ -284,9 +292,10 @@
             :is-editing="true"
           />
         </v-card-text>
-        <v-card-actions class="pa-4">
+        <v-card-actions class="pa-4 provider-modal__actions">
           <v-spacer></v-spacer>
           <v-btn
+            class="provider-modal__cancel"
             variant="text"
             :disabled="savingProviders.includes(providerEditData?.id)"
             @click="showProviderEditDialog = false"
@@ -294,6 +303,7 @@
             {{ tm('dialogs.config.cancel') }}
           </v-btn>
           <v-btn
+            class="provider-modal__save"
             color="primary"
             variant="tonal"
             :loading="savingProviders.includes(providerEditData?.id)"
@@ -308,6 +318,32 @@
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000" location="top">
       {{ snackbar.message }}
     </v-snackbar>
+
+    <v-dialog v-model="providerDeleteDialog.show" max-width="460" persistent>
+      <v-card class="provider-delete-dialog">
+        <v-card-title class="provider-delete-dialog__title">
+          <span class="provider-delete-dialog__icon">
+            <v-icon size="24">mdi-trash-can-outline</v-icon>
+          </span>
+          <span>删除模型</span>
+        </v-card-title>
+        <v-card-text class="provider-delete-dialog__body">
+          <p class="provider-delete-dialog__message">{{ providerDeleteDialog.message }}</p>
+          <div v-if="providerDeleteDialog.providerId" class="provider-delete-dialog__target">
+            {{ providerDeleteDialog.providerId }}
+          </div>
+        </v-card-text>
+        <v-card-actions class="provider-delete-dialog__actions">
+          <v-spacer></v-spacer>
+          <v-btn class="provider-delete-dialog__cancel" variant="text" @click="resolveProviderDelete(false)">
+            取消
+          </v-btn>
+          <v-btn class="provider-delete-dialog__confirm" color="error" variant="tonal" @click="resolveProviderDelete(true)">
+            确定删除
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <v-dialog v-model="showAgentRunnerDialog" max-width="520" persistent>
       <v-card>
@@ -363,9 +399,35 @@ const snackbar = ref({
   message: '',
   color: 'success'
 })
+const providerDeleteDialog = ref({
+  show: false,
+  message: '',
+  providerId: '',
+  resolve: null
+})
 
 function showMessage(message, color = 'success') {
   snackbar.value = { show: true, message, color }
+}
+
+function openProviderDeleteDialog(provider, message) {
+  providerDeleteDialog.value = {
+    show: true,
+    message,
+    providerId: provider?.id || '',
+    resolve: null
+  }
+
+  return new Promise((resolve) => {
+    providerDeleteDialog.value.resolve = resolve
+  })
+}
+
+function resolveProviderDelete(confirmed) {
+  const resolve = providerDeleteDialog.value.resolve
+  providerDeleteDialog.value.show = false
+  providerDeleteDialog.value.resolve = null
+  if (resolve) resolve(confirmed)
 }
 
 const {
@@ -410,7 +472,8 @@ const {
 } = useProviderSources({
   defaultTab: props.defaultTab,
   tm,
-  showMessage
+  showMessage,
+  confirmDeleteProvider: openProviderDeleteDialog
 })
 
 const showAddProviderDialog = ref(false)
@@ -813,13 +876,15 @@ function goToConfigPage() {
   box-shadow: 0 18px 48px rgba(17, 24, 39, 0.08);
   display: grid;
   grid-template-columns: minmax(280px, 320px) 1px minmax(0, 1fr);
-  min-height: 720px;
+  height: clamp(560px, calc(100vh - 260px), 700px);
+  min-height: 0;
   overflow: hidden;
 }
 
 .provider-workbench__sidebar,
 .provider-workbench__main {
   min-width: 0;
+  min-height: 0;
 }
 
 .provider-workbench__divider {
@@ -828,6 +893,7 @@ function goToConfigPage() {
 
 .provider-workbench__main {
   display: flex;
+  overflow: hidden;
 }
 
 .provider-config-shell {
@@ -897,7 +963,7 @@ function goToConfigPage() {
 
 .provider-empty-state {
   flex: 1;
-  min-height: 360px;
+  min-height: 280px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -945,6 +1011,282 @@ function goToConfigPage() {
 
 .provider-card-action {
   border-radius: 8px;
+}
+
+.provider-modal {
+  max-height: min(86vh, 820px);
+  border: 1px solid rgba(var(--v-theme-border), 0.78);
+  border-radius: 18px !important;
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-primary), 0.055), transparent 160px),
+    rgb(var(--v-theme-surface));
+  box-shadow: 0 24px 68px rgba(15, 23, 42, 0.18) !important;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.provider-modal__title {
+  min-height: 76px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 22px 28px 18px !important;
+  color: rgb(var(--v-theme-primaryText));
+  font-size: 1.35rem !important;
+  font-weight: 740;
+  letter-spacing: 0;
+  line-height: 1.25;
+}
+
+.provider-modal__title-icon {
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(var(--v-theme-primary), 0.16);
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  color: rgb(var(--v-theme-primary));
+  background: rgba(var(--v-theme-primary), 0.1);
+}
+
+.provider-modal__title-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.provider-modal__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 28px 18px !important;
+}
+
+.provider-modal__actions {
+  padding: 14px 28px 20px !important;
+  gap: 10px;
+  background: rgba(var(--v-theme-surface), 0.94);
+}
+
+.provider-modal__cancel,
+.provider-modal__save {
+  min-width: 92px;
+  height: 42px;
+  max-height: 42px;
+  border-radius: 8px;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.provider-modal__cancel {
+  color: rgba(var(--v-theme-on-surface), 0.72);
+}
+
+.provider-modal__cancel:hover {
+  background: rgba(var(--v-theme-on-surface), 0.06);
+}
+
+.provider-modal__save {
+  border: 1px solid rgba(var(--v-theme-primary), 0.16);
+  box-shadow: 0 8px 18px rgba(var(--v-theme-primary), 0.12);
+}
+
+.provider-modal :deep(.config-section) {
+  display: none;
+}
+
+.provider-modal :deep(.v-card-text.px-0.py-1) {
+  padding: 0 !important;
+}
+
+.provider-modal :deep(.object-config) {
+  border: 1px solid rgba(var(--v-theme-border), 0.72);
+  border-radius: 14px;
+  background: rgba(var(--v-theme-surface), 0.94);
+  overflow: hidden;
+}
+
+.provider-modal :deep(.config-row) {
+  min-height: 60px;
+  padding: 10px 16px;
+  border-radius: 0;
+  align-items: center;
+  transition: background-color 0.16s ease;
+}
+
+.provider-modal :deep(.config-row:hover) {
+  background: rgba(var(--v-theme-primary), 0.035);
+}
+
+.provider-modal :deep(.property-info) {
+  padding-right: 18px;
+}
+
+.provider-modal :deep(.property-info .v-list-item) {
+  padding-inline: 0;
+  min-height: auto;
+}
+
+.provider-modal :deep(.property-name) {
+  color: rgb(var(--v-theme-primaryText));
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.provider-modal :deep(.property-hint) {
+  margin-top: 5px;
+  color: rgba(var(--v-theme-on-surface), 0.58);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: normal;
+}
+
+.provider-modal :deep(.config-input) {
+  padding: 6px 0 6px 12px;
+}
+
+.provider-modal :deep(.config-divider) {
+  margin: 0 16px;
+  border-color: rgba(var(--v-theme-border), 0.62);
+}
+
+.provider-modal :deep(.v-field) {
+  border-radius: 9px;
+  background: rgb(var(--v-theme-surface));
+}
+
+.provider-modal :deep(.v-field__outline) {
+  color: rgba(var(--v-theme-on-surface), 0.2);
+}
+
+.provider-modal :deep(.v-field--focused .v-field__outline) {
+  color: rgba(var(--v-theme-primary), 0.62);
+}
+
+.provider-modal :deep(.v-field__input) {
+  min-height: 40px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  font-size: 14px;
+}
+
+.provider-modal :deep(.v-switch .v-selection-control) {
+  min-height: 38px;
+}
+
+.provider-modal :deep(.v-switch .v-switch__track) {
+  opacity: 1;
+  background: rgba(var(--v-theme-on-surface), 0.18);
+}
+
+.provider-modal :deep(.v-switch .v-selection-control--dirty .v-switch__track) {
+  background: rgba(var(--v-theme-primary), 0.55);
+}
+
+.provider-modal :deep(.config-input .d-flex.align-center.gap-2) {
+  gap: 10px;
+}
+
+.provider-modal :deep(.config-input .d-flex.align-center.gap-2 .v-btn) {
+  height: 38px;
+  min-width: 86px;
+  border-radius: 8px;
+  margin-left: 0 !important;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.provider-modal--model {
+  max-height: min(82vh, 720px);
+}
+
+.provider-delete-dialog {
+  border: 1px solid rgba(var(--v-theme-error), 0.18);
+  border-radius: 18px !important;
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-error), 0.055), transparent 150px),
+    rgb(var(--v-theme-surface));
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.22) !important;
+  overflow: hidden;
+}
+
+.provider-delete-dialog__title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 24px 26px 12px !important;
+  color: rgb(var(--v-theme-primaryText));
+  font-size: 1.22rem;
+  font-weight: 740;
+  line-height: 1.3;
+  letter-spacing: 0;
+}
+
+.provider-delete-dialog__icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  color: rgb(var(--v-theme-error));
+  background: rgba(var(--v-theme-error), 0.1);
+  border: 1px solid rgba(var(--v-theme-error), 0.18);
+}
+
+.provider-delete-dialog__body {
+  padding: 10px 26px 18px !important;
+}
+
+.provider-delete-dialog__message {
+  margin: 0;
+  color: rgba(var(--v-theme-on-surface), 0.76);
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.provider-delete-dialog__target {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(var(--v-theme-error), 0.13);
+  border-radius: 10px;
+  color: rgba(var(--v-theme-error), 0.92);
+  background: rgba(var(--v-theme-error), 0.06);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.provider-delete-dialog__actions {
+  padding: 2px 26px 24px !important;
+  gap: 10px;
+}
+
+.provider-delete-dialog__cancel,
+.provider-delete-dialog__confirm {
+  min-width: 92px;
+  height: 42px;
+  max-height: 42px;
+  border-radius: 8px;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.provider-delete-dialog__cancel {
+  color: rgba(var(--v-theme-on-surface), 0.72);
+}
+
+.provider-delete-dialog__cancel:hover {
+  background: rgba(var(--v-theme-on-surface), 0.06);
+}
+
+.provider-delete-dialog__confirm {
+  border: 1px solid rgba(var(--v-theme-error), 0.18);
 }
 
 @media (max-width: 960px) {
@@ -1021,6 +1363,33 @@ function goToConfigPage() {
 
   .provider-grid {
     grid-template-columns: 1fr;
+  }
+
+  .provider-modal {
+    max-height: 92vh;
+    border-radius: 16px !important;
+  }
+
+  .provider-modal__title {
+    min-height: auto;
+    padding: 18px 18px 14px !important;
+    font-size: 1.2rem !important;
+  }
+
+  .provider-modal__body {
+    padding: 6px 18px 14px !important;
+  }
+
+  .provider-modal :deep(.config-row) {
+    padding: 12px 14px;
+  }
+
+  .provider-modal :deep(.config-input) {
+    padding: 8px 0 2px;
+  }
+
+  .provider-modal__actions {
+    padding: 12px 18px 18px !important;
   }
 }
 </style>

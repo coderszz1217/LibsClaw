@@ -324,69 +324,73 @@
         </v-dialog>
 
         <!-- 删除确认对话框 -->
-        <v-dialog v-model="dialogDelete" max-width="500px">
-            <v-card>
-                <v-card-title class="text-h3 pa-4 pb-0 pl-6">
-                    <v-icon color="error" class="me-2">mdi-alert</v-icon>
-                    <span>{{ tm('dialogs.delete.title') }}</span>
+        <v-dialog v-model="dialogDelete" max-width="460px" persistent>
+            <v-card class="conversation-delete-dialog">
+                <v-card-title class="conversation-delete-dialog__title">
+                    <span class="conversation-delete-dialog__icon">
+                        <v-icon size="24">mdi-trash-can-outline</v-icon>
+                    </span>
+                    <span>删除对话</span>
                 </v-card-title>
 
-                <v-card-text class="py-4">
-                    <p>{{ tm('dialogs.delete.message', { title: selectedConversation?.title || tm('status.noTitle') })
-                        }}</p>
+                <v-card-text class="conversation-delete-dialog__body">
+                    <p class="conversation-delete-dialog__message">
+                        {{ tm('dialogs.delete.message', { title: selectedConversation?.title || tm('status.noTitle') }) }}
+                    </p>
+                    <div class="conversation-delete-dialog__target">
+                        {{ selectedConversation?.title || tm('status.noTitle') }}
+                    </div>
                 </v-card-text>
 
-                <v-divider></v-divider>
-
-                <v-card-actions class="pa-4">
+                <v-card-actions class="conversation-delete-dialog__actions">
                     <v-spacer></v-spacer>
-                    <v-btn variant="text" @click="dialogDelete = false" :disabled="loading">
+                    <v-btn class="conversation-delete-dialog__cancel" variant="text" @click="dialogDelete = false" :disabled="loading">
                         {{ tm('dialogs.delete.cancel') }}
                     </v-btn>
-                    <v-btn color="error" variant="tonal" @click="deleteConversation" :loading="loading">
-                        {{ tm('dialogs.delete.confirm') }}
+                    <v-btn class="conversation-delete-dialog__confirm" color="error" variant="tonal" @click="deleteConversation" :loading="loading">
+                        确定删除
                     </v-btn>
                 </v-card-actions>
             </v-card>
         </v-dialog>
 
         <!-- 批量删除确认对话框 -->
-        <v-dialog v-model="dialogBatchDelete" max-width="600px">
-            <v-card>
-                <v-card-title class="text-h3 pa-4 pb-0 pl-6">
-                    <v-icon color="error" class="me-2">mdi-delete</v-icon>
-                    <span>{{ tm('dialogs.batchDelete.title') }}</span>
+        <v-dialog v-model="dialogBatchDelete" max-width="520px" persistent>
+            <v-card class="conversation-delete-dialog">
+                <v-card-title class="conversation-delete-dialog__title">
+                    <span class="conversation-delete-dialog__icon">
+                        <v-icon size="24">mdi-trash-can-outline</v-icon>
+                    </span>
+                    <span>批量删除对话</span>
                 </v-card-title>
 
-                <v-card-text class="py-4">
-                    <p class="mb-3">{{ tm('dialogs.batchDelete.message', { count: selectedItems.length }) }}</p>
+                <v-card-text class="conversation-delete-dialog__body">
+                    <p class="conversation-delete-dialog__message">
+                        {{ tm('dialogs.batchDelete.message', { count: selectedItems.length }) }}
+                    </p>
 
                     <!-- 显示前几个要删除的对话 -->
-                    <div v-if="selectedItems.length > 0" class="mb-3">
-                        <v-chip v-for="(item, index) in selectedItems.slice(0, 5)" :key="`${item.user_id}-${item.cid}`"
-                            size="small" class="mr-1 mb-1" closable @click:close="removeFromSelection(item)"
-                            :disabled="loading">
+                    <div v-if="selectedItems.length > 0" class="conversation-delete-dialog__target conversation-delete-dialog__target--list">
+                        <div
+                            v-for="item in selectedItems.slice(0, 5)"
+                            :key="`${item.user_id}-${item.cid}`"
+                            class="conversation-delete-dialog__target-item"
+                        >
                             {{ item.title || tm('status.noTitle') }}
-                        </v-chip>
-                        <v-chip v-if="selectedItems.length > 5" size="small" class="mr-1 mb-1">
+                        </div>
+                        <div v-if="selectedItems.length > 5" class="conversation-delete-dialog__target-more">
                             {{ tm('dialogs.batchDelete.andMore', { count: selectedItems.length - 5 }) }}
-                        </v-chip>
+                        </div>
                     </div>
-
-                    <v-alert type="warning" variant="tonal" class="mb-3">
-                        {{ tm('dialogs.batchDelete.warning') }}
-                    </v-alert>
                 </v-card-text>
 
-                <v-divider></v-divider>
-
-                <v-card-actions class="pa-4">
+                <v-card-actions class="conversation-delete-dialog__actions">
                     <v-spacer></v-spacer>
-                    <v-btn variant="text" @click="dialogBatchDelete = false" :disabled="loading">
+                    <v-btn class="conversation-delete-dialog__cancel" variant="text" @click="dialogBatchDelete = false" :disabled="loading">
                         {{ tm('dialogs.batchDelete.cancel') }}
                     </v-btn>
-                    <v-btn color="error" variant="tonal" @click="batchDeleteConversations" :loading="loading">
-                        {{ tm('dialogs.batchDelete.confirm') }}
+                    <v-btn class="conversation-delete-dialog__confirm" color="error" variant="tonal" @click="batchDeleteConversations" :loading="loading">
+                        确定删除
                     </v-btn>
                 </v-card-actions>
             </v-card>
@@ -1804,6 +1808,111 @@ export default {
 
 .conversation-edit-save-btn:hover {
     background: #1f628f !important;
+}
+
+.conversation-delete-dialog {
+    overflow: hidden;
+    border: 1px solid rgba(var(--v-theme-error), 0.18);
+    border-radius: 18px !important;
+    background:
+        linear-gradient(180deg, rgba(var(--v-theme-error), 0.055), transparent 150px),
+        rgb(var(--v-theme-surface));
+    box-shadow: 0 24px 64px rgba(15, 23, 42, 0.22) !important;
+}
+
+.conversation-delete-dialog__title {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 24px 26px 12px !important;
+    color: rgb(var(--v-theme-primaryText));
+    font-size: 1.22rem !important;
+    font-weight: 740;
+    line-height: 1.3;
+    letter-spacing: 0;
+}
+
+.conversation-delete-dialog__icon {
+    display: inline-flex;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(var(--v-theme-error), 0.18);
+    border-radius: 12px;
+    background: rgba(var(--v-theme-error), 0.1);
+    color: rgb(var(--v-theme-error));
+}
+
+.conversation-delete-dialog__body {
+    padding: 10px 26px 18px !important;
+}
+
+.conversation-delete-dialog__message {
+    margin: 0;
+    color: rgba(var(--v-theme-on-surface), 0.76);
+    font-size: 15px;
+    line-height: 1.65;
+}
+
+.conversation-delete-dialog__target {
+    margin-top: 14px;
+    padding: 10px 12px;
+    overflow-wrap: anywhere;
+    border: 1px solid rgba(var(--v-theme-error), 0.13);
+    border-radius: 10px;
+    background: rgba(var(--v-theme-error), 0.06);
+    color: rgba(var(--v-theme-error), 0.92);
+    font-size: 13px;
+    font-weight: 650;
+    line-height: 1.45;
+}
+
+.conversation-delete-dialog__target--list {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.conversation-delete-dialog__target-item,
+.conversation-delete-dialog__target-more {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.conversation-delete-dialog__target-more {
+    color: rgba(var(--v-theme-error), 0.72);
+    font-size: 12px;
+}
+
+.conversation-delete-dialog__actions {
+    gap: 10px;
+    padding: 2px 26px 24px !important;
+}
+
+.conversation-delete-dialog__cancel,
+.conversation-delete-dialog__confirm {
+    min-width: 92px;
+    height: 42px;
+    max-height: 42px;
+    border-radius: 8px !important;
+    font-weight: 650;
+    letter-spacing: 0;
+}
+
+.conversation-delete-dialog__cancel {
+    color: rgba(var(--v-theme-on-surface), 0.72) !important;
+}
+
+.conversation-delete-dialog__cancel:hover {
+    background: rgba(var(--v-theme-on-surface), 0.06);
+}
+
+.conversation-delete-dialog__confirm {
+    border: 1px solid rgba(var(--v-theme-error), 0.18);
 }
 
 .text-truncate {

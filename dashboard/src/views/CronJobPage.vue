@@ -78,6 +78,34 @@
                 hide-details
                 :no-data-text="tm('filters.noUmos')"
               />
+              <div class="task-bulk-actions">
+                <v-checkbox-btn
+                  :model-value="allVisibleJobsSelected"
+                  :indeterminate="
+                    someVisibleJobsSelected && !allVisibleJobsSelected
+                  "
+                  density="compact"
+                  color="primary"
+                  class="task-select-all"
+                  @click.stop
+                  @update:model-value="toggleAllVisibleJobs"
+                />
+                <span class="task-selected-count">
+                  {{ tm("bulk.selected", { count: selectedJobIds.size }) }}
+                </span>
+                <v-btn
+                  variant="tonal"
+                  color="error"
+                  size="small"
+                  prepend-icon="mdi-delete-sweep-outline"
+                  :disabled="!selectedJobIds.size"
+                  :loading="bulkDeleting"
+                  class="task-bulk-delete-btn"
+                  @click="deleteSelectedJobs"
+                >
+                  {{ tm("actions.batchDelete") }}
+                </v-btn>
+              </div>
             </div>
 
             <div v-if="!sortedJobs.length" class="cron-empty-state">
@@ -96,6 +124,19 @@
                 clickable
                 @click="openEdit(item)"
               >
+                <template #title-prepend>
+                  <v-checkbox-btn
+                    :model-value="selectedJobIds.has(String(item.job_id || ''))"
+                    density="compact"
+                    color="primary"
+                    class="task-card-checkbox"
+                    @click.stop
+                    @update:model-value="
+                      (selected) => setJobSelection(item.job_id, !!selected)
+                    "
+                  />
+                </template>
+
                 <template #title-extra>
                   <v-chip
                     size="x-small"
@@ -176,33 +217,49 @@
           </template>
         </section>
 
-        <v-dialog v-model="platformDialog" max-width="520">
-          <v-card class="dashboard-dialog-card">
-            <v-card-title class="text-h3 pa-4 pb-0 pl-6">
-              {{ tm("platformDialog.title") }}
+        <v-dialog v-model="platformDialog" max-width="560">
+          <v-card class="platform-dialog-card">
+            <v-card-title class="platform-dialog-title">
+              <span class="platform-dialog-title__mark"></span>
+              <span class="platform-dialog-title__copy">
+                <span>{{ tm("platformDialog.title") }}</span>
+                <small>已支持 {{ proactivePlatforms.length }} 个平台主动推送</small>
+              </span>
             </v-card-title>
-            <v-card-text class="px-5 pb-2">
-              <p class="platform-dialog-description">
+            <v-card-text class="platform-dialog-body">
+              <div class="platform-dialog-note">
                 {{ tm("platformDialog.description") }}
-              </p>
+              </div>
               <div v-if="proactivePlatforms.length" class="platform-list">
                 <div
                   v-for="platform in proactivePlatforms"
                   :key="platform.id"
                   class="platform-list-item"
                 >
-                  <div class="platform-name">
-                    {{ platform.display_name || platform.name }}
+                  <div class="platform-list-item__badge">
+                    {{ (platform.display_name || platform.name || platform.id).slice(0, 1).toUpperCase() }}
                   </div>
-                  <div class="platform-id">{{ platform.id }}</div>
+                  <div class="platform-list-item__content">
+                    <div class="platform-name">
+                      {{ platform.display_name || platform.name }}
+                    </div>
+                    <div class="platform-id">{{ platform.id }}</div>
+                  </div>
+                  <div class="platform-list-item__status">支持主动推送</div>
                 </div>
               </div>
               <div v-else class="dashboard-empty platform-dialog-empty">
                 {{ tm("page.proactive.unsupported") }}
               </div>
             </v-card-text>
-            <v-card-actions class="justify-end px-5 pb-5">
-              <v-btn variant="text" @click="platformDialog = false">
+            <v-card-actions class="platform-dialog-actions">
+              <v-spacer></v-spacer>
+              <v-btn
+                class="platform-dialog-close-btn"
+                color="primary"
+                variant="tonal"
+                @click="platformDialog = false"
+              >
                 {{ tm("actions.close") }}
               </v-btn>
             </v-card-actions>
@@ -219,9 +276,10 @@
 
         <v-dialog v-model="createDialog" max-width="760" scrollable>
           <v-card class="dashboard-dialog-card cron-job-dialog-card">
-            <v-card-title class="text-h3 pa-4 pb-0 pl-6 cron-job-dialog-title">{{
-              dialogTitle
-            }}</v-card-title>
+            <v-card-title
+              class="text-h3 pa-4 pb-0 pl-6 cron-job-dialog-title"
+              >{{ dialogTitle }}</v-card-title
+            >
             <v-card-text class="cron-job-dialog-body">
               <div class="dashboard-form-grid dashboard-form-grid--single">
                 <v-text-field
@@ -435,9 +493,12 @@
             </v-card-text>
             <v-card-actions class="cron-job-dialog-actions">
               <v-spacer />
-              <v-btn variant="tonal" class="cron-job-secondary-btn" @click="createDialog = false">{{
-                tm("actions.cancel")
-              }}</v-btn>
+              <v-btn
+                variant="tonal"
+                class="cron-job-secondary-btn"
+                @click="createDialog = false"
+                >{{ tm("actions.cancel") }}</v-btn
+              >
               <v-btn
                 variant="flat"
                 color="primary"
@@ -460,17 +521,20 @@ import { computed, onMounted, ref } from "vue";
 import { useTheme } from "vuetify";
 import { botApi, cronApi, sessionApi } from "@/api/v1";
 import { useModuleI18n } from "@/i18n/composables";
+import { askForConfirmation, useConfirmDialog } from "@/utils/confirmDialog";
 import OutlinedActionListItem from "@/components/shared/OutlinedActionListItem.vue";
 import UmoDisplay from "@/components/shared/UmoDisplay.vue";
 
 const { tm } = useModuleI18n("features/cron");
 const theme = useTheme();
+const confirmDialog = useConfirmDialog();
 
 const isDark = computed(() => theme.global.current.value.dark);
 const loading = ref(false);
 const jobs = ref<any[]>([]);
 const taskSearch = ref("");
 const selectedUmoFilter = ref<string | null>(null);
+const selectedJobIds = ref(new Set<string>());
 const proactivePlatforms = ref<
   { id: string; name: string; display_name?: string }[]
 >([]);
@@ -480,6 +544,7 @@ const loadingUmos = ref(false);
 const platformDialog = ref(false);
 const createDialog = ref(false);
 const creating = ref(false);
+const bulkDeleting = ref(false);
 const editingJobId = ref("");
 const runningJobIds = ref(new Set<string>());
 const NO_DELIVERY_TARGET_FILTER = "__astrbot_no_delivery_target__";
@@ -576,6 +641,17 @@ const sortedJobs = computed(() =>
   }),
 );
 
+const visibleJobIds = computed(() =>
+  sortedJobs.value.map((job) => String(job.job_id || "")).filter(Boolean),
+);
+const someVisibleJobsSelected = computed(() =>
+  visibleJobIds.value.some((jobId) => selectedJobIds.value.has(jobId)),
+);
+const allVisibleJobsSelected = computed(
+  () =>
+    !!visibleJobIds.value.length &&
+    visibleJobIds.value.every((jobId) => selectedJobIds.value.has(jobId)),
+);
 const isEditing = computed(() => !!editingJobId.value);
 const dialogTitle = computed(() =>
   tm(isEditing.value ? "form.editTitle" : "form.title"),
@@ -851,6 +927,10 @@ async function loadJobs() {
       mergeUmoInfos(
         jobs.value.map(getJobSession).filter(Boolean).map(parseUmoInfo),
       );
+      const nextJobIds = new Set(jobs.value.map((job) => String(job.job_id)));
+      selectedJobIds.value = new Set(
+        [...selectedJobIds.value].filter((jobId) => nextJobIds.has(jobId)),
+      );
     } else {
       toast(res.data.message || tm("messages.loadFailed"), "error");
     }
@@ -878,6 +958,30 @@ async function loadPlatforms() {
   }
 }
 
+function setJobSelection(jobId: string, selected: boolean) {
+  const id = String(jobId || "");
+  if (!id) return;
+  const next = new Set(selectedJobIds.value);
+  if (selected) {
+    next.add(id);
+  } else {
+    next.delete(id);
+  }
+  selectedJobIds.value = next;
+}
+
+function toggleAllVisibleJobs(selected: boolean | null) {
+  const next = new Set(selectedJobIds.value);
+  for (const jobId of visibleJobIds.value) {
+    if (selected) {
+      next.add(jobId);
+    } else {
+      next.delete(jobId);
+    }
+  }
+  selectedJobIds.value = next;
+}
+
 async function toggleJob(job: any) {
   try {
     const res = await cronApi.update(job.job_id, {
@@ -898,12 +1002,69 @@ async function deleteJob(job: any) {
     const res = await cronApi.delete(job.job_id);
     if (res.data.status === "ok") {
       toast(tm("messages.deleteSuccess"));
-      jobs.value = jobs.value.filter((item) => item.job_id !== job.job_id);
+      jobs.value = jobs.value.filter(
+        (item) => String(item.job_id) !== String(job.job_id),
+      );
+      setJobSelection(job.job_id, false);
     } else {
       toast(res.data.message || tm("messages.deleteFailed"), "error");
     }
   } catch (e: any) {
     toast(e?.response?.data?.message || tm("messages.deleteFailed"), "error");
+  }
+}
+
+async function deleteSelectedJobs() {
+  const jobIds = [...selectedJobIds.value];
+  if (!jobIds.length || bulkDeleting.value) return;
+  const confirmed = await askForConfirmation(
+    tm("messages.batchDeleteConfirm", { count: jobIds.length }),
+    confirmDialog,
+  );
+  if (!confirmed) return;
+
+  bulkDeleting.value = true;
+  try {
+    const results = await Promise.allSettled(
+      jobIds.map(async (jobId) => {
+        const res = await cronApi.delete(jobId);
+        if (res.data.status !== "ok") {
+          throw new Error(res.data.message || tm("messages.deleteFailed"));
+        }
+        return jobId;
+      }),
+    );
+    const deletedIds = results
+      .filter(
+        (result): result is PromiseFulfilledResult<string> =>
+          result.status === "fulfilled",
+      )
+      .map((result) => result.value);
+    const deletedIdSet = new Set(deletedIds);
+
+    jobs.value = jobs.value.filter(
+      (item) => !deletedIdSet.has(String(item.job_id)),
+    );
+    selectedJobIds.value = new Set(
+      [...selectedJobIds.value].filter((jobId) => !deletedIdSet.has(jobId)),
+    );
+
+    const failedCount = results.length - deletedIds.length;
+    if (failedCount) {
+      toast(
+        tm("messages.batchDeletePartial", {
+          deleted: deletedIds.length,
+          failed: failedCount,
+        }),
+        "error",
+      );
+    } else {
+      toast(tm("messages.batchDeleteSuccess", { count: deletedIds.length }));
+    }
+  } catch (e: any) {
+    toast(e?.response?.data?.message || tm("messages.deleteFailed"), "error");
+  } finally {
+    bulkDeleting.value = false;
   }
 }
 
@@ -1353,8 +1514,11 @@ onMounted(() => {
 
 .cron-page {
   padding-bottom: 40px;
-  background:
-    linear-gradient(180deg, rgba(var(--v-theme-primary), 0.05), transparent 260px),
+  background: linear-gradient(
+      180deg,
+      rgba(var(--v-theme-primary), 0.05),
+      transparent 260px
+    ),
     rgb(var(--v-theme-background));
 }
 
@@ -1412,8 +1576,11 @@ onMounted(() => {
   padding: 12px 14px;
   border: 1px solid rgba(var(--v-theme-border), 0.52);
   border-radius: 12px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 251, 255, 0.86)),
+  background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.92),
+      rgba(248, 251, 255, 0.86)
+    ),
     rgb(var(--v-theme-surface));
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.035);
 }
@@ -1444,6 +1611,38 @@ onMounted(() => {
   width: 340px;
 }
 
+.task-bulk-actions {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  padding: 4px 6px 4px 8px;
+  border: 1px solid rgba(var(--v-theme-border), 0.42);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.task-select-all,
+.task-card-checkbox {
+  flex: 0 0 auto;
+}
+
+.task-selected-count {
+  color: rgba(var(--v-theme-on-surface), 0.64);
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.task-bulk-delete-btn {
+  height: 32px !important;
+  border-radius: 8px !important;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
 .supported-platform-link {
   min-width: 0;
   padding-inline: 4px;
@@ -1464,8 +1663,11 @@ onMounted(() => {
   position: relative;
   border: 1px solid rgba(var(--task-accent), 0.16);
   border-radius: 14px !important;
-  background:
-    linear-gradient(180deg, rgba(var(--task-accent), 0.045), rgba(255, 255, 255, 0.9) 58%),
+  background: linear-gradient(
+      180deg,
+      rgba(var(--task-accent), 0.045),
+      rgba(255, 255, 255, 0.9) 58%
+    ),
     rgb(var(--v-theme-surface));
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
   overflow: hidden;
@@ -1488,8 +1690,11 @@ onMounted(() => {
 
 .task-list :deep(.outlined-action-list-item:hover) {
   border-color: rgba(var(--task-accent), 0.28);
-  background:
-    linear-gradient(180deg, rgba(var(--task-accent), 0.07), rgba(255, 255, 255, 0.94) 62%),
+  background: linear-gradient(
+      180deg,
+      rgba(var(--task-accent), 0.07),
+      rgba(255, 255, 255, 0.94) 62%
+    ),
     rgb(var(--v-theme-surface));
   box-shadow: 0 14px 30px rgba(var(--task-accent), 0.1);
   transform: translateY(-1px);
@@ -1551,6 +1756,10 @@ onMounted(() => {
 .task-list :deep(.outlined-action-list-item__header) {
   gap: 10px;
   margin-bottom: 8px;
+}
+
+.task-list :deep(.task-card-checkbox) {
+  margin-inline-start: -4px;
 }
 
 .task-list :deep(.outlined-action-list-item__actions) {
@@ -1703,8 +1912,11 @@ onMounted(() => {
 .cron-job-dialog-card {
   border: 1px solid rgba(var(--v-theme-border), 0.68);
   border-radius: 16px !important;
-  background:
-    linear-gradient(180deg, rgba(var(--v-theme-primary), 0.035), transparent 180px),
+  background: linear-gradient(
+      180deg,
+      rgba(var(--v-theme-primary), 0.035),
+      transparent 180px
+    ),
     rgb(var(--v-theme-surface));
   box-shadow: 0 24px 70px rgba(15, 23, 42, 0.18) !important;
   overflow: hidden;
@@ -1776,11 +1988,68 @@ onMounted(() => {
   color: rgba(var(--v-theme-on-surface), 0.74);
 }
 
-.platform-dialog-description {
-  margin: 0 0 16px;
-  color: var(--dashboard-muted);
-  font-size: 14px;
-  line-height: 1.7;
+.platform-dialog-card {
+  overflow: hidden;
+  border: 1px solid rgba(var(--v-theme-primary), 0.16);
+  border-radius: 18px !important;
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-primary), 0.055), transparent 150px),
+    rgb(var(--v-theme-surface));
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.2) !important;
+}
+
+.platform-dialog-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 24px 28px 10px !important;
+  color: rgb(var(--v-theme-primaryText));
+  font-size: 1.28rem !important;
+  font-weight: 740;
+  line-height: 1.3;
+  letter-spacing: 0;
+}
+
+.platform-dialog-title__mark {
+  width: 4px;
+  height: 36px;
+  flex: 0 0 auto;
+  margin-top: 1px;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    rgb(var(--v-theme-primary)),
+    rgba(var(--v-theme-primary), 0.38)
+  );
+}
+
+.platform-dialog-title__copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.platform-dialog-title__copy small {
+  color: rgba(var(--v-theme-on-surface), 0.56);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.platform-dialog-body {
+  padding: 10px 28px 12px !important;
+}
+
+.platform-dialog-note {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(var(--v-theme-border), 0.5);
+  border-radius: 12px;
+  background: rgba(248, 251, 253, 0.72);
+  color: rgba(var(--v-theme-on-surface), 0.62);
+  font-size: 13px;
+  line-height: 1.65;
 }
 
 .platform-list {
@@ -1790,31 +2059,102 @@ onMounted(() => {
 
 .platform-list-item {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
-  padding: 10px 12px;
-  border: 1px solid var(--dashboard-border);
-  border-radius: 8px;
+  padding: 13px 14px;
+  border: 1px solid rgba(var(--v-theme-primary), 0.14);
+  border-radius: 12px;
+  background: linear-gradient(
+    90deg,
+    rgba(var(--v-theme-primary), 0.055),
+    rgba(248, 251, 253, 0.88) 48%
+  );
+  transition:
+    border-color 0.16s ease,
+    background-color 0.16s ease,
+    transform 0.16s ease;
+}
+
+.platform-list-item:hover {
+  border-color: rgba(var(--v-theme-primary), 0.28);
+  background: linear-gradient(
+    90deg,
+    rgba(var(--v-theme-primary), 0.085),
+    rgba(248, 251, 253, 0.94) 48%
+  );
+  transform: translateY(-1px);
+}
+
+.platform-list-item__badge {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(var(--v-theme-primary), 0.12);
+  border-radius: 10px;
+  background: rgba(var(--v-theme-primary), 0.09);
+  color: rgb(var(--v-theme-primary));
+  font-size: 14px;
+  font-weight: 740;
+}
+
+.platform-list-item__content {
+  min-width: 0;
 }
 
 .platform-name {
   min-width: 0;
-  color: var(--dashboard-text);
-  font-size: 14px;
-  font-weight: 600;
+  color: rgb(var(--v-theme-primaryText));
+  font-size: 15px;
+  font-weight: 760;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .platform-id {
-  color: var(--dashboard-muted);
+  margin-top: 4px;
+  color: rgba(var(--v-theme-on-surface), 0.56);
   font-size: 12px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.platform-list-item__status {
+  padding: 5px 9px;
+  border: 1px solid rgba(var(--v-theme-primary), 0.13);
+  border-radius: 999px;
+  background: rgba(var(--v-theme-primary), 0.09);
+  color: rgb(var(--v-theme-primary));
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .platform-dialog-empty {
   min-height: 120px;
+  border: 1px dashed rgba(var(--v-theme-border), 0.72);
+  border-radius: 12px;
+  background: rgba(248, 251, 253, 0.7);
+}
+
+.platform-dialog-actions {
+  gap: 10px;
+  padding: 4px 28px 24px !important;
+}
+
+.platform-dialog-close-btn {
+  min-width: 92px;
+  height: 40px !important;
+  max-height: 40px;
+  border: 1px solid rgba(var(--v-theme-primary), 0.14);
+  border-radius: 8px !important;
+  font-weight: 650;
+  letter-spacing: 0;
 }
 
 .schedule-field {
@@ -1902,6 +2242,11 @@ onMounted(() => {
 
   .task-filter-bar {
     align-items: stretch;
+  }
+
+  .task-bulk-actions {
+    width: 100%;
+    margin-left: 0;
   }
 
   .schedule-field,

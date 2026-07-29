@@ -320,9 +320,11 @@ const updateDialogPluginLogo = computed(() => {
 
           <!-- 指令面板标签页内容 -->
           <v-tab-item v-if="activeTab === 'components'">
-            <div class="mb-4 pt-4 pb-4">
-              <div class="d-flex align-center flex-wrap" style="gap: 12px">
-                <h2 class="text-h2 mb-0">{{ tm("tabs.handlersOperation") }}</h2>
+            <div class="component-tab-header mb-4">
+              <div class="component-tab-header__copy">
+                <h2 class="component-tab-header__title">
+                  {{ tm("tabs.handlersOperation") }}
+                </h2>
               </div>
             </div>
             <v-card
@@ -1290,12 +1292,42 @@ const updateDialogPluginLogo = computed(() => {
   text-wrap: pretty;
 }
 
+.component-tab-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px 0 18px;
+  border-bottom: 1px solid #dce7ef;
+  background: transparent;
+}
+
+.component-tab-header__copy {
+  min-width: 0;
+}
+
+.component-tab-header__title {
+  margin: 0;
+  color: rgb(var(--v-theme-primaryText));
+  font-size: 1.6rem;
+  font-weight: 760;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
 @media (max-width: 760px) {
   .skills-tab-header {
     padding: 2px 0 14px;
   }
 
   .skills-tab-header__title {
+    font-size: 1.35rem;
+  }
+
+  .component-tab-header {
+    padding: 2px 0 14px;
+  }
+
+  .component-tab-header__title {
     font-size: 1.35rem;
   }
 }

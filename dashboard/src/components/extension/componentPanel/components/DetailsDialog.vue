@@ -46,86 +46,89 @@ const getPermissionLabel = (permission: string): string => {
 </script>
 
 <template>
-  <v-dialog :model-value="show" @update:model-value="emit('update:show', $event)" max-width="500">
-    <v-card v-if="command">
-      <v-card-title class="text-h3 pa-4 pb-0 pl-6">{{ tm('dialogs.details.title') }}</v-card-title>
-      <v-card-text>
-        <v-list density="compact">
-          <v-list-item>
-            <v-list-item-title class="font-weight-bold">{{ tm('dialogs.details.type') }}</v-list-item-title>
-            <v-list-item-subtitle>
-              <v-chip
-                :color="getTypeInfo(command.type).color"
-                size="small"
-                variant="tonal"
-              >
-                <v-icon start size="14">{{ getTypeInfo(command.type).icon }}</v-icon>
-                {{ getTypeInfo(command.type).text }}
-              </v-chip>
-            </v-list-item-subtitle>
-          </v-list-item>
-          <v-list-item>
-            <v-list-item-title class="font-weight-bold">{{ tm('dialogs.details.handler') }}</v-list-item-title>
-            <v-list-item-subtitle><code>{{ command.handler_name }}</code></v-list-item-subtitle>
-          </v-list-item>
-          <v-list-item>
-            <v-list-item-title class="font-weight-bold">{{ tm('dialogs.details.module') }}</v-list-item-title>
-            <v-list-item-subtitle><code>{{ command.module_path }}</code></v-list-item-subtitle>
-          </v-list-item>
-          <v-list-item>
-            <v-list-item-title class="font-weight-bold">{{ tm('dialogs.details.originalCommand') }}</v-list-item-title>
-            <v-list-item-subtitle><code>{{ command.original_command }}</code></v-list-item-subtitle>
-          </v-list-item>
-          <v-list-item>
-            <v-list-item-title class="font-weight-bold">{{ tm('dialogs.details.effectiveCommand') }}</v-list-item-title>
-            <v-list-item-subtitle><code>{{ command.effective_command }}</code></v-list-item-subtitle>
-          </v-list-item>
-          <v-list-item v-if="command.parent_signature">
-            <v-list-item-title class="font-weight-bold">{{ tm('dialogs.details.parentGroup') }}</v-list-item-title>
-            <v-list-item-subtitle><code>{{ command.parent_signature }}</code></v-list-item-subtitle>
-          </v-list-item>
-          <v-list-item v-if="command.aliases.length > 0">
-            <v-list-item-title class="font-weight-bold">{{ tm('dialogs.details.aliases') }}</v-list-item-title>
-            <v-list-item-subtitle>
-              <v-chip v-for="alias in command.aliases" :key="alias" size="small" class="mr-1">
-                {{ alias }}
-              </v-chip>
-            </v-list-item-subtitle>
-          </v-list-item>
-          <v-list-item v-if="command.is_group && command.sub_commands?.length > 0">
-            <v-list-item-title class="font-weight-bold">{{ tm('dialogs.details.subCommands') }}</v-list-item-title>
-            <v-list-item-subtitle>
-              <div class="d-flex flex-wrap ga-1 mt-1">
-                <v-chip 
-                  v-for="sub in command.sub_commands" 
-                  :key="sub.handler_full_name" 
-                  size="small"
-                  variant="outlined"
-                >
-                  {{ sub.current_fragment }}
-                </v-chip>
-              </div>
-            </v-list-item-subtitle>
-          </v-list-item>
-          <v-list-item>
-            <v-list-item-title class="font-weight-bold">{{ tm('dialogs.details.permission') }}</v-list-item-title>
-            <v-list-item-subtitle>
-              <v-chip :color="getPermissionColor(command.permission)" size="small">
-                {{ getPermissionLabel(command.permission) }}
-              </v-chip>
-            </v-list-item-subtitle>
-          </v-list-item>
-          <v-list-item v-if="command.has_conflict">
-            <v-list-item-title class="font-weight-bold">{{ tm('dialogs.details.conflictStatus') }}</v-list-item-title>
-            <v-list-item-subtitle>
-              <v-chip color="warning" size="small">{{ tm('status.conflict') }}</v-chip>
-            </v-list-item-subtitle>
-          </v-list-item>
-        </v-list>
+  <v-dialog :model-value="show" @update:model-value="emit('update:show', $event)" max-width="560">
+    <v-card v-if="command" class="details-dialog-card">
+      <div class="details-dialog-header">
+        <div class="details-dialog-eyebrow">{{ tm('dialogs.details.title') }}</div>
+        <div class="details-command-title">
+          <span class="details-command-marker">
+            <v-icon size="15">mdi-console-line</v-icon>
+          </span>
+          {{ command.effective_command }}
+        </div>
+        <v-btn
+          icon="mdi-close"
+          variant="text"
+          size="small"
+          class="details-dialog-close"
+          @click="emit('update:show', false)"
+        />
+        <div class="details-summary">
+          <v-chip :color="getTypeInfo(command.type).color" size="small" variant="tonal">
+            <v-icon start size="14">{{ getTypeInfo(command.type).icon }}</v-icon>
+            {{ getTypeInfo(command.type).text }}
+          </v-chip>
+          <v-chip :color="getPermissionColor(command.permission)" size="small" variant="tonal">
+            {{ getPermissionLabel(command.permission) }}
+          </v-chip>
+          <v-chip v-if="command.has_conflict" color="warning" size="small" variant="tonal">
+            {{ tm('status.conflict') }}
+          </v-chip>
+        </div>
+      </div>
+
+      <v-card-text class="details-dialog-body">
+        <div class="details-list">
+          <div class="details-row">
+            <span class="details-label">{{ tm('dialogs.details.handler') }}</span>
+            <code>{{ command.handler_name }}</code>
+          </div>
+          <div class="details-row details-row--path">
+            <span class="details-label">{{ tm('dialogs.details.module') }}</span>
+            <code>{{ command.module_path }}</code>
+          </div>
+          <div class="details-row">
+            <span class="details-label">{{ tm('dialogs.details.originalCommand') }}</span>
+            <code>{{ command.original_command }}</code>
+          </div>
+          <div class="details-row">
+            <span class="details-label">{{ tm('dialogs.details.effectiveCommand') }}</span>
+            <code>{{ command.effective_command }}</code>
+          </div>
+          <div v-if="command.parent_signature" class="details-row">
+            <span class="details-label">{{ tm('dialogs.details.parentGroup') }}</span>
+            <code>{{ command.parent_signature }}</code>
+          </div>
+        </div>
+
+        <div v-if="command.aliases.length > 0" class="details-chip-section">
+          <div class="details-label">{{ tm('dialogs.details.aliases') }}</div>
+          <div class="details-chip-list">
+            <v-chip v-for="alias in command.aliases" :key="alias" size="small" variant="tonal" color="primary">
+              {{ alias }}
+            </v-chip>
+          </div>
+        </div>
+
+        <div v-if="command.is_group && command.sub_commands?.length > 0" class="details-chip-section">
+          <div class="details-label">{{ tm('dialogs.details.subCommands') }}</div>
+          <div class="details-chip-list">
+            <v-chip
+              v-for="sub in command.sub_commands"
+              :key="sub.handler_full_name"
+              size="small"
+              variant="outlined"
+              color="primary"
+            >
+              {{ sub.current_fragment }}
+            </v-chip>
+          </div>
+        </div>
       </v-card-text>
-      <v-card-actions>
+
+      <v-card-actions class="details-dialog-actions">
         <v-spacer />
-        <v-btn color="primary" variant="text" @click="emit('update:show', false)">
+        <v-btn class="details-dialog-action" color="primary" variant="tonal" @click="emit('update:show', false)">
           {{ t('core.actions.close') }}
         </v-btn>
       </v-card-actions>
@@ -134,10 +137,176 @@ const getPermissionLabel = (permission: string): string => {
 </template>
 
 <style scoped>
+.details-dialog-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(var(--v-theme-primary), 0.16);
+  border-radius: 18px !important;
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-primary), 0.055), transparent 160px),
+    rgb(var(--v-theme-surface));
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.2) !important;
+}
+
+.details-dialog-header {
+  position: relative;
+  padding: 24px 72px 18px 28px;
+  border-bottom: 1px solid rgba(var(--v-theme-border), 0.54);
+}
+
+.details-dialog-eyebrow {
+  margin-bottom: 7px;
+  color: rgba(var(--v-theme-on-surface), 0.56);
+  font-size: 12px;
+  font-weight: 760;
+  letter-spacing: 0;
+}
+
+.details-command-title {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 8px;
+  color: rgba(var(--v-theme-on-surface), 0.9);
+  font-size: 17px;
+  font-weight: 760;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.details-command-marker {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(var(--v-theme-primary), 0.16);
+  border-radius: 8px;
+  background: rgba(var(--v-theme-primary), 0.09);
+  color: rgb(var(--v-theme-primary));
+}
+
+.details-dialog-close {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  border-radius: 10px !important;
+  color: rgba(var(--v-theme-on-surface), 0.58);
+}
+
+.details-dialog-close:hover {
+  background: rgba(var(--v-theme-primary), 0.08);
+  color: rgb(var(--v-theme-primary));
+}
+
+.details-dialog-body {
+  max-height: min(60vh, 480px);
+  overflow-y: auto;
+  padding: 18px 28px 8px !important;
+}
+
+.details-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.details-list {
+  display: grid;
+  border: 1px solid rgba(var(--v-theme-border), 0.54);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+  overflow: hidden;
+}
+
+.details-row {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  min-width: 0;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(var(--v-theme-border), 0.48);
+}
+
+.details-row:last-child {
+  border-bottom: 0;
+}
+
+.details-row--path {
+  align-items: start;
+}
+
+.details-label {
+  color: rgba(var(--v-theme-on-surface), 0.58);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.details-chip-section {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(var(--v-theme-border), 0.54);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.details-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.details-dialog-actions {
+  gap: 10px;
+  padding: 10px 28px 22px !important;
+  border-top: 1px solid rgba(var(--v-theme-border), 0.54);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.details-dialog-action {
+  min-width: 92px;
+  height: 40px !important;
+  max-height: 40px;
+  border: 1px solid rgba(var(--v-theme-primary), 0.14);
+  border-radius: 8px !important;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
 code {
-  background-color: rgba(var(--v-theme-primary), 0.1);
-  padding: 2px 6px;
-  border-radius: 4px;
+  display: inline-block;
+  max-width: 100%;
+  padding: 3px 7px;
+  border-radius: 7px;
+  background-color: rgba(var(--v-theme-on-surface), 0.055);
+  color: rgba(var(--v-theme-on-surface), 0.76);
   font-size: 0.9em;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  vertical-align: middle;
+  white-space: normal;
+}
+
+.details-row:not(.details-row--path) code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 700px) {
+  .details-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .details-dialog-header,
+  .details-dialog-body,
+  .details-dialog-actions {
+    padding-inline: 18px !important;
+  }
 }
 </style>

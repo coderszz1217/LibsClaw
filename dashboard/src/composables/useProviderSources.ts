@@ -8,6 +8,7 @@ export interface UseProviderSourcesOptions {
   defaultTab?: string
   tm: (key: string, params?: Record<string, unknown>) => string
   showMessage: (message: string, color?: string) => void
+  confirmDeleteProvider?: (provider: any, message: string) => Promise<boolean>
 }
 
 export function resolveDefaultTab(value?: string) {
@@ -644,7 +645,10 @@ export function useProviderSources(options: UseProviderSourcesOptions) {
   }
 
   async function deleteProvider(provider: any) {
-    const confirmed = await askForConfirmation(tm('models.deleteConfirm', { id: provider.id }))
+    const message = tm('models.deleteConfirm', { id: provider.id })
+    const confirmed = options.confirmDeleteProvider
+      ? await options.confirmDeleteProvider(provider, message)
+      : await askForConfirmation(message)
     if (!confirmed) return
 
     try {

@@ -18,6 +18,7 @@
     "edit": "编辑",
     "refresh": "刷新",
     "delete": "删除",
+    "batchDelete": "批量删除",
     "cancel": "取消",
     "close": "关闭",
     "more": "更多操作",
@@ -48,6 +49,9 @@
     "noUmos": "暂无 UMO",
     "noDeliveryTarget": "未设置投递地",
     "noMatches": "没有匹配的未来任务。"
+  },
+  "bulk": {
+    "selected": "已选 {count} 个"
   },
   "overview": {
     "totalTasks": "任务总数",
@@ -156,6 +160,9 @@
     "updateFailed": "更新失败",
     "deleteSuccess": "已删除",
     "deleteFailed": "删除失败",
+    "batchDeleteConfirm": "确定删除选中的 {count} 个未来任务吗？",
+    "batchDeleteSuccess": "已删除 {count} 个任务",
+    "batchDeletePartial": "批量删除完成：成功 {deleted} 个，失败 {failed} 个",
     "nameRequired": "请填写任务名称",
     "sessionRequired": "请选择投递目标",
     "noteRequired": "请填写任务需求",

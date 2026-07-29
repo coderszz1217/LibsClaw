@@ -646,16 +646,38 @@
       </v-card>
     </v-dialog>
 
-    <v-dialog v-model="deleteDialog" max-width="400px">
-      <v-card>
-        <v-card-title class="text-h3 pa-4 pb-0 pl-6">{{ tm("skills.deleteTitle") }}</v-card-title>
-        <v-card-text>{{ tm("skills.deleteMessage") }}</v-card-text>
-        <v-card-actions class="d-flex justify-end">
-          <v-btn variant="text" @click="deleteDialog = false">{{
-            tm("skills.cancel")
-          }}</v-btn>
-          <v-btn color="error" variant="tonal" :loading="deleting" @click="deleteSkill">
-            {{ t("core.common.itemCard.delete") }}
+    <v-dialog v-model="deleteDialog" max-width="460px" persistent>
+      <v-card class="skill-delete-dialog">
+        <v-card-title class="skill-delete-dialog__title">
+          <span class="skill-delete-dialog__icon">
+            <v-icon size="24">mdi-trash-can-outline</v-icon>
+          </span>
+          <span>{{ tm("skills.deleteTitle") }}</span>
+        </v-card-title>
+        <v-card-text class="skill-delete-dialog__body">
+          <p class="skill-delete-dialog__message">{{ tm("skills.deleteMessage") }}</p>
+          <div v-if="skillToDelete?.name" class="skill-delete-dialog__target">
+            {{ skillToDelete.name }}
+          </div>
+        </v-card-text>
+        <v-card-actions class="skill-delete-dialog__actions">
+          <v-spacer></v-spacer>
+          <v-btn
+            class="skill-delete-dialog__cancel"
+            variant="text"
+            :disabled="deleting"
+            @click="deleteDialog = false"
+          >
+            {{ tm("skills.cancel") }}
+          </v-btn>
+          <v-btn
+            class="skill-delete-dialog__confirm"
+            color="error"
+            variant="tonal"
+            :loading="deleting"
+            @click="deleteSkill"
+          >
+            确定删除
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -2184,6 +2206,92 @@ export default {
 .list-action-icon-btn--delete:hover {
   background: #ffe4e4;
   color: #c92d2d;
+}
+
+.skill-delete-dialog {
+  overflow: hidden;
+  border: 1px solid rgba(var(--v-theme-error), 0.18);
+  border-radius: 18px !important;
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-error), 0.055), transparent 150px),
+    rgb(var(--v-theme-surface));
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.22) !important;
+}
+
+.skill-delete-dialog__title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 24px 26px 12px !important;
+  color: rgb(var(--v-theme-primaryText));
+  font-size: 1.22rem;
+  font-weight: 740;
+  line-height: 1.3;
+  letter-spacing: 0;
+}
+
+.skill-delete-dialog__icon {
+  display: inline-flex;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(var(--v-theme-error), 0.18);
+  border-radius: 12px;
+  background: rgba(var(--v-theme-error), 0.1);
+  color: rgb(var(--v-theme-error));
+}
+
+.skill-delete-dialog__body {
+  padding: 10px 26px 18px !important;
+}
+
+.skill-delete-dialog__message {
+  margin: 0;
+  color: rgba(var(--v-theme-on-surface), 0.76);
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.skill-delete-dialog__target {
+  margin-top: 14px;
+  padding: 10px 12px;
+  overflow-wrap: anywhere;
+  border: 1px solid rgba(var(--v-theme-error), 0.13);
+  border-radius: 10px;
+  background: rgba(var(--v-theme-error), 0.06);
+  color: rgba(var(--v-theme-error), 0.92);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.skill-delete-dialog__actions {
+  gap: 10px;
+  padding: 2px 26px 24px !important;
+}
+
+.skill-delete-dialog__cancel,
+.skill-delete-dialog__confirm {
+  min-width: 92px;
+  height: 42px;
+  max-height: 42px;
+  border-radius: 8px;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.skill-delete-dialog__cancel {
+  color: rgba(var(--v-theme-on-surface), 0.72);
+}
+
+.skill-delete-dialog__cancel:hover {
+  background: rgba(var(--v-theme-on-surface), 0.06);
+}
+
+.skill-delete-dialog__confirm {
+  border: 1px solid rgba(var(--v-theme-error), 0.18);
 }
 
 .skill-active-switch :deep(.v-selection-control) {

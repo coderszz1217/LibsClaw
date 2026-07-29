@@ -140,12 +140,19 @@ watch(viewMode, async (mode) => {
 </script>
 
 <template>
-  <v-row>
+  <v-row class="component-panel">
     <v-col cols="12">
-      <v-card variant="flat" style="background-color: transparent">
-        <v-card-text style="padding: 20px 12px; padding-top: 0px;">
-          <div class="d-flex justify-space-between align-center mb-6 flex-wrap ga-3">
-            <v-btn-toggle v-model="viewMode" color="primary" variant="outlined" density="comfortable" mandatory>
+      <v-card class="component-panel-card" variant="flat">
+        <v-card-text class="component-panel-body">
+          <div class="component-mode-bar">
+            <v-btn-toggle
+              v-model="viewMode"
+              color="primary"
+              variant="outlined"
+              density="comfortable"
+              mandatory
+              class="component-mode-toggle"
+            >
               <v-btn value="commands">
                 <v-icon size="18" class="mr-1">mdi-console-line</v-icon>
                 {{ tm('type.command') }}
@@ -159,17 +166,17 @@ watch(viewMode, async (mode) => {
               v-if="viewMode === 'commands' && loading"
               indeterminate
               color="primary"
-              style="max-width: 220px; flex: 1;"
+              class="component-loading"
             />
             <v-progress-linear
               v-else-if="viewMode === 'tools' && toolsLoading"
               indeterminate
               color="primary"
-              style="max-width: 220px; flex: 1;"
+              class="component-loading"
             />
           </div>
 
-          <div v-if="viewMode === 'commands'">
+          <div v-if="viewMode === 'commands'" class="component-section">
             <CommandFilters
               :plugin-filter="pluginFilter"
               @update:plugin-filter="pluginFilter = $event"
@@ -237,40 +244,38 @@ watch(viewMode, async (mode) => {
             />
           </div>
 
-          <div v-else>
-            <div class="d-flex flex-wrap align-center ga-4 mb-4">
-              <div style="min-width: 240px; max-width: 380px; flex: 1;">
+          <div v-else class="component-section">
+            <div class="tool-control-bar">
+              <div class="tool-search-wrap">
                 <v-text-field
                   v-model="toolSearch"
                   prepend-inner-icon="mdi-magnify"
                   :label="tmTool('functionTools.search')"
-                  variant="outlined"
+                  variant="solo"
                   density="compact"
                   hide-details
                   clearable
+                  class="tool-search-field"
                 />
               </div>
 
-              <div class="d-flex align-center ga-4">
-                <div class="d-flex align-center">
+              <div class="tool-stats">
+                <div class="component-stat-pill">
                   <v-icon size="18" color="primary" class="mr-1">mdi-function-variant</v-icon>
                   <span class="text-body-2 text-medium-emphasis mr-1">{{ tmTool('functionTools.summary.total') }}:</span>
                   <span class="text-body-1 font-weight-bold text-primary">{{ toolSummary.total }}</span>
                 </div>
-                <v-divider vertical class="mx-1" style="height: 20px;" />
-                <div class="d-flex align-center">
+                <div class="component-stat-pill component-stat-pill--success">
                   <v-icon size="18" color="success" class="mr-1">mdi-check-circle-outline</v-icon>
                   <span class="text-body-2 text-medium-emphasis mr-1">{{ tmTool('functionTools.summary.active') }}:</span>
                   <span class="text-body-1 font-weight-bold text-success">{{ toolSummary.active }}</span>
                 </div>
-                <v-divider vertical class="mx-1" style="height: 20px;" />
-                <div class="d-flex align-center">
+                <div class="component-stat-pill component-stat-pill--error">
                   <v-icon size="18" color="error" class="mr-1">mdi-close-circle-outline</v-icon>
                   <span class="text-body-2 text-medium-emphasis mr-1">{{ tmTool('functionTools.summary.inactive') }}:</span>
                   <span class="text-body-1 font-weight-bold text-error">{{ toolSummary.inactive }}</span>
                 </div>
 
-                <v-divider vertical class="mx-1" style="height: 20px;" />
                 <v-checkbox
                   v-model="showBuiltinTools"
                   :label="tmTool('functionTools.filter.showBuiltin')"
@@ -320,11 +325,189 @@ watch(viewMode, async (mode) => {
 </template>
 
 <style scoped>
+.component-panel {
+  margin: 0;
+}
+
+.component-panel-card {
+  background: transparent;
+}
+
+.component-panel-body {
+  padding: 4px 0 0;
+}
+
+.component-mode-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.component-mode-toggle {
+  overflow: hidden;
+  border: 1px solid #dce8ef;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.component-mode-toggle :deep(.v-btn) {
+  min-width: 112px;
+  height: 36px;
+  letter-spacing: 0;
+  font-weight: 700;
+}
+
+.component-mode-toggle :deep(.v-btn--active) {
+  background: #eaf6fd;
+  color: rgb(var(--v-theme-primary));
+}
+
+.component-loading {
+  max-width: 220px;
+  flex: 1 1 160px;
+  border-radius: 999px;
+}
+
+.component-section {
+  overflow: hidden;
+  border: 1px solid #dce7ef;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.045);
+  display: flex;
+  height: clamp(580px, calc(100vh - 250px), 760px);
+  min-height: 0;
+  flex-direction: column;
+}
+
+.component-section :deep(.command-table-card),
+.component-section :deep(.tool-table-card) {
+  flex: 1 1 0;
+  height: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.component-section :deep(.command-data-table),
+.component-section :deep(.tool-table) {
+  flex: 1 1 0;
+  height: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.component-section :deep(.v-table__wrapper) {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.tool-control-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid #e3edf3;
+  background: linear-gradient(180deg, #f8fbfd 0%, #ffffff 100%);
+}
+
+.tool-search-wrap {
+  flex: 1 1 320px;
+  min-width: 260px;
+  max-width: 430px;
+}
+
+.tool-search-field :deep(.v-field) {
+  min-height: 38px;
+  border: 1px solid #d9e6ee;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.tool-search-field :deep(.v-field--focused) {
+  border-color: #9ed2ee;
+  box-shadow: 0 0 0 3px rgba(66, 165, 217, 0.12);
+}
+
+.tool-search-field :deep(.v-field__input) {
+  min-height: 38px;
+  padding-top: 0;
+  padding-bottom: 0;
+  color: #263545;
+  font-size: 13px;
+}
+
+.tool-search-field :deep(.v-field__prepend-inner) {
+  color: rgb(var(--v-theme-primary));
+}
+
+.tool-stats {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.component-stat-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 6px 11px;
+  border: 1px solid #d9e6ee;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #526171;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.component-stat-pill--success {
+  border-color: #cbeedb;
+  background: #f3fbf6;
+}
+
+.component-stat-pill--error {
+  border-color: #f6d5d5;
+  background: #fff7f7;
+}
+
 .builtin-tools-checkbox {
   flex: none;
 }
 
 .builtin-tools-checkbox :deep(.v-selection-control) {
   min-height: auto;
+}
+
+@media (max-width: 760px) {
+  .component-mode-bar,
+  .tool-control-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .component-mode-toggle {
+    width: 100%;
+  }
+
+  .component-mode-toggle :deep(.v-btn) {
+    flex: 1 1 0;
+  }
+
+  .tool-search-wrap {
+    max-width: none;
+    min-width: 0;
+    width: 100%;
+  }
 }
 </style>
