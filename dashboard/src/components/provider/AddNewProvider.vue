@@ -1,9 +1,11 @@
 <template>
-    <v-dialog v-model="showDialog" max-width="1000px" >
-        <v-card>
-            <v-card-title class="text-h3 pa-4 pb-0 pl-6">{{ tm('dialogs.addProvider.title') }}</v-card-title>
-            <v-card-text style="overflow-y: auto;">
-                <v-tabs v-model="activeProviderTab" grow>
+    <v-dialog v-model="showDialog" max-width="1000px">
+        <v-card class="add-provider-dialog">
+            <v-card-title class="add-provider-dialog__title">
+                {{ tm('dialogs.addProvider.title') }}
+            </v-card-title>
+            <v-card-text class="add-provider-dialog__body">
+                <v-tabs v-model="activeProviderTab" class="add-provider-tabs">
                     <v-tab value="agent_runner" class="font-weight-medium px-3">
                         <v-icon start>mdi-cogs</v-icon>
                         {{ tm('dialogs.addProvider.tabs.agentRunner') }}
@@ -26,13 +28,12 @@
                     </v-tab>
                 </v-tabs>
 
-                <v-window v-model="activeProviderTab" class="mt-4">
+                <v-window v-model="activeProviderTab" class="add-provider-window">
                     <v-window-item
                         v-for="tabType in ['chat_completion', 'agent_runner', 'speech_to_text', 'text_to_speech', 'embedding', 'rerank']"
                         :key="tabType" :value="tabType">
-                        <v-row class="mt-1">
-                            <v-col v-for="(template, name) in getTemplatesByType(tabType)" :key="name" cols="12" sm="6"
-                                md="4">
+                        <div class="add-provider-grid">
+                            <div v-for="(template, name) in getTemplatesByType(tabType)" :key="name">
                                 <v-card variant="outlined" hover class="provider-card"
                                     @click="selectProviderTemplate(name)">
                                     <div class="provider-card-content">
@@ -52,19 +53,21 @@
                                         </div>
                                     </div>
                                 </v-card>
-                            </v-col>
-                            <v-col v-if="Object.keys(getTemplatesByType(tabType)).length === 0" cols="12">
-                                <v-alert type="info" variant="tonal">
+                            </div>
+                            <div v-if="Object.keys(getTemplatesByType(tabType)).length === 0">
+                                <v-alert type="info" variant="tonal" class="add-provider-empty">
                                     {{ tm('dialogs.addProvider.noTemplates') }}
                                 </v-alert>
-                            </v-col>
-                        </v-row>
+                            </div>
+                        </div>
                     </v-window-item>
                 </v-window>
             </v-card-text>
-            <v-card-actions>
+            <v-card-actions class="add-provider-dialog__actions">
                 <v-spacer></v-spacer>
-                <v-btn variant="text" @click="closeDialog">{{ tm('dialogs.config.cancel') }}</v-btn>
+                <v-btn variant="tonal" class="add-provider-cancel" @click="closeDialog">
+                    {{ tm('dialogs.config.cancel') }}
+                </v-btn>
             </v-card-actions>
         </v-card>
     </v-dialog>
@@ -167,18 +170,82 @@ export default {
 </script>
 
 <style scoped>
+.add-provider-dialog {
+    border: 1px solid rgba(var(--v-theme-border), 0.7);
+    border-radius: 18px !important;
+    background:
+        linear-gradient(180deg, rgba(var(--v-theme-primary), 0.04), transparent 180px),
+        rgb(var(--v-theme-surface));
+    box-shadow: 0 24px 70px rgba(17, 24, 39, 0.16) !important;
+    overflow: hidden;
+}
+
+.add-provider-dialog__title {
+    padding: 22px 24px 14px;
+    color: rgb(var(--v-theme-primaryText));
+    font-size: 1.35rem;
+    font-weight: 720;
+    line-height: 1.25;
+    letter-spacing: 0;
+}
+
+.add-provider-dialog__body {
+    overflow-y: auto;
+    padding: 12px 24px 8px !important;
+}
+
+.add-provider-tabs {
+    min-height: 52px;
+    border: 1px solid rgba(var(--v-theme-border), 0.7);
+    border-radius: 12px;
+    background: rgba(var(--v-theme-surface), 0.84);
+    padding: 3px;
+}
+
+.add-provider-tabs :deep(.v-slide-group__content) {
+    gap: 4px;
+}
+
+.add-provider-tabs :deep(.v-tab) {
+    min-height: 44px;
+    border-radius: 8px;
+    letter-spacing: 0;
+}
+
+.add-provider-tabs :deep(.v-tab--selected) {
+    background: rgba(var(--v-theme-primary), 0.1);
+}
+
+.add-provider-window {
+    margin-top: 18px;
+}
+
+.add-provider-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+.add-provider-empty {
+    border-radius: 12px;
+}
+
 .provider-card {
-    transition: all 0.3s ease;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
     height: 100%;
     cursor: pointer;
     overflow: hidden;
     position: relative;
+    border-color: rgba(var(--v-theme-border), 0.7) !important;
+    border-radius: 14px !important;
+    background: rgba(var(--v-theme-surface), 0.96) !important;
+    box-shadow: 0 12px 32px rgba(17, 24, 39, 0.05);
 }
 
 .provider-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 4px 25px 0 rgba(0, 0, 0, 0.05);
-    border-color: var(--v-primary-base);
+    transform: translateY(-2px);
+    border-color: rgba(var(--v-theme-primary), 0.38) !important;
+    box-shadow: 0 16px 36px rgba(17, 24, 39, 0.08);
 }
 
 .provider-card-content {
@@ -199,9 +266,10 @@ export default {
 
 .provider-card-title {
     font-size: 15px;
-    font-weight: 600;
+    font-weight: 650;
     margin-bottom: 4px;
     padding: 0;
+    letter-spacing: 0;
 }
 
 .provider-card-description {
@@ -219,26 +287,70 @@ export default {
     align-items: center;
     justify-content: center;
     z-index: 1;
+    background: linear-gradient(90deg, transparent, rgba(var(--v-theme-on-surface), 0.03));
 }
 
 .provider-logo-img {
-    width: 60px;
-    height: 60px;
-    opacity: 0.6;
+    width: 54px;
+    height: 54px;
+    opacity: 0.72;
     object-fit: contain;
 }
 
 .provider-logo-fallback {
     width: 50px;
     height: 50px;
-    border-radius: 50%;
-    background-color: var(--v-primary-base);
-    color: white;
+    border-radius: 14px;
+    background: rgba(var(--v-theme-primary), 0.1);
+    color: rgb(var(--v-theme-primary));
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
+    font-size: 22px;
     font-weight: bold;
-    opacity: 0.3;
+}
+
+.add-provider-dialog__actions {
+    padding: 12px 24px 20px !important;
+}
+
+.add-provider-cancel {
+    min-width: 96px;
+    height: 42px;
+    max-height: 42px;
+    border-radius: 8px;
+    border: 1px solid rgba(var(--v-theme-border), 0.9);
+    background: rgba(var(--v-theme-surface), 0.92);
+    color: rgba(var(--v-theme-on-surface), 0.74);
+    font-weight: 600;
+    letter-spacing: 0;
+}
+
+.add-provider-cancel:hover {
+    border-color: rgba(var(--v-theme-primary), 0.32);
+    background: rgba(var(--v-theme-primary), 0.08);
+    color: rgb(var(--v-theme-primary));
+}
+
+@media (max-width: 760px) {
+    .add-provider-dialog__title {
+        padding: 18px 18px 10px;
+    }
+
+    .add-provider-dialog__body {
+        padding: 10px 18px 6px !important;
+    }
+
+    .add-provider-tabs {
+        overflow-x: auto;
+    }
+
+    .add-provider-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .add-provider-dialog__actions {
+        padding: 10px 18px 18px !important;
+    }
 }
 </style>

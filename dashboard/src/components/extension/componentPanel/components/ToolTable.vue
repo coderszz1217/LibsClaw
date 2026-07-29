@@ -92,7 +92,7 @@ const getPermissionLabel = (permission?: string): string => {
 </script>
 
 <template>
-  <v-card class="rounded-lg overflow-hidden elevation-1">
+  <v-card class="tool-table-card" variant="flat">
     <v-data-table
       :headers="toolHeaders"
       :items="items"
@@ -215,9 +215,11 @@ const getPermissionLabel = (permission?: string): string => {
       </template>
 
       <template #no-data>
-        <div class="text-center pa-8">
-          <v-icon size="64" color="info" class="mb-4">mdi-function-variant</v-icon>
-          <div class="text-h5 mb-2">{{ tmTool('functionTools.empty') }}</div>
+        <div class="tool-empty-state">
+          <div class="tool-empty-state__icon">
+            <v-icon size="42">mdi-function-variant</v-icon>
+          </div>
+          <div class="tool-empty-state__title">{{ tmTool('functionTools.empty') }}</div>
         </div>
       </template>
 
@@ -263,9 +265,51 @@ const getPermissionLabel = (permission?: string): string => {
 </template>
 
 <style scoped>
+.tool-table-card {
+  overflow: hidden;
+  border-radius: 0;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.tool-table :deep(thead th) {
+  height: 46px;
+  color: #506172;
+  font-size: 13px;
+  font-weight: 760;
+  background: #fafcfd;
+  border-bottom: 1px solid #e3edf3 !important;
+}
+
+.tool-table :deep(tbody tr) {
+  transition: background-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.tool-table :deep(tbody tr:hover) {
+  background: #f8fbfd !important;
+  box-shadow: inset 3px 0 0 #8bc9ec;
+}
+
+.tool-table :deep(.v-data-table__td) {
+  height: 54px;
+  border-bottom: 1px solid #edf2f6 !important;
+  color: #263545;
+}
+
+.tool-table :deep(.v-data-table-footer) {
+  border-top: 1px solid #e3edf3;
+  background: #fafcfd;
+}
+
+.tool-table :deep(.v-switch .v-selection-control) {
+  min-height: 30px;
+}
+
 .param-table {
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #dce8ef;
+  border-radius: 10px;
+  background: #ffffff;
 }
 
 .tool-table :deep(.v-data-table__td) {
@@ -275,6 +319,36 @@ const getPermissionLabel = (permission?: string): string => {
 .tool-name {
   font-size: 0.9rem;
   line-height: 1.35;
+}
+
+.tool-empty-state {
+  display: flex;
+  min-height: 220px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 34px;
+  color: #647486;
+}
+
+.tool-empty-state__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 76px;
+  height: 76px;
+  border: 1px solid #d7e8f2;
+  border-radius: 20px;
+  color: rgb(var(--v-theme-primary));
+  background: #edf8fe;
+}
+
+.tool-empty-state__title {
+  margin-top: 6px;
+  color: #263545;
+  font-size: 16px;
+  font-weight: 760;
 }
 
 .tool-config-tooltip {

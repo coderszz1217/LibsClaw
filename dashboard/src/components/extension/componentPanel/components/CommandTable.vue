@@ -93,12 +93,13 @@ const getRowProps = ({ item }: { item: CommandItem }) => {
 </script>
 
 <template>
-  <v-card class="rounded-lg overflow-hidden elevation-1">
+  <v-card class="command-table-card" variant="flat">
     <v-data-table
       :headers="commandHeaders"
       :items="items"
       item-key="handler_full_name"
       hover
+      class="command-data-table"
       :row-props="getRowProps"
       :loading="props.loading"
     >
@@ -228,10 +229,12 @@ const getRowProps = ({ item }: { item: CommandItem }) => {
       </template>
 
       <template v-slot:no-data>
-        <div class="text-center pa-8">
-          <v-icon size="64" color="info" class="mb-4">mdi-console-line</v-icon>
-          <div class="text-h5 mb-2">{{ tm('empty.noCommands') }}</div>
-          <div class="text-body-1 mb-4">{{ tm('empty.noCommandsDesc') }}</div>
+        <div class="command-empty-state">
+          <div class="command-empty-state__icon">
+            <v-icon size="42">mdi-console-line</v-icon>
+          </div>
+          <div class="command-empty-state__title">{{ tm('empty.noCommands') }}</div>
+          <div class="command-empty-state__desc">{{ tm('empty.noCommandsDesc') }}</div>
         </div>
       </template>
     </v-data-table>
@@ -239,11 +242,70 @@ const getRowProps = ({ item }: { item: CommandItem }) => {
 </template>
 
 <style scoped>
+.command-table-card {
+  overflow: hidden;
+  border-radius: 0;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.command-data-table :deep(.v-data-table__wrapper),
+.command-data-table :deep(.v-table__wrapper) {
+  border-radius: 0;
+}
+
+.command-data-table :deep(thead th) {
+  height: 46px;
+  color: #506172;
+  font-size: 13px;
+  font-weight: 760;
+  background: #fafcfd;
+  border-bottom: 1px solid #e3edf3 !important;
+}
+
+.command-data-table :deep(tbody tr) {
+  transition: background-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.command-data-table :deep(tbody tr:hover) {
+  background: #f8fbfd !important;
+  box-shadow: inset 3px 0 0 #8bc9ec;
+}
+
+.command-data-table :deep(.v-data-table__td) {
+  height: 54px;
+  border-bottom: 1px solid #edf2f6 !important;
+  color: #263545;
+}
+
+.command-data-table :deep(.v-data-table-footer) {
+  border-top: 1px solid #e3edf3;
+  background: #fafcfd;
+}
+
+.command-data-table :deep(.v-btn-group) {
+  gap: 6px;
+}
+
+.command-data-table :deep(.v-btn--icon.v-btn--size-small) {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: #f6f9fb;
+}
+
+.command-data-table :deep(.v-btn--icon.v-btn--size-small:hover) {
+  background: #edf6fc;
+}
+
 code {
-  background-color: rgba(var(--v-theme-primary), 0.1);
-  padding: 2px 6px;
-  border-radius: 4px;
+  background-color: #eef7fc;
+  color: rgb(var(--v-theme-primary));
+  padding: 4px 9px;
+  border: 1px solid #d9ecf7;
+  border-radius: 7px;
   font-size: 0.9em;
+  font-weight: 650;
   white-space: nowrap;
 }
 
@@ -255,35 +317,69 @@ code.sub-command-code {
 
 <style>
 /* 冲突行高亮 */
-.v-data-table .conflict-row {
+.command-data-table .conflict-row {
   background: linear-gradient(90deg, rgba(var(--v-theme-warning), 0.15) 0%, rgba(var(--v-theme-warning), 0.05) 100%) !important;
   border-left: 3px solid rgb(var(--v-theme-warning)) !important;
 }
 
-.v-data-table .conflict-row:hover {
+.command-data-table .conflict-row:hover {
   background: linear-gradient(90deg, rgba(var(--v-theme-warning), 0.25) 0%, rgba(var(--v-theme-warning), 0.1) 100%) !important;
 }
 
 /* 指令组行样式 */
-.v-data-table .group-row {
-  background-color: rgba(var(--v-theme-info), 0.05);
+.command-data-table .group-row {
+  background-color: #fbfdfe;
 }
 
-.v-data-table .group-row:hover {
-  background-color: rgba(var(--v-theme-info), 0.08) !important;
+.command-data-table .group-row:hover {
+  background-color: #f7fbfd !important;
 }
 
 /* 子指令行样式 */
-.v-data-table .sub-command-row {
-  background-color: rgba(var(--v-theme-info), 0.05);
+.command-data-table .sub-command-row {
+  background-color: #fbfdfe;
 }
 
-.v-data-table .sub-command-row:hover {
-  background-color: rgba(var(--v-theme-info), 0.08) !important;
+.command-data-table .sub-command-row:hover {
+  background-color: #f7fbfd !important;
 }
 
 .cursor-pointer {
   cursor: pointer;
 }
-</style>
 
+.command-empty-state {
+  display: flex;
+  min-height: 220px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 34px;
+  color: #647486;
+}
+
+.command-empty-state__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 76px;
+  height: 76px;
+  border: 1px solid #d7e8f2;
+  border-radius: 20px;
+  color: rgb(var(--v-theme-primary));
+  background: #edf8fe;
+}
+
+.command-empty-state__title {
+  margin-top: 6px;
+  color: #263545;
+  font-size: 16px;
+  font-weight: 760;
+}
+
+.command-empty-state__desc {
+  color: #758391;
+  font-size: 13px;
+}
+</style>

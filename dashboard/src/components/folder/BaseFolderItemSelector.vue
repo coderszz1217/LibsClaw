@@ -20,12 +20,12 @@
             :min-width="isCompactLayout ? undefined : '800px'"
         >
             <v-card class="selector-dialog-card">
-                <v-card-title class="text-h3 pa-4 pb-0 pl-6 d-flex align-center">
-                    <v-icon class="mr-3" color="primary">mdi-account-circle</v-icon>
+                <v-card-title class="selector-dialog-title">
+                    <span class="selector-dialog-title__icon">
+                        <v-icon size="22">mdi-account-circle</v-icon>
+                    </span>
                     <span>{{ labels.dialogTitle || '选择项目' }}</span>
                 </v-card-title>
-
-                <v-divider />
 
                 <v-card-text class="pa-0 selector-content">
                     <div class="selector-layout">
@@ -164,14 +164,15 @@
                     </div>
                 </v-card-text>
 
-                <v-card-actions class="pa-4">
-                    <v-btn v-if="showCreateButton" variant="text" color="primary" prepend-icon="mdi-plus"
+                <v-card-actions class="selector-actions">
+                    <v-btn v-if="showCreateButton" variant="tonal" color="primary" prepend-icon="mdi-plus"
+                        class="selector-action-btn selector-action-btn--create"
                         @click="$emit('create')">
                         {{ labels.createButton || '新建' }}
                     </v-btn>
                     <v-spacer></v-spacer>
-                    <v-btn variant="text" @click="cancelSelection">{{ labels.cancelButton || '取消' }}</v-btn>
-                    <v-btn color="primary" variant="tonal" @click="confirmSelection" :disabled="!selectedItemId">
+                    <v-btn variant="tonal" class="selector-action-btn selector-action-btn--secondary" @click="cancelSelection">{{ labels.cancelButton || '取消' }}</v-btn>
+                    <v-btn color="primary" variant="flat" class="selector-action-btn selector-action-btn--primary" @click="confirmSelection" :disabled="!selectedItemId">
                         {{ labels.confirmButton || '确认' }}
                     </v-btn>
                 </v-card-actions>
@@ -446,13 +447,38 @@ export default defineComponent({
 
 <style scoped>
 .selector-dialog-card {
-    border-radius: 12px;
+    border: 1px solid rgba(var(--v-theme-border), 0.7);
+    border-radius: 16px !important;
+    background: #f7f9fc;
+    box-shadow: 0 22px 64px rgba(15, 23, 42, 0.16) !important;
     overflow: hidden;
 }
 
-.dialog-title {
-    font-size: 1.25rem;
-    font-weight: 500;
+.selector-dialog-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 24px 16px !important;
+    border-bottom: 1px solid rgba(var(--v-theme-border), 0.62);
+    background:
+        linear-gradient(90deg, rgba(var(--v-theme-primary), 0.08), transparent 44%),
+        rgba(255, 255, 255, 0.82);
+    color: rgb(var(--v-theme-primaryText));
+    font-size: 1.18rem;
+    font-weight: 720;
+    line-height: 1.25;
+    letter-spacing: 0;
+}
+
+.selector-dialog-title__icon {
+    display: inline-flex;
+    width: 34px;
+    height: 34px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: rgba(var(--v-theme-primary), 0.1);
+    color: rgb(var(--v-theme-primary));
 }
 
 .selector-layout {
@@ -462,21 +488,23 @@ export default defineComponent({
 }
 
 .selector-content {
-    height: 600px;
-    max-height: 80vh;
+    height: 560px;
+    max-height: 76vh;
     overflow: hidden;
+    background: #f7f9fc;
 }
 
 .folder-sidebar {
-    width: 280px;
-    border-right: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+    width: 250px;
+    border-right: 1px solid rgba(var(--v-theme-border), 0.62);
     overflow-y: auto;
     flex-shrink: 0;
-    background-color: transparent;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(248, 250, 252, 0.78));
 }
 
 .sidebar-header {
-    border-bottom: 1px solid rgba(var(--v-border-color), 0.5);
+    border-bottom: 1px solid rgba(var(--v-theme-border), 0.58);
 }
 
 .items-panel {
@@ -484,14 +512,15 @@ export default defineComponent({
     display: flex;
     flex-direction: column;
     min-width: 0;
-    background-color: rgb(var(--v-theme-surface));
+    background-color: #f7f9fc;
 }
 
 .breadcrumb-bar {
-    background-color: transparent;
-    min-height: 56px;
+    min-height: 54px;
     display: flex;
     align-items: center;
+    border-bottom: 1px solid rgba(var(--v-theme-border), 0.58);
+    background: rgba(255, 255, 255, 0.72);
 }
 
 .items-list {
@@ -502,6 +531,7 @@ export default defineComponent({
 .items-content {
     background-color: transparent;
     min-width: 0;
+    padding: 14px !important;
 }
 
 .mobile-folder-bar {
@@ -516,13 +546,14 @@ export default defineComponent({
 }
 
 .tree-list {
-    padding: 0;
+    padding: 8px;
 }
 
 .section-label {
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0;
     font-size: 0.7rem;
+    font-weight: 700;
 }
 
 .breadcrumb-link {
@@ -536,6 +567,12 @@ export default defineComponent({
 
 .root-item {
     margin-bottom: 4px;
+    border-radius: 10px !important;
+}
+
+.root-item.v-list-item--active {
+    border-left: 3px solid rgb(var(--v-theme-primary));
+    background: rgba(var(--v-theme-primary), 0.1) !important;
 }
 
 .folder-item {
@@ -548,16 +585,51 @@ export default defineComponent({
 
 .persona-item {
     transition: all 0.15s ease;
-    border: 1px solid transparent;
+    min-height: 66px;
+    border: 1px solid rgba(var(--v-theme-border), 0.58);
+    border-radius: 12px !important;
+    background: rgba(255, 255, 255, 0.82);
 }
 
 .persona-item:hover {
-    background-color: rgba(var(--v-theme-primary), 0.04);
+    border-color: rgba(var(--v-theme-primary), 0.24);
+    background-color: rgba(255, 255, 255, 0.96);
 }
 
 .persona-item.selected-item {
+    border-color: rgba(var(--v-theme-primary), 0.34);
     background-color: rgba(var(--v-theme-primary), 0.08);
-    border-color: rgba(var(--v-theme-primary), 0.3);
+    box-shadow: 0 10px 24px rgba(var(--v-theme-primary), 0.08);
+}
+
+.folder-item {
+    border-radius: 10px !important;
+}
+
+.selector-actions {
+    gap: 10px;
+    padding: 14px 24px 18px !important;
+    border-top: 1px solid rgba(var(--v-theme-border), 0.62);
+    background: rgba(255, 255, 255, 0.88);
+}
+
+.selector-action-btn {
+    height: 40px;
+    max-height: 40px;
+    border-radius: 8px;
+    padding: 0 16px;
+    font-weight: 600;
+    letter-spacing: 0;
+}
+
+.selector-action-btn--primary {
+    box-shadow: 0 8px 18px rgba(var(--v-theme-primary), 0.14);
+}
+
+.selector-action-btn--secondary {
+    border: 1px solid rgba(var(--v-theme-border), 0.82);
+    background: rgba(255, 255, 255, 0.9);
+    color: rgba(var(--v-theme-on-surface), 0.74);
 }
 
 .empty-state {

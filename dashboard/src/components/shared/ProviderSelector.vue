@@ -32,27 +32,28 @@
 
   <!-- Provider Selection Dialog -->
   <v-dialog v-model="dialog" max-width="600px">
-    <v-card>
+    <v-card class="provider-selector-dialog">
       <v-card-title
-        class="text-h3 pa-4 pb-0 pl-6 d-flex align-center justify-space-between gap-4 flex-wrap"
+        class="provider-selector-dialog__title"
       >
         <span>{{ tm('providerSelector.dialogTitle') }}</span>
         <v-btn
           size="small"
           color="primary"
-          variant="tonal"
+          variant="flat"
           prepend-icon="mdi-plus"
+          class="provider-selector-create-btn"
           @click="openProviderDrawer"
         >
           {{ tm('providerSelector.createProvider') }}
         </v-btn>
       </v-card-title>
       
-      <v-card-text class="pa-0" style="max-height: 400px; overflow-y: auto;">
+      <v-card-text class="provider-selector-dialog__body">
         <v-progress-linear v-if="loading" indeterminate color="primary"></v-progress-linear>
 
-        <div v-if="multiple && selectedProviders.length > 0" class="pa-3">
-          <div class="text-caption text-medium-emphasis mb-2">
+        <div v-if="multiple && selectedProviders.length > 0" class="provider-selector-selected">
+          <div class="provider-selector-selected__caption">
             {{ tm('providerSelector.selectedCount', { count: selectedProviders.length }) }}
           </div>
           <v-list density="compact" class="selected-order-list">
@@ -92,7 +93,7 @@
           <v-divider class="ma-1"></v-divider>
         </div>
         
-        <v-list v-if="!loading && providerList.length > 0" density="compact">
+        <v-list v-if="!loading && providerList.length > 0" density="compact" class="provider-selector-list">
           <!-- 不选择选项 -->
           <v-list-item
             v-if="!multiple"
@@ -101,7 +102,7 @@
             @click="selectProvider({ id: '' })"
             :active="selectedProvider === ''"
             rounded="md"
-            class="ma-1">
+            class="provider-selector-list__item">
             <v-list-item-title>{{ tm('providerSelector.clearSelection') }}</v-list-item-title>
             <v-list-item-subtitle>{{ tm('providerSelector.clearSelectionSubtitle') }}</v-list-item-subtitle>
             
@@ -110,7 +111,7 @@
             </template>
           </v-list-item>
           
-          <v-divider class="ma-1"></v-divider>
+          <v-divider class="provider-selector-divider"></v-divider>
           
           <v-list-item
             v-for="provider in providerList"
@@ -119,7 +120,7 @@
             @click="selectProvider(provider)"
             :active="isProviderSelected(provider.id)"
             rounded="md"
-            class="ma-1">
+            class="provider-selector-list__item">
             <v-list-item-title>{{ provider.id }}</v-list-item-title>
             <v-list-item-subtitle>
               {{ provider.type || provider.provider_type || tm('providerSelector.unknownType') }}
@@ -191,20 +192,21 @@
           </v-list-item>
         </v-list>
         
-        <div v-else-if="!loading && providerList.length === 0" class="text-center py-8">
+        <div v-else-if="!loading && providerList.length === 0" class="provider-selector-empty">
           <v-icon size="64" color="grey-lighten-1">mdi-api-off</v-icon>
-          <p class="text-grey mt-4">{{ tm('providerSelector.noProviders') }}</p>
+          <p>{{ tm('providerSelector.noProviders') }}</p>
         </div>
       </v-card-text>
       
-      <v-divider></v-divider>
+      <v-divider class="provider-selector-footer-divider"></v-divider>
       
-      <v-card-actions class="pa-4">
+      <v-card-actions class="provider-selector-dialog__actions">
         <v-spacer></v-spacer>
-        <v-btn variant="text" @click="cancelSelection">{{ tm('providerSelector.cancelSelection') }}</v-btn>
+        <v-btn variant="tonal" class="provider-selector-secondary-btn" @click="cancelSelection">{{ tm('providerSelector.cancelSelection') }}</v-btn>
         <v-btn 
           color="primary" 
-          variant="tonal"
+          variant="flat"
+          class="provider-selector-primary-btn"
           @click="confirmSelection">
           {{ tm('providerSelector.confirmSelection') }}
         </v-btn>
@@ -490,6 +492,106 @@ function closeProviderDrawer() {
   border-radius: 10px;
 }
 
+.provider-selector-dialog {
+  border: 1px solid rgba(var(--v-theme-border), 0.7);
+  border-radius: 18px !important;
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-primary), 0.04), transparent 180px),
+    rgb(var(--v-theme-surface));
+  box-shadow: 0 24px 70px rgba(17, 24, 39, 0.16) !important;
+  overflow: hidden;
+}
+
+.provider-selector-dialog__title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 20px 24px 12px !important;
+  color: rgb(var(--v-theme-primaryText));
+  font-size: 1.25rem;
+  font-weight: 720;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+.provider-selector-create-btn,
+.provider-selector-primary-btn,
+.provider-selector-secondary-btn {
+  height: 40px;
+  max-height: 40px;
+  border-radius: 8px;
+  padding: 0 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.provider-selector-create-btn,
+.provider-selector-primary-btn {
+  box-shadow: 0 8px 18px rgba(var(--v-theme-primary), 0.16);
+}
+
+.provider-selector-secondary-btn {
+  border: 1px solid rgba(var(--v-theme-border), 0.9);
+  background: rgba(var(--v-theme-surface), 0.92);
+  color: rgba(var(--v-theme-on-surface), 0.74);
+}
+
+.provider-selector-dialog__body {
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 12px 20px 8px !important;
+}
+
+.provider-selector-selected {
+  padding: 0 0 12px;
+}
+
+.provider-selector-selected__caption {
+  margin-bottom: 8px;
+  color: rgba(var(--v-theme-on-surface), 0.62);
+  font-size: 12px;
+}
+
+.provider-selector-list {
+  border: 1px solid rgba(var(--v-theme-border), 0.7);
+  border-radius: 14px;
+  background: rgba(var(--v-theme-surface), 0.8);
+  padding: 6px !important;
+}
+
+.provider-selector-list__item {
+  min-height: 56px;
+  border-radius: 10px !important;
+  padding-inline: 16px !important;
+}
+
+.provider-selector-divider,
+.provider-selector-footer-divider {
+  border-color: rgba(var(--v-theme-border), 0.7);
+}
+
+.provider-selector-empty {
+  display: flex;
+  min-height: 220px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: rgba(var(--v-theme-on-surface), 0.56);
+}
+
+.provider-selector-empty p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.provider-selector-dialog__actions {
+  padding: 14px 20px 18px !important;
+  gap: 10px;
+}
+
 .provider-selector-meta {
   display: inline-flex;
   align-items: center;
@@ -613,6 +715,18 @@ function closeProviderDrawer() {
   :deep(.v-dialog > .v-overlay__content) {
     width: calc(100dvw - 24px);
     max-width: calc(100dvw - 24px);
+  }
+
+  .provider-selector-dialog__title {
+    padding: 18px 18px 10px !important;
+  }
+
+  .provider-selector-dialog__body {
+    padding: 10px 18px 8px !important;
+  }
+
+  .provider-selector-dialog__actions {
+    padding: 12px 18px 18px !important;
   }
 }
 </style>

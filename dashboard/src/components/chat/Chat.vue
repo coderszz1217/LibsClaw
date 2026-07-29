@@ -1670,10 +1670,10 @@ function toggleTheme() {
 <style scoped>
 .chat-ui {
   --chat-panel-top-offset: 50px;
-  --chat-sidebar-bg: rgb(var(--v-theme-surface));
-  --chat-session-active-bg: #efefef;
-  --chat-page-bg: #fdfcfc;
-  --chat-border: #f2f2f2;
+  --chat-sidebar-bg: #fbfcfe;
+  --chat-session-active-bg: #eaf5fc;
+  --chat-page-bg: #f7fbfd;
+  --chat-border: rgba(42, 143, 204, 0.12);
   --chat-muted: rgba(var(--v-theme-on-surface), 0.62);
   --chat-section-label: rgba(var(--v-theme-on-surface), 0.48);
   --chat-content-width: 76%;
@@ -1682,7 +1682,9 @@ function toggleTheme() {
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  background: var(--chat-page-bg);
+  background:
+    radial-gradient(circle at 78% 8%, rgba(42, 143, 204, 0.08), transparent 28%),
+    linear-gradient(180deg, #f5fbff 0%, var(--chat-page-bg) 260px);
   color: rgb(var(--v-theme-on-surface));
   font-family:
     system-ui,
@@ -1711,6 +1713,7 @@ function toggleTheme() {
   height: 100vh !important;
   background: var(--chat-sidebar-bg);
   border-right: 1px solid var(--chat-border);
+  box-shadow: none !important;
 }
 
 .chat-sidebar.collapsed {
@@ -1725,7 +1728,7 @@ function toggleTheme() {
 }
 
 .sidebar-top {
-  padding: 0 16px 2px;
+  padding: 10px 14px 6px;
 }
 
 .chat-sidebar.collapsed .sidebar-top {
@@ -1738,12 +1741,15 @@ function toggleTheme() {
 }
 
 .chat-sidebar-brand {
-  min-height: 50px;
+  min-height: 58px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 0 10px 2px;
+  padding: 8px 9px 8px 12px;
+  border: 1px solid rgba(42, 143, 204, 0.12);
+  border-radius: 16px;
+  background: linear-gradient(135deg, #ffffff 0%, #eef8fe 100%);
 }
 
 .chat-sidebar-brand.collapsed {
@@ -1762,9 +1768,9 @@ function toggleTheme() {
 }
 
 .chat-sidebar-brand-logo {
-  width: 22px;
-  height: 22px;
-  flex: 0 0 22px;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
   display: block;
 }
 
@@ -1780,14 +1786,14 @@ function toggleTheme() {
 }
 
 .chat-sidebar-brand-name {
-  font-size: 18px;
-  font-weight: 800;
+  font-size: 17px;
+  font-weight: 850;
 }
 
 .chat-sidebar-brand-mode {
-  color: var(--chat-muted);
-  font-size: 18px;
-  font-weight: 500;
+  color: #667887;
+  font-size: 16px;
+  font-weight: 580;
 }
 
 .chat-sidebar-brand-toggle {
@@ -1860,8 +1866,8 @@ function toggleTheme() {
 
 .new-chat-btn,
 .settings-btn {
-  color: rgb(var(--v-theme-on-surface));
-  border-radius: 8px;
+  color: rgba(var(--v-theme-on-surface), 0.76);
+  border-radius: 12px;
 }
 
 .sidebar-action-icon {
@@ -1877,14 +1883,14 @@ function toggleTheme() {
 .new-chat-btn,
 .settings-btn {
   width: 100%;
-  min-height: 36px;
-  height: 36px;
+  min-height: 38px;
+  height: 38px;
   justify-content: flex-start;
-  border-radius: 8px;
+  border-radius: 12px;
   text-transform: none;
   letter-spacing: 0;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 650;
 }
 
 .sidebar-provider-btn {
@@ -1928,20 +1934,21 @@ function toggleTheme() {
 .new-chat-btn:hover,
 .settings-btn:hover {
   background: var(--chat-session-active-bg);
+  color: #1674a8;
 }
 
 .sidebar-workspace-btn--active {
   background: var(--chat-session-active-bg);
-  color: rgb(var(--v-theme-on-surface));
+  color: #1674a8;
 }
 
 .sidebar-content {
   flex: 1;
   overflow-y: auto;
-  padding: 2px 16px 12px;
+  padding: 8px 14px 12px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .sidebar-section {
@@ -1952,10 +1959,10 @@ function toggleTheme() {
   min-height: 24px;
   display: flex;
   align-items: center;
-  padding: 0 10px 4px;
+  padding: 3px 10px 5px;
   color: var(--chat-section-label);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 680;
 }
 
 .session-list {
@@ -1967,15 +1974,15 @@ function toggleTheme() {
 
 .session-item {
   width: 100%;
-  min-height: 30px;
-  border: 0;
-  border-radius: 8px;
+  min-height: 36px;
+  border: 1px solid transparent;
+  border-radius: 12px;
   background: transparent;
   color: inherit;
   display: flex;
   align-items: center;
   gap: 7px;
-  padding: 4px 56px 4px 10px;
+  padding: 6px 58px 6px 11px;
   position: relative;
   box-sizing: border-box;
   cursor: pointer;
@@ -1985,6 +1992,7 @@ function toggleTheme() {
 .session-item:hover,
 .session-item.active {
   background: var(--chat-session-active-bg);
+  border-color: rgba(42, 143, 204, 0.16);
 }
 
 .session-title {
@@ -1994,7 +2002,7 @@ function toggleTheme() {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 620;
 }
 
 .session-progress {
@@ -2137,20 +2145,21 @@ function toggleTheme() {
   display: flex;
   flex-direction: column;
   position: relative;
+  padding-inline: 12px;
 }
 
 .conversation-stack.is-empty {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 28px;
+  gap: 26px;
 }
 
 .messages-panel {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 24px 0 116px;
+  padding: 34px 0 126px;
   scroll-padding-bottom: 116px;
 }
 
@@ -2166,6 +2175,7 @@ function toggleTheme() {
   width: var(--chat-content-width);
   max-width: var(--chat-content-max-width);
   margin: 0 auto;
+  padding: 18px 0;
 }
 
 .center-state,
@@ -2178,14 +2188,26 @@ function toggleTheme() {
   text-align: center;
 }
 
+.welcome-state {
+  width: min(560px, calc(100vw - 420px));
+  min-height: 156px;
+  margin: 0 auto;
+  border: 1px solid rgba(42, 143, 204, 0.12);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(42, 143, 204, 0.12), transparent 44%),
+    rgba(255, 255, 255, 0.72);
+}
+
 .conversation-stack.is-empty .welcome-state {
   height: auto;
 }
 
 .welcome-title {
   font-family: "Outfit", "Noto Sans", sans-serif;
-  font-size: 28px;
+  font-size: 27px;
   font-weight: 800;
+  color: #172635;
 }
 
 .welcome-subtitle {
@@ -2218,7 +2240,7 @@ function toggleTheme() {
   z-index: 3;
   isolation: isolate;
   background: transparent;
-  padding: 0 0 18px;
+  padding: 0 0 20px;
 }
 
 .conversation-stack:not(.is-empty) .composer-shell {
@@ -2238,7 +2260,7 @@ function toggleTheme() {
   bottom: 0;
   left: 0;
   pointer-events: none;
-  background: var(--chat-page-bg);
+  background: linear-gradient(180deg, rgba(247, 251, 253, 0), var(--chat-page-bg) 52%);
 }
 
 .composer-shell :deep(.input-area),
@@ -2256,10 +2278,29 @@ function toggleTheme() {
 
 .conversation-stack:not(.is-empty) .composer-shell :deep(.input-container) {
   pointer-events: auto;
+  border: 1px solid rgba(42, 143, 204, 0.14) !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  box-shadow: 0 12px 32px rgba(22, 78, 112, 0.1) !important;
 }
 
 .conversation-stack.is-empty .composer-shell {
   padding-bottom: 0;
+}
+
+.conversation-stack.is-empty .composer-shell :deep(.input-container) {
+  border: 1px solid rgba(42, 143, 204, 0.14) !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  box-shadow: 0 14px 36px rgba(22, 78, 112, 0.1) !important;
+}
+
+.composer-shell :deep(.input-area) {
+  padding-inline: 18px;
+}
+
+.composer-shell :deep(.input-container),
+.project-composer-shell :deep(.input-container) {
+  max-width: 780px;
+  margin-inline: auto;
 }
 
 kbd {

@@ -1,31 +1,36 @@
 <template>
   <div class="platform-page">
-    <v-container fluid class="pa-0">
-      <v-row class="d-flex justify-space-between align-center px-4 py-3 pb-8">
-        <div>
-          <h1 class="text-h1 font-weight-bold mb-2 d-flex align-center">
-            <v-icon class="me-2">mdi-robot</v-icon>{{ tm('title') }}
-          </h1>
-          <p class="text-subtitle-1 text-medium-emphasis mb-4">
-            {{ tm('subtitle') }}
-          </p>
+    <v-container fluid class="platform-shell">
+      <section class="platform-hero">
+        <div class="platform-hero__copy">
+          <div>
+            <h1 class="platform-hero__title">
+              {{ tm('title') }}
+            </h1>
+            <p class="platform-hero__subtitle">
+              {{ tm('subtitle') }}
+            </p>
+          </div>
         </div>
-        <v-btn color="primary" prepend-icon="mdi-plus" variant="tonal" @click="updatingMode = false; showAddPlatformDialog = true"
-          rounded="xl" size="x-large">
+        <v-btn
+          color="primary"
+          prepend-icon="mdi-plus"
+          variant="flat"
+          class="platform-hero__action"
+          @click="updatingMode = false; showAddPlatformDialog = true"
+        >
           {{ tm('addAdapter') }}
         </v-btn>
-      </v-row>
+      </section>
 
-      <div>
-        <v-row v-if="(config_data.platform || []).length === 0">
-          <v-col cols="12" class="text-center pa-8">
-            <v-icon size="64" color="grey-lighten-1">mdi-connection</v-icon>
-            <p class="text-grey mt-4">{{ tm('emptyText') }}</p>
-          </v-col>
-        </v-row>
+      <section>
+        <div v-if="(config_data.platform || []).length === 0" class="platform-empty-state">
+          <v-icon size="46" color="primary">mdi-connection</v-icon>
+          <p>{{ tm('emptyText') }}</p>
+        </div>
 
-        <v-row v-else>
-          <v-col v-for="(platform, index) in config_data.platform || []" :key="index" cols="12" md="6" lg="4" xl="3">
+        <div v-else class="platform-grid">
+          <div v-for="(platform, index) in config_data.platform || []" :key="index" class="platform-card-shell">
             <item-card :item="platform" title-field="id" enabled-field="enable"
               variant="outlined"
               :bglogo="getPlatformIcon(platform.type || platform.id)" @toggle-enabled="platformStatusChange"
@@ -87,9 +92,9 @@
                 </div>
               </template>
             </item-card>
-          </v-col>
-        </v-row>
-      </div>
+          </div>
+        </div>
+      </section>
 
     </v-container>
 
@@ -608,9 +613,152 @@ export default {
 
 <style scoped>
 .platform-page {
-  padding: 20px;
-  padding-top: 8px;
-  padding-bottom: 40px;
+  min-height: 100%;
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-primary), 0.08), transparent 280px),
+    rgb(var(--v-theme-background));
+}
+
+.platform-shell {
+  max-width: 1200px;
+  padding: 24px;
+}
+
+.platform-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 20px;
+  padding: 18px 2px 20px;
+  border: 1px solid rgba(var(--v-theme-border), 0.7);
+  border-width: 0 0 1px;
+}
+
+.platform-hero__copy {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+}
+
+.platform-hero__title {
+  margin: 0;
+  color: rgb(var(--v-theme-primaryText));
+  font-size: 1.65rem;
+  font-weight: 730;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+.platform-hero__subtitle {
+  margin: 6px 0 0;
+  color: rgba(var(--v-theme-on-surface), 0.68);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.platform-hero__action {
+  height: 46px;
+  max-height: 46px;
+  flex: 0 0 auto;
+  padding: 0 18px;
+  border-radius: 8px;
+  box-shadow: 0 8px 18px rgba(var(--v-theme-primary), 0.18);
+}
+
+.platform-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 18px;
+}
+
+.platform-card-shell {
+  min-width: 0;
+}
+
+.platform-card-shell :deep(.v-card),
+.platform-card-shell :deep(.item-card) {
+  border-color: rgba(var(--v-theme-border), 0.7) !important;
+  border-radius: 16px !important;
+  background: rgba(var(--v-theme-surface), 0.96) !important;
+  box-shadow: 0 18px 48px rgba(17, 24, 39, 0.08) !important;
+}
+
+.platform-card-shell :deep(.v-card-title),
+.platform-card-shell :deep(.text-h3),
+.platform-card-shell :deep(.text-h4) {
+  letter-spacing: 0 !important;
+}
+
+.platform-card-shell :deep(.v-switch) {
+  flex: 0 0 auto;
+}
+
+.platform-card-shell :deep(.v-switch .v-selection-control) {
+  min-height: 34px;
+}
+
+.platform-card-shell :deep(.v-switch .v-selection-control__wrapper) {
+  width: 54px;
+  height: 32px;
+}
+
+.platform-card-shell :deep(.v-switch .v-switch__track) {
+  width: 50px;
+  height: 28px;
+  border: 1px solid #d2e2ec;
+  border-radius: 999px;
+  background: #eef4f8;
+  opacity: 1;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08);
+  transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.platform-card-shell :deep(.v-switch .v-switch__thumb) {
+  width: 22px;
+  height: 22px;
+  color: #ffffff;
+  background: #ffffff;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.2);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.platform-card-shell :deep(.v-switch .v-selection-control--dirty .v-switch__track) {
+  border-color: #75b9de;
+  background: linear-gradient(135deg, #80c5e8, #2f96cf);
+  box-shadow: inset 0 1px 2px rgba(15, 74, 111, 0.18), 0 8px 18px rgba(47, 150, 207, 0.22);
+}
+
+.platform-card-shell :deep(.v-switch .v-selection-control--dirty .v-switch__thumb) {
+  box-shadow: 0 4px 12px rgba(22, 107, 154, 0.28);
+}
+
+.platform-card-shell :deep(.v-switch:hover .v-switch__track) {
+  border-color: #aad2e9;
+}
+
+.platform-card-shell :deep(.v-switch .v-selection-control--disabled) {
+  opacity: 0.62;
+}
+
+.platform-empty-state {
+  display: flex;
+  min-height: 260px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  border: 1px dashed rgba(var(--v-theme-on-surface), 0.16);
+  border-radius: 18px;
+  background: rgba(var(--v-theme-surface), 0.84);
+  color: rgba(var(--v-theme-on-surface), 0.62);
+  box-shadow: 0 18px 48px rgba(17, 24, 39, 0.05);
+}
+
+.platform-empty-state p {
+  margin: 0;
+  font-size: 14px;
 }
 
 .webhook-info {
@@ -667,5 +815,30 @@ export default {
   font-size: 13px;
   margin-bottom: 10px;
   color: rgba(0, 0, 0, 0.7);
+}
+
+@media (max-width: 760px) {
+  .platform-shell {
+    padding: 16px;
+  }
+
+  .platform-hero {
+    align-items: stretch;
+    flex-direction: column;
+    min-height: auto;
+    padding: 10px 0 16px;
+  }
+
+  .platform-hero__copy {
+    align-items: flex-start;
+  }
+
+  .platform-hero__action {
+    width: 100%;
+  }
+
+  .platform-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

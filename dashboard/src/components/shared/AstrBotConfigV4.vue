@@ -260,9 +260,9 @@ function getSpecialSubtype(value) {
 <template>
 
 
-  <v-card v-if="shouldShowSection()" style="margin-bottom: 16px; padding-bottom: 8px; background-color: rgb(var(--v-theme-background));"
+  <v-card v-if="shouldShowSection()" class="config-card"
     rounded="md" variant="outlined">
-    <v-card-text class="config-section" v-if="metadata[metadataKey]?.type === 'object'" style="padding-bottom: 8px;">
+    <v-card-text class="config-section" v-if="metadata[metadataKey]?.type === 'object'">
       <v-list-item-title class="config-title">
         {{ translateIfKey(metadata[metadataKey]?.description) }}
       </v-list-item-title>
@@ -467,18 +467,22 @@ function getSpecialSubtype(value) {
 <style scoped>
 .config-section {
   margin-bottom: 4px;
+  padding: 24px 24px 12px !important;
 }
 
 .config-title {
   /* font-weight: 600; */
-  font-size: 1.3rem;
-  color: var(--v-theme-primaryText);
+  font-size: 1.18rem;
+  font-weight: 680;
+  letter-spacing: 0;
+  color: rgb(var(--v-theme-primaryText));
 }
 
 .config-hint {
   font-size: 0.75rem;
-  color: var(--v-theme-secondaryText);
-  margin-top: 2px;
+  color: rgba(var(--v-theme-on-surface), 0.58);
+  margin-top: 6px;
+  line-height: 1.55;
 }
 
 .config-hint :deep(a),
@@ -505,6 +509,16 @@ function getSpecialSubtype(value) {
   width: 100%;
 }
 
+.config-card {
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-color: rgba(var(--v-theme-border), 0.7) !important;
+  border-radius: 16px !important;
+  background: rgba(var(--v-theme-surface), 0.96) !important;
+  box-shadow: 0 14px 40px rgba(17, 24, 39, 0.06);
+  overflow: hidden;
+}
+
 .nested-object {
   padding-left: 16px;
 }
@@ -521,12 +535,12 @@ function getSpecialSubtype(value) {
 .config-row {
   margin: 0;
   align-items: center;
-  padding: 8px 8px;
-  border-radius: 4px;
+  padding: 10px 16px;
+  border-radius: 0;
 }
 
 .config-row:hover {
-  background-color: rgba(0, 0, 0, 0.03);
+  background-color: rgba(var(--v-theme-primary), 0.035);
 }
 
 .property-info {
@@ -536,13 +550,15 @@ function getSpecialSubtype(value) {
 .property-name {
   font-size: 0.875rem;
   /* font-weight: 600; */
-  color: var(--v-theme-primaryText);
+  color: rgb(var(--v-theme-primaryText));
+  letter-spacing: 0;
 }
 
 .property-hint {
   font-size: 0.75rem;
-  color: var(--v-theme-secondaryText);
+  color: rgba(var(--v-theme-on-surface), 0.56);
   margin-top: 2px;
+  line-height: 1.5;
 }
 
 .type-indicator {
@@ -559,8 +575,8 @@ function getSpecialSubtype(value) {
 }
 
 .config-divider {
-  border-color: rgba(0, 0, 0, 0.1);
-  margin-left: 24px;
+  border-color: rgba(var(--v-theme-border), 0.7);
+  margin-left: 0;
 }
 
 .editor-container {
@@ -603,7 +619,7 @@ function getSpecialSubtype(value) {
 .selected-plugins-full-width {
   background-color: rgba(var(--v-theme-primary), 0.05);
   border: 1px solid rgba(var(--v-theme-primary), 0.1);
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 12px;
 }
 
@@ -612,7 +628,7 @@ function getSpecialSubtype(value) {
 }
 
 .collapsed-config-toggle-row {
-  padding: 8px 8px 4px;
+  padding: 10px 24px 6px;
 }
 
 .collapsed-config-toggle {

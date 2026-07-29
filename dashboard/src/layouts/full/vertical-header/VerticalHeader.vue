@@ -894,7 +894,7 @@ function handleLogoClick() {
   if (isChatPath.value) {
     aboutDialog.value = true;
   } else {
-    router.push("/about");
+    router.push("/welcome");
   }
 }
 
@@ -1145,7 +1145,10 @@ onMounted(async () => {
       <v-btn
         v-if="!isChatPath || !$vuetify.display.smAndDown"
         class="mode-switch-btn"
-        :class="{ 'mr-4 hidden-xs': !isChatPath }"
+        :class="[
+          { 'mr-4 hidden-xs': !isChatPath },
+          !isChatPath ? 'mode-switch-btn--chat-entry' : 'mode-switch-btn--bot-entry',
+        ]"
         variant="text"
         size="small"
         rounded="sm"
@@ -2136,6 +2139,80 @@ onMounted(async () => {
 
 .mode-switch-btn .v-icon {
   font-size: 19px;
+}
+
+.mode-switch-btn.mode-switch-btn--chat-entry {
+  min-width: 98px;
+  height: 40px;
+  padding: 0 14px 0 9px;
+  border: 1px solid rgba(42, 143, 204, 0.24);
+  border-radius: 999px !important;
+  background: linear-gradient(180deg, #f1f9fe 0%, #e5f3fb 100%) !important;
+  color: #176f9f;
+  font-size: 14px;
+  font-weight: 700;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.mode-switch-btn.mode-switch-btn--chat-entry:hover {
+  border-color: rgba(42, 143, 204, 0.38);
+  background: linear-gradient(180deg, #e9f6fd 0%, #d8edf9 100%) !important;
+  transform: translateY(-1px);
+}
+
+.mode-switch-btn.mode-switch-btn--chat-entry .v-icon {
+  display: inline-flex;
+  width: 26px;
+  height: 26px;
+  margin-inline-end: 8px;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #1684c7;
+  font-size: 17px;
+}
+
+.mode-switch-btn.mode-switch-btn--chat-entry .v-btn__content {
+  gap: 0;
+}
+
+.mode-switch-btn.mode-switch-btn--bot-entry {
+  min-width: 94px;
+  height: 40px;
+  padding: 0 14px 0 9px;
+  border: 1px solid rgba(35, 137, 103, 0.22);
+  border-radius: 999px !important;
+  background: linear-gradient(180deg, #f0fbf7 0%, #e2f5ee 100%) !important;
+  color: #1e755b;
+  font-size: 14px;
+  font-weight: 700;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.mode-switch-btn.mode-switch-btn--bot-entry:hover {
+  border-color: rgba(35, 137, 103, 0.36);
+  background: linear-gradient(180deg, #e8f8f2 0%, #d8efe6 100%) !important;
+  transform: translateY(-1px);
+}
+
+.mode-switch-btn.mode-switch-btn--bot-entry .v-icon {
+  display: inline-flex;
+  width: 26px;
+  height: 26px;
+  margin-inline-end: 8px;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #238967;
+  font-size: 17px;
+}
+
+.mode-switch-btn.mode-switch-btn--bot-entry .v-btn__content {
+  gap: 0;
 }
 
 .chat-action-btn {

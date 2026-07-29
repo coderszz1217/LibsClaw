@@ -1,4 +1,5 @@
 import { createVuetify } from 'vuetify';
+import { zhHans } from 'vuetify/locale';
 import '@/assets/mdi-subset/materialdesignicons-subset.css';
 import * as components from 'vuetify/components';
 import * as directives from 'vuetify/directives';
@@ -15,6 +16,11 @@ export default createVuetify({
       PurpleTheme,
       PurpleThemeDark
     }
+  },
+  locale: {
+    locale: 'zhHans',
+    fallback: 'en',
+    messages: { zhHans }
   },
   defaults: {
     VBtn: {},

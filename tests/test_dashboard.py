@@ -3229,6 +3229,85 @@ async def test_batch_upload_skills_accepts_valid_skill_archive(
 
 
 @pytest.mark.asyncio
+async def test_batch_upload_skills_accepts_wrapped_skill_collection_archive(
+    app: FastAPIAppAdapter,
+    authenticated_header: dict,
+    monkeypatch,
+    tmp_path,
+):
+    data_dir = tmp_path / "data"
+    skills_dir = tmp_path / "skills"
+    temp_dir = tmp_path / "temp"
+    data_dir.mkdir()
+    skills_dir.mkdir()
+    temp_dir.mkdir()
+
+    async def _fake_sync_skills_to_active_sandboxes():
+        return
+
+    monkeypatch.setattr(
+        "astrbot.dashboard.services.skills_service.sync_skills_to_active_sandboxes",
+        _fake_sync_skills_to_active_sandboxes,
+    )
+    monkeypatch.setattr(
+        "astrbot.core.skills.skill_manager.get_astrbot_data_path",
+        lambda: str(data_dir),
+    )
+    monkeypatch.setattr(
+        "astrbot.core.skills.skill_manager.get_astrbot_skills_path",
+        lambda: str(skills_dir),
+    )
+    monkeypatch.setattr(
+        "astrbot.core.skills.skill_manager.get_astrbot_temp_path",
+        lambda: str(temp_dir),
+    )
+    monkeypatch.setattr(
+        "astrbot.dashboard.services.skills_service.get_astrbot_temp_path",
+        lambda: str(temp_dir),
+    )
+
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr(
+            "skill_bundle/ad-creative/SKILL.md",
+            "---\nname: ad-creative\ndescription: Ad creative skill\n---\n",
+        )
+        zf.writestr("skill_bundle/ad-creative/references/platform-specs.md", "specs")
+        zf.writestr(
+            "skill_bundle/copywriting/SKILL.md",
+            "---\nname: copywriting\ndescription: Copywriting skill\n---\n",
+        )
+        zf.writestr("skill_bundle/skill-list.md", "bundle notes")
+    archive.seek(0)
+
+    test_client = app.test_client()
+
+    response = await test_client.post(
+        "/api/skills/batch-upload",
+        headers=authenticated_header,
+        files={
+            "files": FileStorage(
+                stream=archive,
+                filename="skill_bundle.zip",
+                content_type="application/zip",
+            ),
+        },
+    )
+
+    assert response.status_code == 200
+    data = await response.get_json()
+    assert data["status"] == "ok"
+    assert data["data"]["total"] == 1
+    assert data["data"]["failed"] == []
+    assert data["data"]["succeeded"] == [
+        {"filename": "skill_bundle.zip", "name": "ad-creative, copywriting"}
+    ]
+    assert (skills_dir / "ad-creative" / "SKILL.md").exists()
+    assert (skills_dir / "copywriting" / "SKILL.md").exists()
+    assert not (skills_dir / "skill_bundle").exists()
+
+
+@pytest.mark.asyncio
 async def test_batch_upload_skills_partial_success(
     app: FastAPIAppAdapter,
     authenticated_header: dict,

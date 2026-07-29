@@ -18,6 +18,7 @@
     "edit": "Edit",
     "refresh": "Refresh",
     "delete": "Delete",
+    "batchDelete": "Batch delete",
     "cancel": "Cancel",
     "close": "Close",
     "more": "More actions",
@@ -48,6 +49,9 @@
     "noUmos": "No UMOs",
     "noDeliveryTarget": "No delivery target",
     "noMatches": "No matching future tasks."
+  },
+  "bulk": {
+    "selected": "{count} selected"
   },
   "overview": {
     "totalTasks": "Total Tasks",
@@ -156,6 +160,9 @@
     "updateFailed": "Failed to update",
     "deleteSuccess": "Deleted",
     "deleteFailed": "Failed to delete",
+    "batchDeleteConfirm": "Delete the selected {count} future tasks?",
+    "batchDeleteSuccess": "Deleted {count} tasks",
+    "batchDeletePartial": "Batch delete complete: {deleted} deleted, {failed} failed",
     "nameRequired": "Task name is required",
     "sessionRequired": "Delivery target is required",
     "noteRequired": "Task requirements are required",

@@ -1,26 +1,26 @@
 <template>
-    <v-dialog v-model="showDialog" :max-width="$vuetify.display.smAndDown ? undefined : '1200px'" scrollable>
+    <v-dialog v-model="showDialog" :max-width="$vuetify.display.smAndDown ? undefined : '1240px'" scrollable>
         <v-card class="persona-form-card" :class="{ 'persona-form-card-mobile': $vuetify.display.smAndDown }">
-            <v-card-title class="persona-form-title text-h3 pa-4 pb-0 pl-6">
-                {{ editingPersona ? tm('dialog.edit.title') : tm('dialog.create.title') }}
+            <v-card-title class="persona-form-title">
+                <span>{{ editingPersona ? tm('dialog.edit.title') : tm('dialog.create.title') }}</span>
+                <span v-if="!editingPersona" class="persona-folder-pill">
+                    <v-icon size="18">mdi-folder-outline</v-icon>
+                    {{ tm('form.createInFolder', { folder: folderDisplayName }) }}
+                </span>
             </v-card-title>
 
             <v-card-text class="persona-form-content">
-                <!-- 创建位置提示 -->
-                <v-alert v-if="!editingPersona" type="info" variant="tonal" density="compact" class="mb-4"
-                    icon="mdi-folder-outline">
-                    {{ tm('form.createInFolder', { folder: folderDisplayName }) }}
-                </v-alert>
-
                 <v-form ref="personaForm" v-model="formValid">
                     <v-row class="persona-form-layout">
-                        <v-col cols="12" md="6" class="persona-basic-col">
+                        <v-col cols="12" md="7" class="persona-basic-col">
+                            <div class="persona-form-section">
                             <v-text-field v-model="personaForm.persona_id" :label="tm('form.personaId')"
                                 :rules="personaIdRules" :disabled="editingPersona" variant="outlined"
-                                density="comfortable" class="mb-4" />
+                                density="comfortable" hide-details="auto" class="mb-3" />
 
                             <v-textarea v-model="personaForm.system_prompt" :label="tm('form.systemPrompt')"
-                                :rules="systemPromptRules" variant="outlined" rows="16" class="mb-4" />
+                                :rules="systemPromptRules" variant="outlined" rows="15" hide-details="auto"
+                                class="mb-3" />
 
                             <v-textarea
                                 v-model="personaForm.custom_error_message"
@@ -32,10 +32,11 @@
                                 clearable
                                 class="mb-4"
                             />
+                            </div>
                         </v-col>
 
-                        <v-col cols="12" md="6" class="persona-panels-col">
-                            <v-expansion-panels v-model="expandedPanels" multiple>
+                        <v-col cols="12" md="5" class="persona-panels-col">
+                            <v-expansion-panels v-model="expandedPanels" multiple class="persona-option-panels">
                         <!-- 工具选择面板 -->
                         <v-expansion-panel value="tools">
                             <v-expansion-panel-title>
@@ -343,14 +344,14 @@
             </v-card-text>
 
             <v-card-actions class="persona-form-actions">
-                <v-btn v-if="editingPersona" color="error" variant="text" @click="deletePersona">
+                <v-btn v-if="editingPersona" color="error" variant="tonal" class="persona-form-danger-btn" @click="deletePersona">
                     {{ tm('buttons.delete') }}
                 </v-btn>
                 <v-spacer />
-                <v-btn color="grey" variant="text" @click="closeDialog">
+                <v-btn color="grey" variant="tonal" class="persona-form-secondary-btn" @click="closeDialog">
                     {{ tm('buttons.cancel') }}
                 </v-btn>
-                <v-btn color="primary" variant="tonal" @click="savePersona" :loading="saving" :disabled="!formValid">
+                <v-btn color="primary" variant="flat" class="persona-form-primary-btn" @click="savePersona" :loading="saving" :disabled="!formValid">
                     {{ tm('buttons.save') }}
                 </v-btn>
             </v-card-actions>
@@ -874,34 +875,193 @@ export default {
 
 <style scoped>
 .persona-form-card {
-    border-radius: 12px;
+    border: 1px solid rgba(var(--v-theme-border), 0.72);
+    border-radius: 16px !important;
+    background: #f7f9fc;
+    box-shadow: 0 22px 64px rgba(15, 23, 42, 0.16) !important;
     overflow: hidden;
 }
 
+.persona-form-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    position: relative;
+    padding: 20px 24px 16px 30px !important;
+    border-bottom: 1px solid rgba(var(--v-theme-border), 0.58);
+    background:
+        linear-gradient(90deg, rgba(var(--v-theme-primary), 0.08), transparent 44%),
+        rgba(255, 255, 255, 0.78);
+    color: rgb(var(--v-theme-primaryText));
+    font-size: 1.18rem;
+    font-weight: 720;
+    line-height: 1.25;
+    letter-spacing: 0;
+}
+
+.persona-form-title::before {
+    content: "";
+    position: absolute;
+    left: 18px;
+    top: 21px;
+    bottom: 17px;
+    width: 3px;
+    border-radius: 999px;
+    background: rgb(var(--v-theme-primary));
+}
+
+.persona-folder-pill {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid rgba(var(--v-theme-primary), 0.16);
+    border-radius: 999px;
+    background: rgba(var(--v-theme-primary), 0.07);
+    color: rgba(var(--v-theme-primary), 0.92);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 7px 12px;
+}
+
 .persona-form-content {
-    max-height: min(78vh, 760px);
+    max-height: min(84vh, 820px);
     overflow-y: auto;
+    padding: 20px 24px 18px !important;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(248, 250, 252, 0.94)),
+        #f7f9fc;
 }
 
 .persona-form-actions {
     position: sticky;
     bottom: 0;
     z-index: 2;
-    background: rgb(var(--v-theme-surface));
-    border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+    gap: 10px;
+    padding: 14px 24px 18px !important;
+    border-top: 1px solid rgba(var(--v-theme-border), 0.62);
+    background: rgba(255, 255, 255, 0.86);
+    backdrop-filter: blur(10px);
+}
+
+.persona-folder-alert {
+    margin-bottom: 16px !important;
+    border: 1px solid rgba(2, 132, 199, 0.16);
+    border-radius: 10px;
+    background: rgba(240, 249, 255, 0.86) !important;
+    color: #0369a1;
+}
+
+.persona-form-section {
+    height: 100%;
+    border: 1px solid rgba(var(--v-theme-border), 0.62);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.74);
+    padding: 14px;
+}
+
+.persona-form-section :deep(.v-field),
+.persona-option-panels :deep(.v-field) {
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.92);
+}
+
+.persona-form-section :deep(.v-field__outline),
+.persona-option-panels :deep(.v-field__outline) {
+    --v-field-border-opacity: 0.16;
+}
+
+.persona-form-section :deep(.v-field--focused .v-field__outline),
+.persona-option-panels :deep(.v-field--focused .v-field__outline) {
+    --v-field-border-opacity: 0.42;
+}
+
+.persona-option-panels {
+    gap: 10px;
+}
+
+.persona-option-panels :deep(.v-expansion-panel) {
+    position: relative;
+    border: 1px solid rgba(var(--v-theme-border), 0.64);
+    border-radius: 12px !important;
+    background: rgba(255, 255, 255, 0.78) !important;
+    box-shadow: 0 10px 26px rgba(15, 23, 42, 0.04) !important;
+    overflow: hidden;
+}
+
+.persona-option-panels :deep(.v-expansion-panel::before) {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: rgba(var(--v-theme-primary), 0.5);
+}
+
+.persona-option-panels :deep(.v-expansion-panel-title) {
+    min-height: 52px;
+    padding: 0 18px 0 22px;
+    background: linear-gradient(90deg, rgba(var(--v-theme-primary), 0.055), transparent 72%);
+    color: rgb(var(--v-theme-primaryText));
+    font-weight: 660;
+    letter-spacing: 0;
+}
+
+.persona-option-panels :deep(.v-expansion-panel-text__wrapper) {
+    padding: 2px 18px 18px 22px;
+}
+
+.persona-form-primary-btn,
+.persona-form-secondary-btn,
+.persona-form-danger-btn {
+    height: 40px;
+    max-height: 40px;
+    border-radius: 8px;
+    padding: 0 18px;
+    font-weight: 600;
+    letter-spacing: 0;
+}
+
+.persona-form-primary-btn {
+    background: rgb(var(--v-theme-primary)) !important;
+    box-shadow: 0 8px 18px rgba(var(--v-theme-primary), 0.14);
+}
+
+.persona-form-secondary-btn {
+    border: 1px solid rgba(var(--v-theme-border), 0.82);
+    background: rgba(255, 255, 255, 0.9);
+    color: rgba(var(--v-theme-on-surface), 0.74);
 }
 
 .selected-config-area {
-    margin-left: 32px;
+    margin-left: 0;
+    border: 1px solid rgba(var(--v-theme-border), 0.62);
+    border-radius: 10px;
+    background: rgba(248, 250, 252, 0.78);
+    padding: 12px;
 }
 
 .persona-form-layout {
     align-items: flex-start;
+    margin-top: 0;
+    margin-left: -10px;
+    margin-right: -10px;
+}
+
+.persona-basic-col,
+.persona-panels-col {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
 }
 
 .tools-selection {
     max-height: 300px;
     overflow-y: auto;
+    border: 1px solid rgba(var(--v-theme-border), 0.62);
+    border-radius: 10px;
+    background: rgba(248, 250, 252, 0.72);
 }
 
 .builtin-tool-checkbox-placeholder {
@@ -913,6 +1073,9 @@ export default {
 .skills-selection {
     max-height: 300px;
     overflow-y: auto;
+    border: 1px solid rgba(var(--v-theme-border), 0.62);
+    border-radius: 10px;
+    background: rgba(248, 250, 252, 0.72);
 }
 
 .v-virtual-scroll {

@@ -13,18 +13,30 @@ const itemStyle = computed(() => {
   return { '--indent-padding': indent };
 });
 
-const isItemActive = computed(() => {
-  if (!props.item || props.item.type === 'external' || !props.item.to) return false;
-  if (typeof props.item.to !== 'string') return false;
-  if (props.item.to.includes('#')) {
-    const [path, hash] = props.item.to.split('#');
+const isRouteMatch = (item) => {
+  if (!item || item.type === 'external' || !item.to) return false;
+  if (typeof item.to !== 'string') return false;
+  if (item.to.includes('#')) {
+    const [path, hash] = item.to.split('#');
     return route.path === path && route.hash === `#${hash}`;
   }
-  const targetPath = props.item.to.replace(/\/$/, '') || '/';
+  const targetPath = item.to.replace(/\/$/, '') || '/';
   if (targetPath === '/') {
     return route.path === targetPath;
   }
   return route.path === targetPath || route.path.startsWith(`${targetPath}/`);
+};
+
+const hasActiveChild = (item) =>
+  Array.isArray(item?.children) &&
+  item.children.some((child) => isRouteMatch(child) || hasActiveChild(child));
+
+const isItemActive = computed(() => {
+  return isRouteMatch(props.item);
+});
+
+const isGroupActive = computed(() => {
+  return isRouteMatch(props.item) || hasActiveChild(props.item);
 });
 
 const itemTitle = computed(() => {
@@ -39,7 +51,7 @@ const itemTitle = computed(() => {
     <template v-slot:activator="{ props: groupProps }">
       <v-tooltip v-if="rail" location="right" :text="itemTitle" open-delay="180">
         <template v-slot:activator="{ props: tooltipProps }">
-          <v-list-item v-bind="{ ...groupProps, ...tooltipProps }" rounded class="mb-1" color="secondary"
+          <v-list-item v-bind="{ ...groupProps, ...tooltipProps }" :active="isGroupActive" rounded class="mb-1" color="secondary"
             :prepend-icon="item.icon" :style="{ '--indent-padding': '0px' }" :aria-label="itemTitle">
             <v-list-item-title style="font-size: 14px; font-weight: 500; line-height: 1.2; word-break: break-word;">
               {{ itemTitle }}
@@ -48,7 +60,7 @@ const itemTitle = computed(() => {
         </template>
       </v-tooltip>
       <v-list-item v-else v-bind="groupProps" rounded class="mb-1" color="secondary" :prepend-icon="item.icon"
-        :style="{ '--indent-padding': '0px' }">
+        :active="isGroupActive" :style="{ '--indent-padding': '0px' }">
         <v-list-item-title style="font-size: 14px; font-weight: 500; line-height: 1.2; word-break: break-word;">
           {{ itemTitle }}
         </v-list-item-title>

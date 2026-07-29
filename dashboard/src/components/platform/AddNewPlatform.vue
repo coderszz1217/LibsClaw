@@ -1,12 +1,12 @@
 <template>
   <v-dialog
     v-model="showDialog"
-    max-width="800px"
+    max-width="860px"
     max-height="90%"
     @after-enter="prepareData"
   >
-    <v-card>
-      <v-card-title class="text-h3 pa-4 pb-0 pl-6">
+    <v-card class="platform-dialog-card">
+      <v-card-title class="platform-dialog-title text-h3">
         {{
           updatingMode
             ? `${tm('dialog.edit')} ${updatingPlatformConfig.id} ${tm(
@@ -17,18 +17,17 @@
       </v-card-title>
       <v-card-text
         ref="dialogScrollContainer"
-        class="pa-4 ml-2"
-        style="overflow-y: auto"
+        class="platform-dialog-body"
       >
-        <div class="d-flex align-start" style="width: 100%">
-          <div>
-            <v-icon icon="mdi-numeric-1-circle" class="mr-3"></v-icon>
+        <div class="platform-dialog-step">
+          <div class="platform-dialog-step__marker">
+            1
           </div>
-          <div style="flex: 1">
-            <h3>
+          <div class="platform-dialog-step__content">
+            <h3 class="platform-dialog-step__title">
               {{ tm("createDialog.step1Title") }}
             </h3>
-            <small style="color: grey">{{
+            <small class="platform-dialog-step__hint">{{
               tm("createDialog.step1Hint")
             }}</small>
             <div>
@@ -43,8 +42,7 @@
                   rounded="md"
                   dense
                   hide-details
-                  class="mt-6"
-                  style="max-width: 30%; min-width: 300px"
+                  class="platform-dialog-select mt-5"
                 >
                   <template v-slot:item="{ props: itemProps, item }">
                     <v-list-item v-bind="itemProps">
@@ -294,15 +292,15 @@
           </div>
         </div>
 
-        <div class="d-flex align-start mt-6">
-          <div>
-            <v-icon icon="mdi-numeric-2-circle" class="mr-3"></v-icon>
+        <div class="platform-dialog-step mt-6">
+          <div class="platform-dialog-step__marker">
+            2
           </div>
-          <div style="flex: 1">
+          <div class="platform-dialog-step__content">
             <div class="d-flex align-center justify-space-between">
               <div>
                 <div class="d-flex align-center">
-                  <h3>
+                  <h3 class="platform-dialog-step__title">
                     {{ tm("createDialog.configFileTitle") }}
                   </h3>
                   <v-chip
@@ -315,10 +313,10 @@
                     >{{ tm("createDialog.optional") }}</v-chip
                   >
                 </div>
-                <small style="color: grey">{{
+                <small class="platform-dialog-step__hint">{{
                   tm("createDialog.configHint")
                 }}</small>
-                <small style="color: grey" v-if="!updatingMode">{{
+                <small class="platform-dialog-step__hint" v-if="!updatingMode">{{
                   tm("createDialog.configDefaultHint")
                 }}</small>
               </div>
@@ -677,7 +675,7 @@
         </div>
       </v-card-text>
 
-      <v-card-actions>
+      <v-card-actions class="platform-dialog-actions">
         <v-spacer></v-spacer>
         <v-btn variant="text" @click="closeDialog">{{ tm("dialog.cancel") }}</v-btn>
         <v-btn
@@ -1907,6 +1905,89 @@ export default {
 <style>
 .v-select__selection-text {
   font-size: 12px;
+}
+
+.platform-dialog-card {
+  border: 1px solid rgba(var(--v-theme-border), 0.72);
+  border-radius: 18px !important;
+  overflow: hidden;
+  box-shadow: 0 24px 70px rgba(17, 24, 39, 0.18) !important;
+}
+
+.platform-dialog-title {
+  padding: 22px 26px 10px !important;
+  color: rgb(var(--v-theme-primaryText));
+  font-size: 20px !important;
+  font-weight: 720 !important;
+  line-height: 1.35 !important;
+  letter-spacing: 0 !important;
+}
+
+.platform-dialog-body {
+  max-height: min(66dvh, 620px);
+  padding: 10px 26px 22px !important;
+  overflow-y: auto;
+}
+
+.platform-dialog-step {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(var(--v-theme-border), 0.66);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-surface), 0.98), rgba(var(--v-theme-lightprimary), 0.34));
+}
+
+.platform-dialog-step__marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  color: rgb(var(--v-theme-primary));
+  background: rgba(var(--v-theme-primary), 0.12);
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.platform-dialog-step__content {
+  min-width: 0;
+}
+
+.platform-dialog-step__title {
+  margin: 0;
+  color: rgb(var(--v-theme-primaryText));
+  font-size: 17px;
+  font-weight: 720;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+.platform-dialog-step__hint {
+  display: block;
+  margin-top: 6px;
+  color: rgba(var(--v-theme-on-surface), 0.62);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.platform-dialog-select {
+  width: min(360px, 100%) !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+.platform-dialog-actions {
+  padding: 14px 26px 22px !important;
+  border-top: 1px solid rgba(var(--v-theme-border), 0.58);
+  background: rgba(var(--v-theme-surface), 0.96);
+}
+
+.platform-dialog-actions .v-btn {
+  min-width: 84px;
 }
 
 .config-drawer-overlay {

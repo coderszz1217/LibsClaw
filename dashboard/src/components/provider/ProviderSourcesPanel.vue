@@ -71,9 +71,10 @@
           <template #activator="{ props }">
             <v-btn
               v-bind="props"
+              class="provider-sources-add-btn"
               prepend-icon="mdi-plus"
               color="primary"
-              variant="text"
+              variant="tonal"
               size="small"
               rounded="xl"
             >
@@ -255,7 +256,7 @@ const selectSourceByValue = (value) => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 20px 20px 12px;
+  padding: 18px 18px 12px;
 }
 
 .provider-sources-head__copy {
@@ -269,10 +270,32 @@ const selectSourceByValue = (value) => {
   min-width: 0;
 }
 
+.provider-sources-add-btn {
+  min-width: 76px;
+  height: 34px;
+  padding: 0 13px !important;
+  border: 1px solid rgba(42, 143, 204, 0.18);
+  background: linear-gradient(180deg, #eff8fe 0%, #e2f1fa 100%) !important;
+  color: #1674a8 !important;
+  font-weight: 700;
+  letter-spacing: 0;
+  box-shadow: none !important;
+}
+
+.provider-sources-add-btn :deep(.v-icon) {
+  font-size: 16px;
+}
+
+.provider-sources-add-btn:hover {
+  border-color: rgba(42, 143, 204, 0.34);
+  background: linear-gradient(180deg, #e6f5fd 0%, #d7ecf8 100%) !important;
+}
+
 .provider-sources-title {
   margin: 0;
-  font-size: 16px;
-  font-weight: 650;
+  color: rgb(var(--v-theme-primaryText));
+  font-size: 15px;
+  font-weight: 720;
   line-height: 1.3;
 }
 
@@ -312,26 +335,36 @@ const selectSourceByValue = (value) => {
   padding: 6px 12px 16px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
 }
 
 .provider-source-item {
   width: 100%;
-  border: 0;
-  border-radius: 12px;
-  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: rgba(var(--v-theme-surface), 0.62);
   color: inherit;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 12px;
   cursor: pointer;
   text-align: left;
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
 }
 
-.provider-source-item:hover,
+.provider-source-item:hover {
+  background: rgba(var(--v-theme-surface), 0.92);
+  border-color: rgba(var(--v-theme-primary), 0.22);
+}
+
 .provider-source-item--active {
-  background: rgba(var(--v-theme-on-surface), 0.05);
+  background: rgb(var(--v-theme-surface));
+  border-color: rgba(var(--v-theme-primary), 0.3);
+  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.08);
 }
 
 .provider-source-avatar {

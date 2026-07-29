@@ -320,9 +320,11 @@ const updateDialogPluginLogo = computed(() => {
 
           <!-- 指令面板标签页内容 -->
           <v-tab-item v-if="activeTab === 'components'">
-            <div class="mb-4 pt-4 pb-4">
-              <div class="d-flex align-center flex-wrap" style="gap: 12px">
-                <h2 class="text-h2 mb-0">{{ tm("tabs.handlersOperation") }}</h2>
+            <div class="component-tab-header mb-4">
+              <div class="component-tab-header__copy">
+                <h2 class="component-tab-header__title">
+                  {{ tm("tabs.handlersOperation") }}
+                </h2>
               </div>
             </div>
             <v-card
@@ -364,10 +366,10 @@ const updateDialogPluginLogo = computed(() => {
           <!-- Skills 标签页内容 -->
           <v-tab-item v-if="activeTab === 'skills'">
             <div class="extension-detail-width">
-              <div class="mb-4 pt-4 pb-4">
-                <div class="d-flex flex-column" style="gap: 6px">
-                  <h2 class="text-h2 mb-0">{{ tm("tabs.skills") }}</h2>
-                  <div class="text-body-2 text-medium-emphasis">
+              <div class="skills-tab-header mb-4">
+                <div class="skills-tab-header__copy">
+                  <h2 class="skills-tab-header__title">{{ tm("tabs.skills") }}</h2>
+                  <div class="skills-tab-header__subtitle">
                     {{ tm("skills.runtimeHint") }}
                   </div>
                 </div>
@@ -1257,6 +1259,77 @@ const updateDialogPluginLogo = computed(() => {
   margin: 0 auto;
   max-width: 1040px;
   width: 100%;
+}
+
+.skills-tab-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px 0 18px;
+  border-bottom: 1px solid #dce7ef;
+  background: transparent;
+}
+
+.skills-tab-header__copy {
+  min-width: 0;
+}
+
+.skills-tab-header__title {
+  margin: 0;
+  color: rgb(var(--v-theme-primaryText));
+  font-size: 1.6rem;
+  font-weight: 760;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+.skills-tab-header__subtitle {
+  max-width: 920px;
+  margin-top: 8px;
+  color: rgba(var(--v-theme-on-surface), 0.68);
+  font-size: 0.9rem;
+  line-height: 1.65;
+  text-wrap: pretty;
+}
+
+.component-tab-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px 0 18px;
+  border-bottom: 1px solid #dce7ef;
+  background: transparent;
+}
+
+.component-tab-header__copy {
+  min-width: 0;
+}
+
+.component-tab-header__title {
+  margin: 0;
+  color: rgb(var(--v-theme-primaryText));
+  font-size: 1.6rem;
+  font-weight: 760;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+@media (max-width: 760px) {
+  .skills-tab-header {
+    padding: 2px 0 14px;
+  }
+
+  .skills-tab-header__title {
+    font-size: 1.35rem;
+  }
+
+  .component-tab-header {
+    padding: 2px 0 14px;
+  }
+
+  .component-tab-header__title {
+    font-size: 1.35rem;
+  }
 }
 
 .market-install-confirm {

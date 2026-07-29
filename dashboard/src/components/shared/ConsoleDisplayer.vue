@@ -6,24 +6,37 @@ import { EventSourcePolyfill } from 'event-source-polyfill';
 
 <template>
   <div class="console-displayer-wrapper" id="console-wrapper">
-    <div class="filter-controls mb-2" v-if="showLevelBtns">
-      <v-chip-group v-model="selectedLevels" column multiple>
-        <v-chip v-for="level in logLevels" :key="level" :color="getLevelColor(level)" filter variant="flat" size="small"
-          :text-color="level === 'DEBUG' || level === 'INFO' ? 'black' : 'white'" class="font-weight-medium">
-          {{ level }}
-        </v-chip>
-      </v-chip-group>
-      <v-spacer></v-spacer>
-      <v-btn
-        :icon="isFullscreen ? 'mdi-fullscreen-exit' : 'mdi-fullscreen'"
-        variant="text"
-        density="compact"
-        class="me-4 fullscreen-btn"
-        @click="toggleFullscreen"
-      ></v-btn>
-    </div>
+    <div class="console-panel-card">
+      <div class="filter-controls" v-if="showLevelBtns">
+        <div class="console-toolbar-left">
+          <span class="console-dot console-dot--red"></span>
+          <span class="console-dot console-dot--yellow"></span>
+          <span class="console-dot console-dot--green"></span>
+          <v-chip-group v-model="selectedLevels" column multiple class="console-level-group">
+            <v-chip
+              v-for="level in logLevels"
+              :key="level"
+              :class="['console-level-chip', `console-level-chip--${level.toLowerCase()}`]"
+              filter
+              variant="flat"
+              size="small"
+            >
+              {{ level }}
+            </v-chip>
+          </v-chip-group>
+        </div>
+        <v-spacer></v-spacer>
+        <v-btn
+          :icon="isFullscreen ? 'mdi-fullscreen-exit' : 'mdi-fullscreen'"
+          variant="text"
+          density="compact"
+          class="fullscreen-btn"
+          @click="toggleFullscreen"
+        ></v-btn>
+      </div>
 
-    <div id="term" class="console-term">
+      <div id="term" class="console-term">
+      </div>
     </div>
   </div>
 </template>
@@ -345,36 +358,127 @@ export default {
 }
 
 #console-wrapper:fullscreen {
-  background-color: #1e1e1e;
+  background-color: #101820;
   padding: 20px;
+}
+
+.console-panel-card {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  flex-direction: column;
+  border: 1px solid rgba(42, 143, 204, 0.16);
+  border-radius: 16px;
+  background: #ffffff;
 }
 
 .filter-controls {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
+  gap: 12px;
+  min-height: 54px;
+  padding: 10px 12px 10px 16px;
+  border-bottom: 1px solid rgba(var(--v-theme-border), 0.46);
+  background: linear-gradient(180deg, #fbfdff 0%, #f4f9fd 100%);
+}
+
+.console-toolbar-left {
+  display: flex;
+  align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.console-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+}
+
+.console-dot--red {
+  background: #ff6b6b;
+}
+
+.console-dot--yellow {
+  background: #f8c35d;
+}
+
+.console-dot--green {
+  margin-right: 8px;
+  background: #4cc38a;
+}
+
+.console-level-group {
+  min-width: 0;
+}
+
+.console-level-chip {
+  height: 28px !important;
+  border-radius: 999px !important;
+  font-size: 12px;
+  font-weight: 720;
+  letter-spacing: 0;
+}
+
+.console-level-chip--debug {
+  background: #eef2f5 !important;
+  color: #526371 !important;
+}
+
+.console-level-chip--info {
+  background: #e7f6fd !important;
+  color: #1674a8 !important;
+}
+
+.console-level-chip--warning {
+  background: #fff5db !important;
+  color: #9a6711 !important;
+}
+
+.console-level-chip--error {
+  background: #ffe9e7 !important;
+  color: #bc3930 !important;
+}
+
+.console-level-chip--critical {
+  background: #f3eafe !important;
+  color: #7040a8 !important;
 }
 
 .console-term {
-  background-color: #1e1e1e;
-  border-radius: 8px;
+  flex: 1;
+  min-height: 0;
+  background:
+    radial-gradient(circle at top left, rgba(43, 126, 164, 0.18), transparent 34%),
+    #172027;
+  border-radius: 0;
   height: 100%;
   overflow-y: auto;
   overflow-x: auto;
-  padding: 16px;
+  padding: 18px;
 }
 
 .fullscreen-btn {
-    color: rgba(255, 255, 255, 0.7) !important; /* 提高在深色背景下的对比度 */
+  width: 34px;
+  height: 34px;
+  border-radius: 10px !important;
+  color: rgba(var(--v-theme-on-surface), 0.62) !important;
+}
+
+.fullscreen-btn:hover {
+  background: rgba(42, 143, 204, 0.08);
+  color: #1674a8 !important;
 }
 
 :deep(.console-log-line) {
   display: block;
-  margin: 0 0 2px;
+  margin: 0 0 4px;
   font-family: SFMono-Regular, Menlo, Monaco, Consolas, var(--astrbot-font-cjk-mono), monospace;
   font-size: 12px;
+  line-height: 1.55;
   white-space: pre-wrap;
 }
 

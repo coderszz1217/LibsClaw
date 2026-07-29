@@ -3,7 +3,7 @@
 # dev.sh — Start the local backend and frontend development servers.
 #
 # Backend: starts from port 6185 and uses the next available port.
-# Frontend: starts from port 3000 and proxies API requests to the selected backend.
+# Frontend: starts from port 3007 and proxies API requests to the selected backend.
 #
 # Usage:
 #   ./scripts/dev.sh
@@ -53,7 +53,7 @@ if [[ "${SKIP_INSTALL:-0}" != "1" ]]; then
 fi
 
 BACKEND_BASE_PORT="${DEV_BACKEND_PORT:-6185}"
-FRONTEND_BASE_PORT="${DEV_FRONTEND_PORT:-3000}"
+FRONTEND_BASE_PORT="${DEV_FRONTEND_PORT:-3007}"
 
 if [[ ! "$BACKEND_BASE_PORT" =~ ^[0-9]+$ ]] \
   || ((BACKEND_BASE_PORT < 1 || BACKEND_BASE_PORT > 65535)); then

@@ -766,13 +766,35 @@ class SkillManager:
                 if ".." in parts:
                     raise ValueError("Zip archive contains invalid relative paths.")
 
+            top_dirs = {PurePosixPath(n).parts[0] for n in file_names if n.strip()}
+            skill_root_prefix = ""
+            if not root_mode:
+                direct_skill_dirs = {
+                    parts[0]
+                    for name in file_names
+                    if len(parts := PurePosixPath(name).parts) == 2
+                    and parts[1] in {"SKILL.md", "skill.md"}
+                }
+                if not direct_skill_dirs and len(top_dirs) == 1:
+                    wrapper_dir = next(iter(top_dirs))
+                    nested_skill_dirs = {
+                        parts[1]
+                        for name in file_names
+                        if len(parts := PurePosixPath(name).parts) == 3
+                        and parts[0] == wrapper_dir
+                        and parts[2] in {"SKILL.md", "skill.md"}
+                    }
+                    if nested_skill_dirs:
+                        skill_root_prefix = f"{wrapper_dir}/"
+                        top_dirs = nested_skill_dirs
+
             if not root_mode and not overwrite:
-                top_dirs = {PurePosixPath(n).parts[0] for n in file_names if n.strip()}
                 conflict_dirs: list[str] = []
-                for src_dir_name in top_dirs:
+                for src_dir_name in sorted(top_dirs):
                     if (
-                        f"{src_dir_name}/SKILL.md" not in file_names
-                        and f"{src_dir_name}/skill.md" not in file_names
+                        f"{skill_root_prefix}{src_dir_name}/SKILL.md" not in file_names
+                        and f"{skill_root_prefix}{src_dir_name}/skill.md"
+                        not in file_names
                     ):
                         continue
 
@@ -782,7 +804,11 @@ class SkillManager:
                     ):
                         continue
 
-                    if archive_skill_name and len(top_dirs) == 1:
+                    if (
+                        archive_skill_name
+                        and len(top_dirs) == 1
+                        and not skill_root_prefix
+                    ):
                         target_name = archive_skill_name
                     else:
                         target_name = candidate_name
@@ -831,18 +857,16 @@ class SkillManager:
                     installed_skills.append(skill_name)
 
                 else:
-                    top_dirs = {
-                        PurePosixPath(n).parts[0] for n in file_names if n.strip()
-                    }
-
-                    for archive_root_name in top_dirs:
+                    for archive_root_name in sorted(top_dirs):
                         archive_root_name_normalized = _normalize_skill_name(
                             archive_root_name
                         )
 
                         if (
-                            f"{archive_root_name}/SKILL.md" not in file_names
-                            and f"{archive_root_name}/skill.md" not in file_names
+                            f"{skill_root_prefix}{archive_root_name}/SKILL.md"
+                            not in file_names
+                            and f"{skill_root_prefix}{archive_root_name}/skill.md"
+                            not in file_names
                         ):
                             continue
 
@@ -851,12 +875,16 @@ class SkillManager:
                         ):
                             continue
 
-                        if archive_skill_name and len(top_dirs) == 1:
+                        if (
+                            archive_skill_name
+                            and len(top_dirs) == 1
+                            and not skill_root_prefix
+                        ):
                             skill_name = archive_skill_name
                         else:
                             skill_name = archive_root_name_normalized
 
-                        src_dir = Path(tmp_dir) / archive_root_name
+                        src_dir = Path(tmp_dir) / skill_root_prefix / archive_root_name
                         normalized_path = _normalize_skill_markdown_path(src_dir)
                         if normalized_path is None:
                             continue

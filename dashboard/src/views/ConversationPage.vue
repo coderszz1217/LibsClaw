@@ -1,16 +1,44 @@
 <template>
     <div class="conversation-page">
-        <v-container fluid class="pa-0">
+        <v-container fluid class="conversation-shell">
             <!-- 对话列表部分 -->
-            <v-card flat>
-                <v-card-title class="d-flex align-center py-3 px-4">
-                    <span class="text-h4">{{ tm('history.title') }}</span>
-                    <v-chip size="small" class="ml-2">{{ pagination.total || 0 }}</v-chip>
-                    <v-row class="me-4 ms-4" dense>
-                        <v-col cols="12" sm="6" md="4">
+            <div class="conversation-page-head">
+                <div class="conversation-title-block">
+                    <span class="conversation-toolbar-title">{{ tm('history.title') }}</span>
+                    <v-chip size="small" variant="tonal" color="primary" class="conversation-count-chip">
+                        {{ pagination.total || 0 }}
+                    </v-chip>
+                </div>
+                <div v-if="selectedItems.length > 0" class="conversation-batch-actions">
+                    <v-btn
+                        color="success"
+                        prepend-icon="mdi-download"
+                        variant="tonal"
+                        @click="exportConversations"
+                        :disabled="loading"
+                        size="small"
+                        class="conversation-toolbar-btn">
+                        {{ tm('batch.exportSelected', { count: selectedItems.length }) }}
+                    </v-btn>
+                    <v-btn
+                        color="error"
+                        prepend-icon="mdi-delete"
+                        variant="tonal"
+                        @click="confirmBatchDelete"
+                        :disabled="loading"
+                        size="small"
+                        class="conversation-toolbar-btn">
+                        {{ tm('batch.deleteSelected', { count: selectedItems.length }) }}
+                    </v-btn>
+                </div>
+            </div>
+
+            <section class="conversation-filter-bar">
+                    <v-row class="conversation-filter-grid" dense>
+                        <v-col cols="12" sm="6" md="3">
                             <v-combobox v-model="platformFilter" :label="tm('filters.platform')"
                                 :items="availablePlatforms" chips multiple clearable variant="solo-filled" flat
-                                density="compact" hide-details>
+                                density="compact" hide-details class="conversation-filter-control">
                                 <template v-slot:selection="{ item }">
                                     <v-chip size="small" label>
                                         {{ item.title }}
@@ -19,9 +47,10 @@
                             </v-combobox>
                         </v-col>
 
-                        <v-col cols="12" sm="6" md="4">
+                        <v-col cols="12" sm="6" md="3">
                             <v-select v-model="messageTypeFilter" :label="tm('filters.type')" :items="messageTypeItems"
-                                chips multiple clearable variant="solo-filled" density="compact" hide-details flat>
+                                chips multiple clearable variant="solo-filled" density="compact" hide-details flat
+                                class="conversation-filter-control">
                                 <template v-slot:selection="{ item }">
                                     <v-chip size="small" variant="solo-filled" label>
                                         {{ item.title }}
@@ -30,68 +59,48 @@
                             </v-select>
                         </v-col>
 
-                        <v-col cols="12" sm="12" md="4">
+                        <v-col cols="12" sm="12" md="3">
                             <v-text-field v-model="search" prepend-inner-icon="mdi-magnify"
                                 :label="tm('filters.search')" hide-details density="compact" variant="solo-filled" flat
-                                clearable></v-text-field>
+                                clearable class="conversation-filter-control"></v-text-field>
+                        </v-col>
+
+                        <v-col cols="12" md="3" class="conversation-filter-actions-col">
+                            <div class="conversation-toolbar-actions">
+                                <div class="conversation-display-toggle">
+                                    <span class="conversation-display-label">{{ tm('table.headers.umo') }}</span>
+                                    <v-btn-toggle
+                                        v-model="umoDisplayMode"
+                                        mandatory
+                                        density="compact"
+                                        divided
+                                        variant="outlined"
+                                        class="umo-header-toggle"
+                                    >
+                                        <v-btn value="parsed" size="x-small">
+                                            {{ tm('table.umoDisplay.parsed') }}
+                                        </v-btn>
+                                        <v-btn value="raw" size="x-small">
+                                            {{ tm('table.umoDisplay.raw') }}
+                                        </v-btn>
+                                    </v-btn-toggle>
+                                </div>
+                                <v-btn color="primary" prepend-icon="mdi-refresh" variant="tonal" @click="fetchConversations"
+                                    :loading="loading" size="small" class="conversation-toolbar-btn">
+                                    {{ tm('history.refresh') }}
+                                </v-btn>
+                            </div>
                         </v-col>
                     </v-row>
-                    <v-btn color="primary" prepend-icon="mdi-refresh" variant="tonal" @click="fetchConversations"
-                        :loading="loading" size="small" class="mr-2">
-                        {{ tm('history.refresh') }}
-                    </v-btn>
-                    <v-btn 
-                        v-if="selectedItems.length > 0" 
-                        color="success" 
-                        prepend-icon="mdi-download"
-                        variant="tonal" 
-                        @click="exportConversations" 
-                        :disabled="loading"
-                        size="small"
-                        class="mr-2">
-                        {{ tm('batch.exportSelected', { count: selectedItems.length }) }}
-                    </v-btn>
-                    <v-btn 
-                        v-if="selectedItems.length > 0" 
-                        color="error" 
-                        prepend-icon="mdi-delete"
-                        variant="tonal" 
-                        @click="confirmBatchDelete" 
-                        :disabled="loading"
-                        size="small">
-                        {{ tm('batch.deleteSelected', { count: selectedItems.length }) }}
-                    </v-btn>
-                </v-card-title>
+            </section>
 
-                <v-divider></v-divider>
-
-                <v-card-text class="pa-0">
+            <v-card flat class="conversation-table-card">
+                <v-card-text class="conversation-table-panel">
                     <v-data-table v-model="selectedItems" :headers="tableHeaders" :items="conversations"
                         :loading="loading" style="font-size: 12px;" density="comfortable" hide-default-footer
-                        class="elevation-0" :items-per-page="pagination.page_size"
+                        class="conversation-table elevation-0" :items-per-page="pagination.page_size"
                         :items-per-page-options="pageSizeOptions" show-select return-object
                         :disabled="loading" @update:options="handleTableOptions">
-                        <template v-slot:header.umo_source>
-                            <div class="umo-header-cell">
-                                <span>{{ tm('table.headers.umo') }}</span>
-                                <v-btn-toggle
-                                    v-model="umoDisplayMode"
-                                    mandatory
-                                    density="compact"
-                                    divided
-                                    variant="outlined"
-                                    class="umo-header-toggle"
-                                >
-                                    <v-btn value="parsed" size="x-small">
-                                        {{ tm('table.umoDisplay.parsed') }}
-                                    </v-btn>
-                                    <v-btn value="raw" size="x-small">
-                                        {{ tm('table.umoDisplay.raw') }}
-                                    </v-btn>
-                                </v-btn-toggle>
-                            </div>
-                        </template>
-
                         <template v-slot:item.title="{ item }">
                             <div class="conversation-title-cell">
                                 <div class="conversation-title-row">
@@ -159,13 +168,15 @@
 
                         <template v-slot:item.actions="{ item }">
                             <div class="actions-wrapper">
-                                <v-btn icon variant="plain" size="x-small" class="action-button"
+                                <v-btn icon variant="text" size="small" class="action-button action-button--view"
+                                    :title="tm('actions.view')"
                                     @click="viewConversation(item)" :disabled="loading">
-                                    <v-icon>mdi-eye</v-icon>
+                                    <v-icon size="17">mdi-eye</v-icon>
                                 </v-btn>
-                                <v-btn icon color="error" variant="plain" size="x-small" class="action-button"
+                                <v-btn icon variant="text" size="small" class="action-button action-button--delete"
+                                    :title="tm('actions.delete')"
                                     @click="confirmDeleteConversation(item)" :disabled="loading">
-                                    <v-icon>mdi-delete</v-icon>
+                                    <v-icon size="17">mdi-delete-outline</v-icon>
                                 </v-btn>
                             </div>
                         </template>
@@ -179,9 +190,9 @@
                     </v-data-table>
 
                     <!-- 分页控制 -->
-                    <div class="d-flex justify-center py-3">
+                    <div class="conversation-pagination">
                         <!-- 每页大小选择器 -->
-                        <div class="d-flex justify-between align-center px-4 py-2 bg-grey-lighten-5">
+                        <div class="conversation-pagination-size">
                             <div class="d-flex align-center">
                                 <span class="text-caption mr-2">{{ tm('pagination.itemsPerPage') }}:</span>
                                 <v-select v-model="pagination.page_size" :items="pageSizeOptions" variant="outlined"
@@ -204,37 +215,42 @@
         </v-container>
 
         <!-- 对话详情对话框 -->
-        <v-dialog v-model="dialogView" max-width="900px" scrollable>
+        <v-dialog v-model="dialogView" max-width="980px" scrollable>
             <v-card class="conversation-detail-card">
-                <v-card-title class="text-h3 pa-4 pb-0 pl-6 conversation-detail-title">
-                    <div class="conversation-detail-heading">
-                        <span class="text-truncate">{{ selectedConversation?.title || tm('status.noTitle') }}</span>
-                        <UmoDisplay v-if="selectedConversation?.user_id && hasConversationUmoReadableName(selectedConversation)"
-                            v-bind="getConversationUmoDisplayProps(selectedConversation)" compact :show-info="false"
-                            :show-platform="false" :show-meta="false" class="conversation-umo-display" />
-                        <div v-if="selectedConversation?.user_id"
-                            class="conversation-umo-parsed conversation-detail-umo-parsed">
-                            <v-chip size="x-small" label>
-                                {{ getConversationUmoInfo(selectedConversation).platform || tm('status.unknown') }}
-                            </v-chip>
-                            <span class="umo-separator">:</span>
-                            <v-chip size="x-small" label>
-                                {{ getMessageTypeDisplay(getConversationUmoInfo(selectedConversation).message_type) }}
-                            </v-chip>
-                            <span class="umo-separator">:</span>
-                            <span class="umo-session-id">{{ getConversationUmoInfo(selectedConversation).session_id || tm('status.unknown') }}</span>
+                <v-card-title class="conversation-detail-title">
+                    <div class="conversation-detail-title-main">
+                        <div class="conversation-detail-heading">
+                            <span class="conversation-detail-name text-truncate">{{ selectedConversation?.title || tm('status.noTitle') }}</span>
+                            <UmoDisplay v-if="selectedConversation?.user_id && hasConversationUmoReadableName(selectedConversation)"
+                                v-bind="getConversationUmoDisplayProps(selectedConversation)" compact :show-info="false"
+                                :show-platform="false" :show-meta="false" class="conversation-umo-display" />
+                            <div v-if="selectedConversation?.user_id"
+                                class="conversation-umo-parsed conversation-detail-umo-parsed">
+                                <v-chip size="x-small" label>
+                                    {{ getConversationUmoInfo(selectedConversation).platform || tm('status.unknown') }}
+                                </v-chip>
+                                <span class="umo-separator">:</span>
+                                <v-chip size="x-small" label>
+                                    {{ getMessageTypeDisplay(getConversationUmoInfo(selectedConversation).message_type) }}
+                                </v-chip>
+                                <span class="umo-separator">:</span>
+                                <span class="umo-session-id">{{ getConversationUmoInfo(selectedConversation).session_id || tm('status.unknown') }}</span>
+                            </div>
                         </div>
                     </div>
+                    <v-btn icon="mdi-close" variant="text" class="conversation-detail-close-btn"
+                        @click="closeHistoryDialog" />
                 </v-card-title>
 
-                <v-card-text>
-                    <div class="mb-4 d-flex align-center">
-                        <v-btn color="secondary" variant="tonal" size="small" class="mr-2"
+                <v-card-text class="conversation-detail-body">
+                    <div class="conversation-detail-toolbar">
+                        <v-btn variant="tonal" size="small" class="conversation-detail-mode-btn"
                             @click="isEditingHistory = !isEditingHistory">
                             <v-icon class="mr-1">{{ isEditingHistory ? 'mdi-eye' : 'mdi-pencil' }}</v-icon>
                             {{ isEditingHistory ? tm('dialogs.view.previewMode') : tm('dialogs.view.editMode') }}
                         </v-btn>
-                        <v-btn v-if="isEditingHistory" color="success" variant="tonal" size="small"
+                        <v-btn v-if="isEditingHistory" variant="tonal" size="small"
+                            class="conversation-detail-save-btn"
                             :loading="savingHistory" @click="saveHistoryChanges">
                             <v-icon class="mr-1">mdi-content-save</v-icon>
                             {{ tm('dialogs.view.saveChanges') }}
@@ -254,7 +270,7 @@
                     </div>
 
                     <!-- 预览模式 - 聊天界面 -->
-                    <div v-else class="conversation-messages-container" style="background-color: var(--v-theme-surface);"
+                    <div v-else class="conversation-messages-container"
                         ref="messagesContainer"
                         @wheel.prevent="onContainerWheel">
                         <!-- 空对话提示 -->
@@ -268,9 +284,9 @@
                     </div>
                 </v-card-text>
 
-                <v-card-actions class="pa-4">
+                <v-card-actions class="conversation-detail-actions">
                     <v-spacer></v-spacer>
-                    <v-btn variant="text" @click="closeHistoryDialog">
+                    <v-btn variant="tonal" class="conversation-detail-footer-close" @click="closeHistoryDialog">
                         {{ tm('dialogs.view.close') }}
                     </v-btn>
                 </v-card-actions>
@@ -278,29 +294,29 @@
         </v-dialog>
 
         <!-- 编辑对话框 -->
-        <v-dialog v-model="dialogEdit" max-width="500px">
-            <v-card>
-                <v-card-title class="text-h3 pa-4 pb-0 pl-6">
-                    <v-icon color="primary" class="me-2">mdi-pencil</v-icon>
+        <v-dialog v-model="dialogEdit" max-width="540px">
+            <v-card class="conversation-edit-card">
+                <v-card-title class="conversation-edit-title">
+                    <span class="conversation-edit-title-icon">
+                        <v-icon size="22">mdi-pencil</v-icon>
+                    </span>
                     <span>{{ tm('dialogs.edit.title') }}</span>
                 </v-card-title>
 
-                <v-card-text class="py-4">
+                <v-card-text class="conversation-edit-body">
                     <v-form ref="form" v-model="valid">
                         <v-text-field v-model="editedItem.title" :label="tm('dialogs.edit.titleLabel')"
                             :placeholder="tm('dialogs.edit.titlePlaceholder')" variant="outlined" density="comfortable"
-                            class="mb-3"></v-text-field>
+                            class="conversation-edit-field"></v-text-field>
                     </v-form>
                 </v-card-text>
 
-                <v-divider></v-divider>
-
-                <v-card-actions class="pa-4">
+                <v-card-actions class="conversation-edit-actions">
                     <v-spacer></v-spacer>
-                    <v-btn variant="text" @click="dialogEdit = false" :disabled="loading">
+                    <v-btn variant="tonal" class="conversation-edit-cancel-btn" @click="dialogEdit = false" :disabled="loading">
                         {{ tm('dialogs.edit.cancel') }}
                     </v-btn>
-                    <v-btn color="primary" variant="tonal" @click="saveConversation" :loading="loading">
+                    <v-btn color="primary" variant="flat" class="conversation-edit-save-btn" @click="saveConversation" :loading="loading">
                         {{ tm('dialogs.edit.save') }}
                     </v-btn>
                 </v-card-actions>
@@ -308,69 +324,73 @@
         </v-dialog>
 
         <!-- 删除确认对话框 -->
-        <v-dialog v-model="dialogDelete" max-width="500px">
-            <v-card>
-                <v-card-title class="text-h3 pa-4 pb-0 pl-6">
-                    <v-icon color="error" class="me-2">mdi-alert</v-icon>
-                    <span>{{ tm('dialogs.delete.title') }}</span>
+        <v-dialog v-model="dialogDelete" max-width="460px" persistent>
+            <v-card class="conversation-delete-dialog">
+                <v-card-title class="conversation-delete-dialog__title">
+                    <span class="conversation-delete-dialog__icon">
+                        <v-icon size="24">mdi-trash-can-outline</v-icon>
+                    </span>
+                    <span>删除对话</span>
                 </v-card-title>
 
-                <v-card-text class="py-4">
-                    <p>{{ tm('dialogs.delete.message', { title: selectedConversation?.title || tm('status.noTitle') })
-                        }}</p>
+                <v-card-text class="conversation-delete-dialog__body">
+                    <p class="conversation-delete-dialog__message">
+                        {{ tm('dialogs.delete.message', { title: selectedConversation?.title || tm('status.noTitle') }) }}
+                    </p>
+                    <div class="conversation-delete-dialog__target">
+                        {{ selectedConversation?.title || tm('status.noTitle') }}
+                    </div>
                 </v-card-text>
 
-                <v-divider></v-divider>
-
-                <v-card-actions class="pa-4">
+                <v-card-actions class="conversation-delete-dialog__actions">
                     <v-spacer></v-spacer>
-                    <v-btn variant="text" @click="dialogDelete = false" :disabled="loading">
+                    <v-btn class="conversation-delete-dialog__cancel" variant="text" @click="dialogDelete = false" :disabled="loading">
                         {{ tm('dialogs.delete.cancel') }}
                     </v-btn>
-                    <v-btn color="error" variant="tonal" @click="deleteConversation" :loading="loading">
-                        {{ tm('dialogs.delete.confirm') }}
+                    <v-btn class="conversation-delete-dialog__confirm" color="error" variant="tonal" @click="deleteConversation" :loading="loading">
+                        确定删除
                     </v-btn>
                 </v-card-actions>
             </v-card>
         </v-dialog>
 
         <!-- 批量删除确认对话框 -->
-        <v-dialog v-model="dialogBatchDelete" max-width="600px">
-            <v-card>
-                <v-card-title class="text-h3 pa-4 pb-0 pl-6">
-                    <v-icon color="error" class="me-2">mdi-delete</v-icon>
-                    <span>{{ tm('dialogs.batchDelete.title') }}</span>
+        <v-dialog v-model="dialogBatchDelete" max-width="520px" persistent>
+            <v-card class="conversation-delete-dialog">
+                <v-card-title class="conversation-delete-dialog__title">
+                    <span class="conversation-delete-dialog__icon">
+                        <v-icon size="24">mdi-trash-can-outline</v-icon>
+                    </span>
+                    <span>批量删除对话</span>
                 </v-card-title>
 
-                <v-card-text class="py-4">
-                    <p class="mb-3">{{ tm('dialogs.batchDelete.message', { count: selectedItems.length }) }}</p>
+                <v-card-text class="conversation-delete-dialog__body">
+                    <p class="conversation-delete-dialog__message">
+                        {{ tm('dialogs.batchDelete.message', { count: selectedItems.length }) }}
+                    </p>
 
                     <!-- 显示前几个要删除的对话 -->
-                    <div v-if="selectedItems.length > 0" class="mb-3">
-                        <v-chip v-for="(item, index) in selectedItems.slice(0, 5)" :key="`${item.user_id}-${item.cid}`"
-                            size="small" class="mr-1 mb-1" closable @click:close="removeFromSelection(item)"
-                            :disabled="loading">
+                    <div v-if="selectedItems.length > 0" class="conversation-delete-dialog__target conversation-delete-dialog__target--list">
+                        <div
+                            v-for="item in selectedItems.slice(0, 5)"
+                            :key="`${item.user_id}-${item.cid}`"
+                            class="conversation-delete-dialog__target-item"
+                        >
                             {{ item.title || tm('status.noTitle') }}
-                        </v-chip>
-                        <v-chip v-if="selectedItems.length > 5" size="small" class="mr-1 mb-1">
+                        </div>
+                        <div v-if="selectedItems.length > 5" class="conversation-delete-dialog__target-more">
                             {{ tm('dialogs.batchDelete.andMore', { count: selectedItems.length - 5 }) }}
-                        </v-chip>
+                        </div>
                     </div>
-
-                    <v-alert type="warning" variant="tonal" class="mb-3">
-                        {{ tm('dialogs.batchDelete.warning') }}
-                    </v-alert>
                 </v-card-text>
 
-                <v-divider></v-divider>
-
-                <v-card-actions class="pa-4">
+                <v-card-actions class="conversation-delete-dialog__actions">
                     <v-spacer></v-spacer>
-                    <v-btn variant="text" @click="dialogBatchDelete = false" :disabled="loading">
+                    <v-btn class="conversation-delete-dialog__cancel" variant="text" @click="dialogBatchDelete = false" :disabled="loading">
                         {{ tm('dialogs.batchDelete.cancel') }}
                     </v-btn>
-                    <v-btn color="error" variant="tonal" @click="batchDeleteConversations" :loading="loading">
-                        {{ tm('dialogs.batchDelete.confirm') }}
+                    <v-btn class="conversation-delete-dialog__confirm" color="error" variant="tonal" @click="batchDeleteConversations" :loading="loading">
+                        确定删除
                     </v-btn>
                 </v-card-actions>
             </v-card>
@@ -1236,31 +1256,323 @@ export default {
 </script>
 
 <style>
-.actions-wrapper {
+.conversation-page {
+    min-height: 100%;
+    background:
+        linear-gradient(180deg, rgba(var(--v-theme-primary), 0.05), transparent 260px),
+        rgb(var(--v-theme-background));
+}
+
+.conversation-shell {
+    max-width: 1420px;
+    padding: 22px 32px 32px !important;
+}
+
+.conversation-page-head {
     display: flex;
-    justify-content: flex-end;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 14px;
+    padding: 0 2px;
+}
+
+.conversation-title-block {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.conversation-batch-actions {
+    display: inline-flex;
+    align-items: center;
     gap: 8px;
 }
 
-.action-button {
+.conversation-filter-bar {
+    margin-bottom: 12px;
+    border: 1px solid rgba(var(--v-theme-border), 0.52);
+    border-radius: 12px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 251, 255, 0.86)),
+        rgb(var(--v-theme-surface));
+    padding: 12px 14px;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
+}
+
+.conversation-table-card {
+    border: 1px solid rgba(var(--v-theme-border), 0.54);
+    border-radius: 12px !important;
+    background: rgb(var(--v-theme-surface)) !important;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.045);
+    overflow: hidden;
+}
+
+.conversation-toolbar-title {
+    color: rgb(var(--v-theme-primaryText));
+    font-size: 21px;
+    font-weight: 720;
+    line-height: 1.25;
+    letter-spacing: 0;
+    white-space: nowrap;
+}
+
+.conversation-count-chip {
+    min-width: 32px;
+    justify-content: center;
+    font-weight: 650;
+    border-radius: 999px;
+    background: rgba(var(--v-theme-primary), 0.09) !important;
+}
+
+.conversation-filter-grid {
+    min-width: 0;
+    margin: 0 !important;
+}
+
+.conversation-filter-grid .v-col {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+.conversation-filter-control .v-field {
+    min-height: 42px;
+    border: 1px solid rgba(var(--v-theme-border), 0.48);
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.92) !important;
+    box-shadow: none !important;
+}
+
+.conversation-filter-control .v-field__input {
+    min-height: 42px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+
+.conversation-filter-control .v-field__prepend-inner {
+    color: rgba(var(--v-theme-primary), 0.72);
+}
+
+.conversation-filter-control .v-field-label--floating {
+    display: none;
+}
+
+.conversation-selected-text {
+    min-width: 0;
+    overflow: hidden;
+    color: rgba(var(--v-theme-on-surface), 0.82);
+    font-size: 13px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.conversation-selected-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 20px;
+    margin-left: 6px;
+    border-radius: 999px;
+    background: rgba(var(--v-theme-primary), 0.09);
+    color: rgb(var(--v-theme-primary));
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.conversation-toolbar-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    width: 100%;
+}
+
+.conversation-filter-actions-col {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.conversation-display-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 42px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
+}
+
+.conversation-display-label {
+    color: rgba(var(--v-theme-on-surface), 0.52);
+    font-size: 12px;
+    font-weight: 650;
+    white-space: nowrap;
+}
+
+.conversation-toolbar-btn {
+    height: 42px !important;
+    max-height: 42px;
+    border-radius: 8px !important;
+    font-weight: 650;
+    letter-spacing: 0;
+}
+
+.conversation-table-panel {
+    padding: 0 !important;
+    background: rgb(var(--v-theme-surface));
+}
+
+.conversation-table {
+    border-bottom: 1px solid rgba(var(--v-theme-border), 0.52);
+}
+
+.conversation-table .v-data-table__th {
+    height: 42px !important;
+    border-bottom: 1px solid rgba(var(--v-theme-border), 0.56) !important;
+    background: rgba(248, 250, 252, 0.72) !important;
+    color: rgba(var(--v-theme-on-surface), 0.68);
+    font-size: 12px;
+    font-weight: 720 !important;
+    letter-spacing: 0;
+    white-space: nowrap;
+}
+
+.conversation-table tbody tr {
+    transition: background-color 0.16s ease;
+}
+
+.conversation-table tbody tr:hover {
+    background: rgba(var(--v-theme-primary), 0.035) !important;
+}
+
+.conversation-table td {
+    border-bottom: 1px solid rgba(var(--v-theme-border), 0.44) !important;
+    color: rgba(var(--v-theme-on-surface), 0.82);
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+}
+
+.conversation-pagination {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px;
+    min-height: 56px;
+    padding: 8px 18px;
+    border-top: 1px solid rgba(var(--v-theme-border), 0.44);
+    background: rgba(250, 251, 253, 0.84);
+}
+
+.conversation-pagination-size {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
+}
+
+.conversation-pagination-size .v-field {
+    min-height: 32px;
     border-radius: 8px;
-    font-weight: 500;
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.conversation-pagination-size .v-field__input {
+    min-height: 32px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+}
+
+.conversation-pagination .v-pagination__item,
+.conversation-pagination .v-pagination__prev,
+.conversation-pagination .v-pagination__next {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+}
+
+.actions-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-width: 88px;
+}
+
+.action-button {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    border: 1px solid rgba(var(--v-theme-border), 0.46);
+    border-radius: 9px !important;
+    background: rgba(247, 250, 253, 0.9) !important;
+    color: rgba(var(--v-theme-on-surface), 0.68) !important;
+    opacity: 1;
+    transition:
+        border-color 0.16s ease,
+        background-color 0.16s ease,
+        color 0.16s ease,
+        transform 0.16s ease,
+        box-shadow 0.16s ease;
+}
+
+.action-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+}
+
+.action-button--view {
+    border-color: rgba(56, 143, 196, 0.18);
+    background: rgba(232, 244, 252, 0.95) !important;
+    color: #236f9f !important;
+}
+
+.action-button--view:hover {
+    border-color: rgba(56, 143, 196, 0.34);
+    background: rgba(220, 238, 249, 0.98) !important;
+    color: #1f628f !important;
+}
+
+.action-button--delete {
+    border-color: rgba(229, 81, 81, 0.16);
+    background: rgba(255, 241, 241, 0.95) !important;
+    color: #c33d3d !important;
+}
+
+.action-button--delete:hover {
+    border-color: rgba(229, 81, 81, 0.32);
+    background: rgba(255, 231, 231, 0.98) !important;
+    color: #b42323 !important;
 }
 
 .monaco-editor-container {
-    height: 500px;
-    border-radius: 8px;
+    height: min(58vh, 560px);
+    border: 1px solid rgba(var(--v-theme-border), 0.5);
+    border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
 }
 
 /* 聊天消息容器样式 */
 .conversation-messages-container {
-    max-height: 500px;
+    max-height: min(58vh, 560px);
+    min-height: 420px;
     overflow-y: auto;
-    padding: 8px;
-    border-radius: 8px;
-    background-color: #f9f9f9;
+    padding: 18px 20px;
+    border: 1px solid rgba(var(--v-theme-border), 0.48);
+    border-radius: 14px;
+    background:
+        linear-gradient(180deg, rgba(var(--v-theme-primary), 0.025), rgba(255, 255, 255, 0.96)),
+        rgb(var(--v-theme-surface));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86);
 }
 
 /* 让 ToolCallCard 内部的 args/result 自然展开，由外层容器统一滚动，避免双滚动条 */
@@ -1285,19 +1597,322 @@ export default {
     max-height: 90vh;
     display: flex;
     flex-direction: column;
+    border: 1px solid rgba(var(--v-theme-border), 0.68);
+    border-radius: 18px !important;
+    background:
+        linear-gradient(180deg, rgba(var(--v-theme-primary), 0.04), transparent 220px),
+        rgb(var(--v-theme-surface));
+    box-shadow: 0 24px 72px rgba(15, 23, 42, 0.2) !important;
+    overflow: hidden;
 }
 
 .conversation-detail-title {
     display: flex;
+    min-height: 98px;
     align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 20px 24px 18px !important;
+    border-bottom: 1px solid rgba(var(--v-theme-border), 0.56);
+    background: rgba(255, 255, 255, 0.86);
+}
+
+.conversation-detail-title-main {
+    display: flex;
+    min-width: 0;
+    align-items: flex-start;
+    flex: 1 1 auto;
+}
+
+.conversation-detail-close-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px !important;
+    background: rgba(var(--v-theme-on-surface), 0.045);
+    color: rgba(var(--v-theme-on-surface), 0.62);
+}
+
+.conversation-detail-close-btn:hover {
+    background: rgba(var(--v-theme-primary), 0.09);
+    color: rgb(var(--v-theme-primary));
 }
 
 .conversation-detail-heading {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
     min-width: 0;
     width: 100%;
+}
+
+.conversation-detail-name {
+    color: rgba(var(--v-theme-on-surface), 0.92);
+    font-size: 20px;
+    font-weight: 760;
+    line-height: 1.32;
+    letter-spacing: 0;
+}
+
+.conversation-detail-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 16px 22px 12px !important;
+    background: rgba(248, 250, 252, 0.62);
+}
+
+.conversation-detail-toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    border: 1px solid rgba(var(--v-theme-border), 0.48);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.conversation-detail-mode-btn,
+.conversation-detail-save-btn,
+.conversation-detail-footer-close {
+    height: 38px !important;
+    border-radius: 8px !important;
+    padding-inline: 14px !important;
+    font-weight: 650;
+    letter-spacing: 0;
+}
+
+.conversation-detail-mode-btn {
+    border: 1px solid rgba(56, 143, 196, 0.16);
+    background: rgba(232, 244, 252, 0.95) !important;
+    color: #236f9f !important;
+}
+
+.conversation-detail-mode-btn:hover {
+    border-color: rgba(56, 143, 196, 0.28);
+    background: rgba(220, 238, 249, 0.98) !important;
+    color: #1f628f !important;
+}
+
+.conversation-detail-save-btn {
+    border: 1px solid rgba(31, 151, 111, 0.16);
+    background: rgba(228, 247, 240, 0.95) !important;
+    color: #17795c !important;
+}
+
+.conversation-detail-save-btn:hover {
+    border-color: rgba(31, 151, 111, 0.3);
+    background: rgba(215, 242, 232, 0.98) !important;
+    color: #12684f !important;
+}
+
+.conversation-detail-actions {
+    padding: 14px 22px 20px !important;
+    border-top: 1px solid rgba(var(--v-theme-border), 0.54);
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.conversation-detail-footer-close {
+    border: 1px solid rgba(var(--v-theme-border), 0.76);
+    background: rgba(255, 255, 255, 0.9) !important;
+    color: rgba(var(--v-theme-on-surface), 0.74) !important;
+}
+
+.conversation-detail-footer-close:hover {
+    background: rgba(var(--v-theme-on-surface), 0.055) !important;
+    color: rgb(var(--v-theme-on-surface)) !important;
+}
+
+.conversation-edit-card {
+    border: 1px solid rgba(var(--v-theme-border), 0.68);
+    border-radius: 16px !important;
+    background:
+        linear-gradient(180deg, rgba(var(--v-theme-primary), 0.045), transparent 180px),
+        rgb(var(--v-theme-surface));
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.18) !important;
+    overflow: hidden;
+}
+
+.conversation-edit-title {
+    display: flex;
+    min-height: 68px;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 24px 16px !important;
+    border-bottom: 1px solid rgba(var(--v-theme-border), 0.54);
+    background: rgba(255, 255, 255, 0.84);
+    color: rgba(var(--v-theme-on-surface), 0.92);
+    font-size: 1.18rem !important;
+    font-weight: 720 !important;
+    letter-spacing: 0;
+}
+
+.conversation-edit-title-icon {
+    display: inline-flex;
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(56, 143, 196, 0.18);
+    border-radius: 10px;
+    background: rgba(232, 244, 252, 0.95);
+    color: #236f9f;
+}
+
+.conversation-edit-body {
+    padding: 22px 24px 12px !important;
+    background: rgba(248, 250, 252, 0.62);
+}
+
+.conversation-edit-field :deep(.v-field) {
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.96);
+}
+
+.conversation-edit-field :deep(.v-field__outline) {
+    --v-field-border-opacity: 0.2;
+}
+
+.conversation-edit-field :deep(.v-field--focused .v-field__outline) {
+    --v-field-border-opacity: 0.5;
+}
+
+.conversation-edit-actions {
+    gap: 10px;
+    padding: 14px 24px 20px !important;
+    border-top: 1px solid rgba(var(--v-theme-border), 0.54);
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.conversation-edit-cancel-btn,
+.conversation-edit-save-btn {
+    height: 40px !important;
+    max-height: 40px;
+    border-radius: 8px !important;
+    padding: 0 18px !important;
+    font-weight: 650;
+    letter-spacing: 0;
+}
+
+.conversation-edit-cancel-btn {
+    border: 1px solid rgba(var(--v-theme-border), 0.76);
+    background: rgba(255, 255, 255, 0.9) !important;
+    color: rgba(var(--v-theme-on-surface), 0.74) !important;
+}
+
+.conversation-edit-save-btn {
+    background: #236f9f !important;
+    color: #fff !important;
+}
+
+.conversation-edit-save-btn:hover {
+    background: #1f628f !important;
+}
+
+.conversation-delete-dialog {
+    overflow: hidden;
+    border: 1px solid rgba(var(--v-theme-error), 0.18);
+    border-radius: 18px !important;
+    background:
+        linear-gradient(180deg, rgba(var(--v-theme-error), 0.055), transparent 150px),
+        rgb(var(--v-theme-surface));
+    box-shadow: 0 24px 64px rgba(15, 23, 42, 0.22) !important;
+}
+
+.conversation-delete-dialog__title {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 24px 26px 12px !important;
+    color: rgb(var(--v-theme-primaryText));
+    font-size: 1.22rem !important;
+    font-weight: 740;
+    line-height: 1.3;
+    letter-spacing: 0;
+}
+
+.conversation-delete-dialog__icon {
+    display: inline-flex;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(var(--v-theme-error), 0.18);
+    border-radius: 12px;
+    background: rgba(var(--v-theme-error), 0.1);
+    color: rgb(var(--v-theme-error));
+}
+
+.conversation-delete-dialog__body {
+    padding: 10px 26px 18px !important;
+}
+
+.conversation-delete-dialog__message {
+    margin: 0;
+    color: rgba(var(--v-theme-on-surface), 0.76);
+    font-size: 15px;
+    line-height: 1.65;
+}
+
+.conversation-delete-dialog__target {
+    margin-top: 14px;
+    padding: 10px 12px;
+    overflow-wrap: anywhere;
+    border: 1px solid rgba(var(--v-theme-error), 0.13);
+    border-radius: 10px;
+    background: rgba(var(--v-theme-error), 0.06);
+    color: rgba(var(--v-theme-error), 0.92);
+    font-size: 13px;
+    font-weight: 650;
+    line-height: 1.45;
+}
+
+.conversation-delete-dialog__target--list {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.conversation-delete-dialog__target-item,
+.conversation-delete-dialog__target-more {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.conversation-delete-dialog__target-more {
+    color: rgba(var(--v-theme-error), 0.72);
+    font-size: 12px;
+}
+
+.conversation-delete-dialog__actions {
+    gap: 10px;
+    padding: 2px 26px 24px !important;
+}
+
+.conversation-delete-dialog__cancel,
+.conversation-delete-dialog__confirm {
+    min-width: 92px;
+    height: 42px;
+    max-height: 42px;
+    border-radius: 8px !important;
+    font-weight: 650;
+    letter-spacing: 0;
+}
+
+.conversation-delete-dialog__cancel {
+    color: rgba(var(--v-theme-on-surface), 0.72) !important;
+}
+
+.conversation-delete-dialog__cancel:hover {
+    background: rgba(var(--v-theme-on-surface), 0.06);
+}
+
+.conversation-delete-dialog__confirm {
+    border: 1px solid rgba(var(--v-theme-error), 0.18);
 }
 
 .text-truncate {
@@ -1309,9 +1924,9 @@ export default {
 }
 
 .conversation-title-cell {
-    padding: 6px 0px;
-    min-width: 100px;
-    max-width: 145px;
+    padding: 4px 0;
+    min-width: 120px;
+    max-width: 190px;
 }
 
 .conversation-title-row {
@@ -1328,6 +1943,8 @@ export default {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    color: rgba(var(--v-theme-on-surface), 0.9);
+    font-weight: 650;
 }
 
 .conversation-inline-edit {
@@ -1335,6 +1952,12 @@ export default {
     height: 18px;
     min-width: 18px;
     flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.16s ease;
+}
+
+.conversation-table tbody tr:hover .conversation-inline-edit {
+    opacity: 0.72;
 }
 
 .conversation-title-meta {
@@ -1344,6 +1967,7 @@ export default {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    margin-top: 3px;
 }
 
 .umo-header-cell {
@@ -1355,6 +1979,31 @@ export default {
 
 .umo-header-toggle {
     flex-shrink: 0;
+    border-radius: 8px;
+    border: 1px solid rgba(var(--v-theme-border), 0.46) !important;
+    background: rgba(255, 255, 255, 0.92);
+    overflow: hidden;
+    box-shadow: none !important;
+}
+
+.umo-header-toggle .v-btn {
+    min-width: 42px;
+    height: 32px !important;
+    border-radius: 0 !important;
+    color: rgba(var(--v-theme-on-surface), 0.62);
+    font-size: 11px;
+    font-weight: 650;
+    letter-spacing: 0;
+}
+
+.umo-header-toggle .v-btn--active {
+    background: rgb(var(--v-theme-surface)) !important;
+    color: rgb(var(--v-theme-primary)) !important;
+    box-shadow: inset 0 0 0 1px rgba(var(--v-theme-primary), 0.14);
+}
+
+.umo-header-toggle .v-btn:not(.v-btn--active):hover {
+    background: rgba(var(--v-theme-primary), 0.045) !important;
 }
 
 .umo-source-cell {
@@ -1380,7 +2029,7 @@ export default {
 .conversation-umo-stack {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 5px;
     min-width: 0;
     width: 100%;
 }
@@ -1388,10 +2037,26 @@ export default {
 .conversation-umo-parsed {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 5px;
     min-width: 0;
-    color: rgba(var(--v-theme-on-surface), 0.62);
+    color: rgba(var(--v-theme-on-surface), 0.54);
     font-size: 12px;
+}
+
+.conversation-umo-parsed .v-chip {
+    height: 22px;
+    border: 1px solid rgba(56, 143, 196, 0.16);
+    border-radius: 6px;
+    background: rgba(232, 244, 252, 0.95) !important;
+    color: #236f9f;
+    font-size: 11px;
+    font-weight: 650;
+}
+
+.conversation-umo-parsed .v-chip:nth-of-type(2) {
+    border-color: rgba(31, 151, 111, 0.16);
+    background: rgba(228, 247, 240, 0.95) !important;
+    color: #17795c;
 }
 
 .conversation-detail-umo-parsed {
@@ -1399,13 +2064,14 @@ export default {
 }
 
 .umo-separator {
-    color: rgba(var(--v-theme-on-surface), 0.5);
+    color: rgba(var(--v-theme-on-surface), 0.34);
     flex-shrink: 0;
 }
 
 .umo-session-id,
 .umo-raw-text {
     min-width: 0;
+    color: rgba(var(--v-theme-on-surface), 0.55);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1413,6 +2079,57 @@ export default {
 
 .umo-copy-button {
     flex-shrink: 0;
+    opacity: 0.54;
+}
+
+.umo-copy-button:hover {
+    opacity: 1;
+}
+
+@media (max-width: 1200px) {
+    .conversation-filter-actions-col {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+
+    .conversation-filter-actions-col {
+        justify-content: flex-start;
+    }
+
+    .conversation-toolbar-actions {
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 767px) {
+    .conversation-shell {
+        padding: 12px 14px 18px !important;
+    }
+
+    .conversation-page-head {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .conversation-batch-actions {
+        flex-wrap: wrap;
+    }
+
+    .conversation-toolbar-actions {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        min-width: 0;
+    }
+
+    .conversation-pagination {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .conversation-pagination-size {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
 }
 
 /* 动画 */

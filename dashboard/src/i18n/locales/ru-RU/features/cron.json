@@ -18,6 +18,7 @@
     "edit": "Изменить",
     "refresh": "Обновить",
     "delete": "Удалить",
+    "batchDelete": "Удалить выбранные",
     "cancel": "Отмена",
     "close": "Закрыть",
     "more": "Другие действия",
@@ -48,6 +49,9 @@
     "noUmos": "Нет UMO",
     "noDeliveryTarget": "Цель доставки не задана",
     "noMatches": "Нет подходящих будущих задач."
+  },
+  "bulk": {
+    "selected": "Выбрано: {count}"
   },
   "overview": {
     "totalTasks": "Всего задач",
@@ -156,6 +160,9 @@
     "updateFailed": "Ошибка обновления",
     "deleteSuccess": "Удалено",
     "deleteFailed": "Ошибка удаления",
+    "batchDeleteConfirm": "Удалить выбранные будущие задачи: {count}?",
+    "batchDeleteSuccess": "Удалено задач: {count}",
+    "batchDeletePartial": "Пакетное удаление завершено: удалено {deleted}, ошибок {failed}",
     "nameRequired": "Укажите имя задачи",
     "sessionRequired": "Укажите цель доставки",
     "noteRequired": "Заполните требования задачи",

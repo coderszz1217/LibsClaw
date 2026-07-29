@@ -1,15 +1,13 @@
 <template>
 
-  <div style="display: flex; flex-direction: column; align-items: center;">
-    <div v-if="selectedConfigID || isSystemConfig" class="mt-4 config-panel"
-      style="display: flex; flex-direction: column; align-items: start;">
+  <div class="config-page">
+    <div v-if="selectedConfigID || isSystemConfig" class="config-panel">
 
-      <div class="config-toolbar d-flex flex-row pr-4"
-        style="margin-bottom: 16px; align-items: center; gap: 12px; width: 100%; justify-content: space-between;">
-        <div class="config-toolbar-controls d-flex flex-row align-center" style="gap: 12px;">
-          <v-select class="config-select" style="min-width: 130px;" :model-value="selectedConfigID" :items="configSelectItems" item-title="name" :disabled="initialConfigId !== null"
+      <div class="config-toolbar">
+        <div class="config-toolbar-controls">
+          <v-select class="config-select" :model-value="selectedConfigID" :items="configSelectItems" item-title="name" :disabled="initialConfigId !== null"
             v-if="!isSystemConfig" item-value="id" :label="tm('configSelection.selectConfig')" hide-details density="compact" rounded="md"
-            variant="outlined" @update:model-value="onConfigSelect">
+            prepend-inner-icon="mdi-file-cog-outline" variant="outlined" @update:model-value="onConfigSelect">
           </v-select>
           <v-text-field
             class="config-search-input"
@@ -22,7 +20,6 @@
             density="compact"
             rounded="md"
             variant="outlined"
-            style="min-width: 280px;"
           />
 
         </div>
@@ -41,7 +38,7 @@
       <!-- <v-progress-linear v-if="!fetched" indeterminate color="primary"></v-progress-linear> -->
 
       <v-slide-y-transition mode="out-in">
-        <div v-if="(selectedConfigID || isSystemConfig) && fetched" :key="configContentKey" class="config-content" style="width: 100%;">
+        <div v-if="(selectedConfigID || isSystemConfig) && fetched" :key="configContentKey" class="config-content">
           <!-- 可视化编辑 -->
           <AstrBotCoreConfigWrapper
             :metadata="metadata"
@@ -55,7 +52,7 @@
       <template v-if="(selectedConfigID || isSystemConfig) && fetched">
         <v-tooltip :text="tm('actions.save')" location="left">
           <template v-slot:activator="{ props }">
-            <v-btn v-bind="props" icon="mdi-content-save" size="x-large" style="position: fixed; right: 52px; bottom: 52px;"
+            <v-btn v-bind="props" icon="mdi-content-save" size="large" class="config-fab config-fab--save"
               color="darkprimary" @click="updateConfig">
             </v-btn>
           </template>
@@ -63,7 +60,7 @@
 
         <v-tooltip :text="tm('codeEditor.title')" location="left">
           <template v-slot:activator="{ props }">
-            <v-btn v-bind="props" icon="mdi-code-json" size="x-large" style="position: fixed; right: 52px; bottom: 124px;" color="primary"
+            <v-btn v-bind="props" icon="mdi-code-json" size="large" class="config-fab config-fab--code" color="primary"
               @click="configToString(); codeEditorDialog = true">
             </v-btn>
           </template>
@@ -71,8 +68,8 @@
 
         <v-tooltip text="测试当前配置" location="left" v-if="!isSystemConfig">
           <template v-slot:activator="{ props }">
-            <v-btn v-bind="props" icon="mdi-chat-processing" size="x-large"
-              style="position: fixed; right: 52px; bottom: 196px;" color="secondary"
+            <v-btn v-bind="props" icon="mdi-chat-processing" size="large"
+              class="config-fab config-fab--chat" color="secondary"
               @click="openTestChat">
             </v-btn>
           </template>
@@ -110,31 +107,34 @@
 
   <!-- Config Management Dialog -->
   <v-dialog v-model="configManageDialog" max-width="800px">
-    <v-card>
-      <v-card-title class="text-h3 pa-4 pb-0 pl-6 d-flex align-center justify-space-between">
+    <v-card class="config-manage-dialog">
+      <v-card-title class="config-manage-dialog__title">
         <span>{{ tm('configManagement.title') }}</span>
-        <v-btn icon="mdi-close" variant="text" @click="configManageDialog = false"></v-btn>
+        <v-btn icon="mdi-close" variant="text" class="config-manage-dialog__close" @click="configManageDialog = false"></v-btn>
       </v-card-title>
 
-      <v-card-text>
-        <small>{{ tm('configManagement.description') }}</small>
-        <div class="mt-6 mb-4">
-          <v-btn prepend-icon="mdi-plus" @click="startCreateConfig" variant="tonal" color="primary">
+      <v-card-text class="config-manage-dialog__body">
+        <p class="config-manage-dialog__description">{{ tm('configManagement.description') }}</p>
+        <div class="config-manage-dialog__toolbar">
+          <v-btn prepend-icon="mdi-plus" @click="startCreateConfig" variant="flat" color="primary" class="config-manage-primary-btn">
             {{ tm('configManagement.newConfig') }}
           </v-btn>
         </div>
 
         <!-- Config List -->
-        <v-list lines="two">
-          <v-list-item v-for="config in configInfoList" :key="config.id" :title="config.name">
+        <v-list lines="two" class="config-manage-list">
+          <v-list-item v-for="config in configInfoList" :key="config.id" :title="config.name" class="config-manage-list__item">
             <template v-slot:append>
-              <div class="d-flex align-center" style="gap: 8px;">
+              <div class="config-manage-list__actions">
                 <v-btn icon="mdi-content-copy" size="small" variant="text" color="primary"
+                  class="config-manage-icon-btn"
                   @click="startCopyConfig(config)"></v-btn>
                 <v-btn icon="mdi-pencil" size="small" variant="text" color="warning"
+                  class="config-manage-icon-btn"
                   v-if="config.id !== 'default'"
                   @click="startEditConfig(config)"></v-btn>
                 <v-btn icon="mdi-delete" size="small" variant="text" color="error"
+                  class="config-manage-icon-btn"
                   v-if="config.id !== 'default'"
                   @click="confirmDeleteConfig(config)"></v-btn>
               </div>
@@ -143,19 +143,19 @@
         </v-list>
 
         <!-- Create/Edit Form -->
-        <v-divider v-if="showConfigForm" class="my-6"></v-divider>
+        <v-divider v-if="showConfigForm" class="config-manage-divider"></v-divider>
 
-        <div v-if="showConfigForm">
-          <h3 class="mb-4">{{ configFormTitle }}</h3>
+        <div v-if="showConfigForm" class="config-manage-form">
+          <h3 class="config-manage-form__title">{{ configFormTitle }}</h3>
 
-          <h4>{{ tm('configManagement.configName') }}</h4>
+          <h4 class="config-manage-form__label">{{ tm('configManagement.configName') }}</h4>
 
           <v-text-field v-model="configFormData.name" :label="tm('configManagement.fillConfigName')" variant="outlined" class="mt-4 mb-4"
             hide-details></v-text-field>
 
-          <div class="d-flex justify-end mt-4" style="gap: 8px;">
-            <v-btn variant="text" @click="cancelConfigForm">{{ tm('buttons.cancel') }}</v-btn>
-            <v-btn color="primary" variant="tonal" @click="saveConfigForm"
+          <div class="config-manage-form__actions">
+            <v-btn variant="tonal" class="config-manage-secondary-btn" @click="cancelConfigForm">{{ tm('buttons.cancel') }}</v-btn>
+            <v-btn color="primary" variant="flat" class="config-manage-primary-btn" @click="saveConfigForm"
               :disabled="isConfigFormSaveDisabled">
               {{ isEditingConfig ? tm('buttons.update') : tm('buttons.create') }}
             </v-btn>
@@ -964,6 +964,251 @@ export default {
   text-transform: none !important;
 }
 
+.config-page {
+  display: flex;
+  height: calc(100vh - var(--v-layout-top, 64px));
+  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-primary), 0.08), transparent 280px),
+    rgb(var(--v-theme-background));
+}
+
+.config-panel {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-width: 980px;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 18px 24px 24px;
+}
+
+.config-toolbar {
+  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 24;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border: 1px solid rgba(var(--v-theme-border), 0.5);
+  border-radius: 14px;
+  background: rgba(248, 251, 255, 0.9);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.045);
+  backdrop-filter: blur(12px);
+}
+
+.config-toolbar-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.config-select {
+  min-width: 280px;
+  flex: 0 0 42%;
+}
+
+.config-search-input {
+  min-width: 280px;
+  flex: 1 1 auto;
+}
+
+.config-toolbar .v-field {
+  min-height: 40px;
+  border-radius: 10px;
+  background: rgba(248, 250, 252, 0.78);
+  box-shadow: none;
+}
+
+.config-toolbar .v-field__input {
+  min-height: 40px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.config-toolbar .v-field__outline {
+  --v-field-border-opacity: 0.22;
+}
+
+.config-toolbar .v-field--focused .v-field__outline {
+  --v-field-border-opacity: 0.48;
+}
+
+.config-toolbar .v-field__prepend-inner {
+  color: rgba(var(--v-theme-primary), 0.78);
+}
+
+.config-content {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 24px;
+}
+
+.config-fab {
+  position: fixed;
+  right: 34px;
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: 14px !important;
+  box-shadow: 0 14px 32px rgba(17, 24, 39, 0.16) !important;
+}
+
+.config-fab--save {
+  bottom: 36px;
+}
+
+.config-fab--code {
+  bottom: 98px;
+}
+
+.config-fab--chat {
+  bottom: 160px;
+}
+
+.config-manage-dialog {
+  border: 1px solid rgba(var(--v-theme-border), 0.7);
+  border-radius: 18px !important;
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-primary), 0.04), transparent 180px),
+    rgb(var(--v-theme-surface));
+  box-shadow: 0 24px 70px rgba(17, 24, 39, 0.16) !important;
+  overflow: hidden;
+}
+
+.config-manage-dialog__title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 24px 12px !important;
+  color: rgb(var(--v-theme-primaryText));
+  font-size: 1.3rem;
+  font-weight: 720;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+.config-manage-dialog__close,
+.config-manage-icon-btn {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 8px !important;
+}
+
+.config-manage-dialog__close:hover,
+.config-manage-icon-btn:hover {
+  background: rgba(var(--v-theme-primary), 0.08);
+}
+
+.config-manage-dialog__body {
+  padding: 12px 24px 24px !important;
+}
+
+.config-manage-dialog__description {
+  margin: 0;
+  color: rgba(var(--v-theme-on-surface), 0.68);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.config-manage-dialog__toolbar {
+  display: flex;
+  margin: 22px 0 18px;
+}
+
+.config-manage-primary-btn,
+.config-manage-secondary-btn {
+  height: 42px;
+  max-height: 42px;
+  border-radius: 8px;
+  padding: 0 16px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.config-manage-primary-btn {
+  box-shadow: 0 8px 18px rgba(var(--v-theme-primary), 0.16);
+}
+
+.config-manage-secondary-btn {
+  border: 1px solid rgba(var(--v-theme-border), 0.9);
+  background: rgba(var(--v-theme-surface), 0.92);
+  color: rgba(var(--v-theme-on-surface), 0.74);
+}
+
+.config-manage-list {
+  border: 1px solid rgba(var(--v-theme-border), 0.7);
+  border-radius: 14px;
+  background: rgba(var(--v-theme-surface), 0.78);
+  padding: 6px !important;
+}
+
+.config-manage-list__item {
+  min-height: 58px;
+  border-radius: 10px !important;
+  padding-inline: 16px !important;
+}
+
+.config-manage-list__item:hover {
+  background: rgba(var(--v-theme-primary), 0.045);
+}
+
+.config-manage-list__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.config-manage-divider {
+  margin: 22px 0 !important;
+  border-color: rgba(var(--v-theme-border), 0.7);
+}
+
+.config-manage-form {
+  border: 1px solid rgba(var(--v-theme-border), 0.7);
+  border-radius: 14px;
+  background: rgba(var(--v-theme-background), 0.56);
+  padding: 18px;
+}
+
+.config-manage-form__title {
+  margin: 0 0 16px;
+  color: rgb(var(--v-theme-primaryText));
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.config-manage-form__label {
+  margin: 0;
+  color: rgba(var(--v-theme-on-surface), 0.84);
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.config-manage-form :deep(.v-field) {
+  border-radius: 8px;
+  background: rgba(var(--v-theme-surface), 0.92);
+}
+
+.config-manage-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
 .unsaved-changes-banner {
   border-radius: 8px;
 }
@@ -1017,27 +1262,22 @@ export default {
   font-style: italic;
 }
 
-@media (min-width: 768px) {
-  .config-panel {
-    width: 750px;
-  }
-}
-
 @media (max-width: 767px) {
   .v-container {
     padding: 4px;
   }
 
   .config-panel {
-    width: 100%;
+    padding: 12px 16px 16px;
   }
 
   .config-toolbar {
-    padding-right: 0 !important;
+    align-items: stretch;
+    flex-direction: column;
+    padding: 10px !important;
   }
 
   .config-toolbar-controls {
-    width: 100%;
     flex-wrap: wrap;
   }
 
@@ -1045,6 +1285,46 @@ export default {
   .config-search-input {
     width: 100%;
     min-width: 0 !important;
+  }
+
+  .config-fab {
+    right: 18px;
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 12px !important;
+  }
+
+  .config-fab--save {
+    bottom: 22px;
+  }
+
+  .config-fab--code {
+    bottom: 80px;
+  }
+
+  .config-fab--chat {
+    bottom: 138px;
+  }
+
+  .config-manage-dialog__title {
+    padding: 18px 18px 10px !important;
+  }
+
+  .config-manage-dialog__body {
+    padding: 10px 18px 18px !important;
+  }
+
+  .config-manage-form {
+    padding: 14px;
+  }
+
+  .config-manage-form__actions {
+    flex-direction: column-reverse;
+  }
+
+  .config-manage-primary-btn,
+  .config-manage-secondary-btn {
+    width: 100%;
   }
 }
 

@@ -192,7 +192,7 @@ const selectedProvider = computed(() =>
 const triggerTitle = computed(() => {
   if (selectedProvider.value?.id) return selectedProvider.value.id;
   if (selectedProviderId.value) return selectedProviderId.value;
-  return props.variant === "header" ? "Default model" : "Model";
+  return props.variant === "header" ? "默认模型" : "模型";
 });
 
 const triggerMeta = computed(() => {
