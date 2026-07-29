@@ -2725,6 +2725,16 @@ export type GetKnowledgeWikiTreeResponse = (SuccessEnvelope);
 
 export type GetKnowledgeWikiTreeError = unknown;
 
+export type ExportKnowledgeWikiData = {
+    path: {
+        kb_id: string;
+    };
+};
+
+export type ExportKnowledgeWikiResponse = ((Blob | File));
+
+export type ExportKnowledgeWikiError = unknown;
+
 export type GetKnowledgeWikiPageData = {
     path: {
         kb_id: string;

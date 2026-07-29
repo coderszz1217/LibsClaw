@@ -1,8 +1,11 @@
 import asyncio
 import json
+import os
 import re
+import tempfile
 import time
 import uuid
+import zipfile
 from pathlib import Path
 
 import aiofiles
@@ -18,6 +21,7 @@ from astrbot.core.provider.provider import (
 from astrbot.core.provider.provider import (
     Provider as LLMProvider,
 )
+from astrbot.core.utils.astrbot_path import get_astrbot_temp_path
 
 from .chunking.base import BaseChunker
 from .chunking.markdown import MarkdownChunker
@@ -148,6 +152,72 @@ class KBHelper:
     async def initialize(self) -> None:
         await self._ensure_vec_db()
 
+    def export_wiki_archive(self) -> tuple[Path, str, int]:
+        """Export Markdown Wiki pages to a temporary ZIP archive.
+
+        The archive stores every page relative to ``knowledge/`` so nested
+        folders can be restored without including rebuildable indexes or source
+        files.
+
+        Returns:
+            The temporary archive path, download filename, and exported page
+            count.
+
+        Raises:
+            ValueError: If a page resolves outside the knowledge directory or
+                no Markdown pages are available.
+            OSError: If the archive cannot be created or written.
+        """
+        knowledge_dir = self.kb_dir / "knowledge"
+        knowledge_root = knowledge_dir.resolve()
+        markdown_pages: list[tuple[Path, str]] = []
+        if knowledge_dir.exists():
+            for page_path in sorted(knowledge_dir.rglob("*.md")):
+                if page_path.is_symlink() or not page_path.is_file():
+                    continue
+                resolved_path = page_path.resolve()
+                try:
+                    resolved_path.relative_to(knowledge_root)
+                except ValueError as exc:
+                    raise ValueError(
+                        "Knowledge page resolves outside the knowledge directory"
+                    ) from exc
+                relative_path = page_path.relative_to(knowledge_dir).as_posix()
+                markdown_pages.append((resolved_path, relative_path))
+
+        if not markdown_pages:
+            raise ValueError("知识库中没有可导出的 Markdown 文件")
+
+        safe_name = re.sub(
+            r'[\x00-\x1f/\\:*?"<>|]+',
+            "_",
+            str(self.kb.kb_name or "knowledge-base"),
+        ).strip(" ._")
+        download_name = f"{(safe_name or 'knowledge-base')[:120]}.zip"
+        temp_root = Path(get_astrbot_temp_path())
+        temp_root.mkdir(parents=True, exist_ok=True)
+        file_descriptor, archive_name = tempfile.mkstemp(
+            prefix="kb_export_",
+            suffix=".zip",
+            dir=temp_root,
+        )
+        os.close(file_descriptor)
+        archive_path = Path(archive_name)
+        try:
+            with zipfile.ZipFile(
+                archive_path,
+                mode="w",
+                compression=zipfile.ZIP_DEFLATED,
+                compresslevel=6,
+            ) as archive:
+                for page_path, relative_path in markdown_pages:
+                    archive.write(page_path, relative_path)
+        except Exception:
+            archive_path.unlink(missing_ok=True)
+            raise
+
+        return archive_path, download_name, len(markdown_pages)
+
     async def get_ep(self) -> EmbeddingProvider:
         if not self.kb.embedding_provider_id:
             raise ValueError(f"知识库 {self.kb.kb_name} 未配置 Embedding Provider")
@@ -255,6 +325,7 @@ class KBHelper:
         max_retries: int = 3,
         progress_callback=None,
         pre_chunked_text: list[str] | None = None,
+        source_label: str | None = None,
     ) -> KBDocument:
         """Upload and process a document with compensating cleanup on failure.
 
@@ -276,6 +347,8 @@ class KBHelper:
                 - stage: Current stage (``parsing``, ``chunking``, ``embedding``)
                 - current: Current progress
                 - total: Total units
+            source_label: Optional source URL or provenance label stored in the
+                generated Wiki page. Defaults to ``file_name``.
         """
         await self._ensure_vec_db()
         doc_id = str(uuid.uuid4())
@@ -434,7 +507,7 @@ class KBHelper:
                 page = await self.wiki_store.upsert_document(
                     doc_id=doc_id,
                     file_name=file_name,
-                    source=file_name,
+                    source=source_label or file_name,
                     content=source_content,
                     chunks=chunks_text,
                     batch_size=batch_size,

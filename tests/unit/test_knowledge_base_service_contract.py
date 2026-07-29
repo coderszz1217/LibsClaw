@@ -1,14 +1,18 @@
+import zipfile
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import Request
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import ValidationError
 
+from astrbot.core.knowledge_base.kb_helper import KBHelper
 from astrbot.core.provider.provider import EmbeddingProvider
 from astrbot.dashboard.api.knowledge_bases import (
     delete_knowledge_base_wiki_path,
+    export_knowledge_base_wiki,
     list_knowledge_bases,
     move_knowledge_base_wiki_path,
 )
@@ -180,6 +184,94 @@ async def test_list_route_uses_default_page_size_when_page_is_explicit():
 
     assert response["status"] == "ok"
     service.list_kbs.assert_awaited_once_with(page=2, page_size=20)
+
+
+def test_kb_helper_export_preserves_markdown_tree(tmp_path, monkeypatch):
+    """Archive Markdown pages with paths relative to the knowledge root."""
+    kb_dir = tmp_path / "kb-1"
+    knowledge_dir = kb_dir / "knowledge"
+    (knowledge_dir / "guides").mkdir(parents=True)
+    (knowledge_dir / "index.md").write_text("# Index", encoding="utf-8")
+    (knowledge_dir / "guides" / "setup.md").write_text("# Setup", encoding="utf-8")
+    (knowledge_dir / "guides" / "ignored.txt").write_text("not wiki", encoding="utf-8")
+    export_dir = tmp_path / "exports"
+    monkeypatch.setattr(
+        "astrbot.core.knowledge_base.kb_helper.get_astrbot_temp_path",
+        lambda: str(export_dir),
+    )
+    helper = KBHelper.__new__(KBHelper)
+    helper.kb_dir = kb_dir
+    helper.kb = SimpleNamespace(kb_name="Docs/Team")
+
+    archive_path, filename, page_count = helper.export_wiki_archive()
+
+    try:
+        assert filename == "Docs_Team.zip"
+        assert page_count == 2
+        with zipfile.ZipFile(archive_path) as archive:
+            assert archive.namelist() == ["guides/setup.md", "index.md"]
+            assert archive.read("guides/setup.md").decode() == "# Setup"
+    finally:
+        archive_path.unlink(missing_ok=True)
+
+
+@pytest.mark.asyncio
+async def test_export_wiki_service_uses_selected_knowledge_base(tmp_path):
+    """Resolve the requested helper and create its Wiki archive."""
+    archive_path = tmp_path / "Docs.zip"
+    helper = SimpleNamespace(
+        export_wiki_archive=MagicMock(return_value=(archive_path, "Docs.zip", 2))
+    )
+    kb_manager = SimpleNamespace(get_kb=AsyncMock(return_value=helper))
+    service = make_service(kb_manager)
+
+    result = await service.export_wiki("kb-1")
+
+    assert result == (archive_path, "Docs.zip", 2)
+    kb_manager.get_kb.assert_awaited_once_with("kb-1")
+    helper.export_wiki_archive.assert_called_once_with()
+
+
+@pytest.mark.asyncio
+async def test_export_wiki_route_returns_zip_and_cleans_temporary_file(tmp_path):
+    """Return a downloadable ZIP and remove it after the response completes."""
+    archive_path = tmp_path / "kb-export.zip"
+    archive_path.write_bytes(b"zip fixture")
+    service = SimpleNamespace(
+        export_wiki=AsyncMock(return_value=(archive_path, "Docs.zip", 2))
+    )
+
+    response = await export_knowledge_base_wiki(
+        "kb-1",
+        _auth=object(),
+        service=service,
+    )
+
+    assert isinstance(response, FileResponse)
+    assert response.media_type == "application/zip"
+    assert response.headers["x-knowledge-page-count"] == "2"
+    assert "Docs.zip" in response.headers["content-disposition"]
+    assert archive_path.exists()
+    assert response.background is not None
+    await response.background()
+    assert not archive_path.exists()
+
+
+@pytest.mark.asyncio
+async def test_export_wiki_route_returns_json_error():
+    """Return a client error instead of an invalid file response."""
+    service = SimpleNamespace(
+        export_wiki=AsyncMock(side_effect=ValueError("没有可导出的页面"))
+    )
+
+    response = await export_knowledge_base_wiki(
+        "kb-1",
+        _auth=object(),
+        service=service,
+    )
+
+    assert isinstance(response, JSONResponse)
+    assert response.status_code == 400
 
 
 @pytest.mark.asyncio

@@ -77,8 +77,14 @@ from astrbot.core.tools.computer_tools import (
 )
 from astrbot.core.tools.cron_tools import FutureTaskTool
 from astrbot.core.tools.knowledge_base_tools import (
+    KnowledgeBaseDeletePageTool,
+    KnowledgeBaseEditPageTool,
+    KnowledgeBaseExportTool,
     KnowledgeBaseImportAttachmentTool,
+    KnowledgeBaseListPagesTool,
     KnowledgeBaseQueryTool,
+    KnowledgeBaseReadPageTool,
+    KnowledgeBaseWritePageTool,
     retrieve_knowledge_base,
 )
 from astrbot.core.tools.message_tools import SendMessageToUserTool
@@ -275,6 +281,7 @@ async def _apply_kb(
     plugin_context: Context,
     config: MainAgentBuildConfig,
 ) -> None:
+    is_admin = getattr(event, "role", None) == "admin"
     has_file_attachment = any(
         isinstance(component, File)
         or (
@@ -284,7 +291,7 @@ async def _apply_kb(
         )
         for component in event.message_obj.message
     )
-    if has_file_attachment and event.role == "admin":
+    if has_file_attachment and is_admin:
         if req.func_tool is None:
             req.func_tool = ToolSet()
         req.func_tool.add_tool(
@@ -292,6 +299,21 @@ async def _apply_kb(
                 KnowledgeBaseImportAttachmentTool
             )
         )
+
+    if is_admin:
+        if req.func_tool is None:
+            req.func_tool = ToolSet()
+        for tool_class in (
+            KnowledgeBaseWritePageTool,
+            KnowledgeBaseListPagesTool,
+            KnowledgeBaseReadPageTool,
+            KnowledgeBaseEditPageTool,
+            KnowledgeBaseDeletePageTool,
+            KnowledgeBaseExportTool,
+        ):
+            req.func_tool.add_tool(
+                plugin_context.get_llm_tool_manager().get_builtin_tool(tool_class)
+            )
 
     if not config.kb_agentic_mode:
         if req.prompt is None or not req.prompt.strip():

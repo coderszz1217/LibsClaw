@@ -7,6 +7,18 @@
 
     <!-- 主内容 -->
     <div v-else class="kb-content">
+      <div class="kb-toolbar mb-3">
+        <v-btn
+          color="primary"
+          variant="tonal"
+          prepend-icon="mdi-download"
+          :loading="exporting"
+          @click="exportWiki"
+        >
+          导出知识库
+        </v-btn>
+      </div>
+
       <!-- 标签页 -->
       <v-tabs v-model="activeTab" class="mb-6" color="primary">
         <v-tab value="overview">
@@ -176,7 +188,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, ref, shallowRef, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { knowledgeApi } from '@/api/v1'
 import { useModuleI18n } from '@/i18n/composables'
@@ -197,6 +209,7 @@ const kbId = ref(route.params.kbId as string)
 const loading = ref(true)
 const activeTab = ref('overview')
 const kb = ref<any>({})
+const exporting = shallowRef(false)
 
 const snackbar = ref({
   show: false,
@@ -217,6 +230,46 @@ const openWikiPage = (path: string) => {
   wikiRequestId += 1
   requestedWikiPage.value = { path, requestId: wikiRequestId }
   activeTab.value = 'wiki'
+}
+
+const exportWiki = async () => {
+  if (exporting.value) return
+  exporting.value = true
+  try {
+    const response = await knowledgeApi.exportWiki(kbId.value)
+    const disposition = String(response.headers['content-disposition'] || '')
+    const fallbackName = `${String(kb.value.kb_name || 'knowledge-base')
+      .replace(/[\x00-\x1f/\\:*?"<>|]+/g, '_')
+      .replace(/^[ ._]+|[ ._]+$/g, '') || 'knowledge-base'}.zip`
+    let filename = fallbackName
+    const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i)
+    const quotedMatch = disposition.match(/filename="([^"]+)"/i)
+    if (utf8Match?.[1]) {
+      try {
+        filename = decodeURIComponent(utf8Match[1])
+      } catch {
+        filename = utf8Match[1]
+      }
+    } else if (quotedMatch?.[1]) {
+      filename = quotedMatch[1]
+    }
+
+    const downloadUrl = URL.createObjectURL(response.data)
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = filename
+    link.style.display = 'none'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(downloadUrl)
+    showSnackbar('知识库导出成功')
+  } catch (error) {
+    console.error('Failed to export knowledge base:', error)
+    showSnackbar('导出知识库失败', 'error')
+  } finally {
+    exporting.value = false
+  }
 }
 
 // 加载知识库详情
@@ -269,6 +322,11 @@ watch(
 
 .kb-detail-page :deep(.v-card--variant-outlined) {
   background: rgb(var(--v-theme-surface));
+}
+
+.kb-toolbar {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .loading-container {

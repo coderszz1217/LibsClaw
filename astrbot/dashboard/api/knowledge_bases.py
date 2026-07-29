@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request
+from fastapi.responses import FileResponse, JSONResponse
+from starlette.background import BackgroundTask
 
 from astrbot.core import logger
 from astrbot.dashboard.async_utils import run_maybe_async
@@ -176,6 +179,44 @@ async def get_knowledge_base_wiki_tree(
         lambda: service.list_wiki_tree(kb_id),
         prefix="获取知识页面树失败",
     )
+
+
+@router.get("/knowledge-bases/{kb_id}/wiki/export")
+async def export_knowledge_base_wiki(
+    kb_id: str,
+    _auth: AuthContext = Depends(require_kb_scope),
+    service: KnowledgeBaseService = Depends(get_service),
+):
+    """Download one knowledge base Wiki as a Markdown-only ZIP archive.
+
+    Args:
+        kb_id: Stable knowledge base identifier.
+        _auth: Authenticated dashboard scope context.
+        service: Knowledge base application service.
+
+    Returns:
+        A ZIP file whose entries preserve paths relative to ``knowledge/``, or
+        a JSON error response when export fails.
+    """
+    archive_path: Path | None = None
+    try:
+        archive_path, filename, page_count = await service.export_wiki(kb_id)
+        return FileResponse(
+            path=archive_path,
+            filename=filename,
+            media_type="application/zip",
+            headers={"X-Knowledge-Page-Count": str(page_count)},
+            background=BackgroundTask(archive_path.unlink, missing_ok=True),
+        )
+    except (KnowledgeBaseServiceError, ValueError) as exc:
+        if archive_path is not None:
+            archive_path.unlink(missing_ok=True)
+        return JSONResponse(error(str(exc)), status_code=400)
+    except Exception as exc:
+        if archive_path is not None:
+            archive_path.unlink(missing_ok=True)
+        logger.error("导出 Wiki 失败: %s", exc, exc_info=True)
+        return JSONResponse(error(f"导出 Wiki 失败: {exc!s}"), status_code=500)
 
 
 @router.get("/knowledge-bases/{kb_id}/wiki/pages")

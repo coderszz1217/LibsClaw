@@ -3464,6 +3464,23 @@ paths:
         "200":
           $ref: "#/components/responses/Ok"
 
+  /api/v1/knowledge-bases/{kb_id}/wiki/export:
+    get:
+      tags: [Knowledge Base]
+      summary: Export a knowledge base Wiki as a Markdown ZIP archive
+      operationId: exportKnowledgeWiki
+      x-astrbot-scope: kb
+      parameters:
+        - $ref: "#/components/parameters/KbId"
+      responses:
+        "200":
+          description: ZIP archive containing Markdown pages with folder paths preserved
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+
   /api/v1/knowledge-bases/{kb_id}/wiki/pages:
     get:
       tags: [Knowledge Base]

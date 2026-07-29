@@ -427,23 +427,28 @@ class TestApplyKb:
 
         assert req.func_tool is not None
         assert req.func_tool.get_tool("astr_kb_import_attachment") is not None
+        assert req.func_tool.get_tool("astr_kb_save_text") is not None
+        assert req.func_tool.get_tool("astr_kb_list_pages") is not None
+        assert req.func_tool.get_tool("astr_kb_read_page") is not None
+        assert req.func_tool.get_tool("astr_kb_edit_page") is not None
+        assert req.func_tool.get_tool("astr_kb_delete_page") is not None
+        assert req.func_tool.get_tool("astr_kb_export") is not None
         assert req.func_tool.get_tool("astr_kb_search") is None
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
-        ("role", "has_attachment"),
-        [("member", True), ("admin", False)],
+        "has_attachment",
+        [True, False],
     )
     async def test_apply_kb_non_agentic_skips_import_tool_without_permission_or_file(
         self,
-        role,
         has_attachment,
         mock_event,
         mock_context,
     ):
-        """Do not expose the import tool without both admin role and a file."""
+        """Do not expose write tools to non-administrator users."""
         module = ama
-        mock_event.role = role
+        mock_event.role = "member"
         mock_event.message_obj.message = (
             [File(name="wiki.zip", file="/tmp/wiki.zip")]
             if has_attachment
@@ -462,6 +467,38 @@ class TestApplyKb:
             await module._apply_kb(mock_event, req, mock_context, config)
 
         assert req.func_tool is None
+
+    @pytest.mark.asyncio
+    async def test_apply_kb_non_agentic_adds_save_tool_for_admin_without_file(
+        self,
+        mock_event,
+        mock_context,
+    ):
+        """Expose text-to-Wiki saving to administrators without attachments."""
+        module = ama
+        mock_event.role = "admin"
+        mock_event.message_obj.message = [Plain(text="save this article")]
+        req = ProviderRequest(prompt="save this article")
+        config = module.MainAgentBuildConfig(
+            tool_call_timeout=60,
+            kb_agentic_mode=False,
+        )
+
+        with patch(
+            "astrbot.core.astr_main_agent.retrieve_knowledge_base",
+            AsyncMock(return_value=None),
+        ):
+            await module._apply_kb(mock_event, req, mock_context, config)
+
+        assert req.func_tool is not None
+        assert req.func_tool.get_tool("astr_kb_save_text") is not None
+        assert req.func_tool.get_tool("astr_kb_list_pages") is not None
+        assert req.func_tool.get_tool("astr_kb_read_page") is not None
+        assert req.func_tool.get_tool("astr_kb_edit_page") is not None
+        assert req.func_tool.get_tool("astr_kb_delete_page") is not None
+        assert req.func_tool.get_tool("astr_kb_export") is not None
+        assert req.func_tool.get_tool("astr_kb_import_attachment") is None
+        assert req.func_tool.get_tool("astr_kb_search") is None
 
     @pytest.mark.asyncio
     async def test_apply_kb_agentic_keeps_query_tool_with_admin_import_tool(
@@ -483,6 +520,12 @@ class TestApplyKb:
 
         assert req.func_tool is not None
         assert req.func_tool.get_tool("astr_kb_import_attachment") is not None
+        assert req.func_tool.get_tool("astr_kb_save_text") is not None
+        assert req.func_tool.get_tool("astr_kb_list_pages") is not None
+        assert req.func_tool.get_tool("astr_kb_read_page") is not None
+        assert req.func_tool.get_tool("astr_kb_edit_page") is not None
+        assert req.func_tool.get_tool("astr_kb_delete_page") is not None
+        assert req.func_tool.get_tool("astr_kb_export") is not None
         assert req.func_tool.get_tool("astr_kb_search") is not None
 
     @pytest.mark.asyncio

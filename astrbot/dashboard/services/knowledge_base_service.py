@@ -447,6 +447,27 @@ class KnowledgeBaseService:
     async def get_kb_from_dashboard_query(self, kb_id: str | None) -> dict[str, Any]:
         return await self.get_kb(kb_id)
 
+    async def export_wiki(self, kb_id: str | None) -> tuple[Path, str, int]:
+        """Export one knowledge base Wiki as a Markdown-only ZIP archive.
+
+        Args:
+            kb_id: Stable knowledge base identifier.
+
+        Returns:
+            The temporary archive path, user-facing filename, and exported page
+            count.
+
+        Raises:
+            KnowledgeBaseServiceError: If the knowledge base does not exist.
+            ValueError: If no Markdown pages are available for export.
+        """
+        if not kb_id:
+            raise KnowledgeBaseServiceError("缺少参数 kb_id")
+        kb_helper = await self.get_kb_manager().get_kb(kb_id)
+        if not kb_helper:
+            raise KnowledgeBaseServiceError("知识库不存在")
+        return await asyncio.to_thread(kb_helper.export_wiki_archive)
+
     async def _get_wiki_store(self, kb_id: str | None):
         """Resolve the Wiki store owned by one knowledge base.
 

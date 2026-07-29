@@ -1602,6 +1602,12 @@ export const knowledgeApi = {
       openApiV1.getKnowledgeWikiTree({ path: { kb_id: kbId } }),
     );
   },
+  exportWiki(kbId: string) {
+    return openApiV1.exportKnowledgeWiki({
+      path: { kb_id: kbId },
+      responseType: 'blob',
+    }) as Promise<AxiosResponse<Blob>>;
+  },
   wikiPage(kbId: string, path: string) {
     return typed<WikiPageData>(
       openApiV1.getKnowledgeWikiPage({
