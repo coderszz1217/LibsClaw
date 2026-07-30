@@ -7,11 +7,41 @@
 
     <!-- 主内容 -->
     <div v-else class="kb-content">
-      <div class="kb-toolbar mb-3">
+      <div class="kb-nav-row">
+        <!-- 标签页 -->
+        <v-tabs v-model="activeTab" class="kb-tabs" color="primary">
+          <v-tab value="overview">
+            <v-icon start>mdi-information-outline</v-icon>
+            {{ t('tabs.overview') }}
+          </v-tab>
+          <v-tab value="documents">
+            <v-icon start>mdi-file-document-multiple</v-icon>
+            {{ t('tabs.documents') }}
+            <v-chip class="ml-2" size="small" variant="tonal">{{ kb.doc_count || 0 }}</v-chip>
+          </v-tab>
+          <v-tab value="wiki">
+            <v-icon start>mdi-folder-multiple-outline</v-icon>
+            文件管理
+          </v-tab>
+          <v-tab value="graph">
+            <v-icon start>mdi-graph-outline</v-icon>
+            知识图谱
+          </v-tab>
+          <v-tab value="retrieval">
+            <v-icon start>mdi-magnify</v-icon>
+            {{ t('tabs.retrieval') }}
+          </v-tab>
+          <v-tab value="settings">
+            <v-icon start>mdi-cog</v-icon>
+            {{ t('tabs.settings') }}
+          </v-tab>
+        </v-tabs>
+
         <v-btn
           color="primary"
           variant="tonal"
           prepend-icon="mdi-download"
+          class="kb-export-btn"
           :loading="exporting"
           @click="exportWiki"
         >
@@ -19,140 +49,111 @@
         </v-btn>
       </div>
 
-      <!-- 标签页 -->
-      <v-tabs v-model="activeTab" class="mb-6" color="primary">
-        <v-tab value="overview">
-          <v-icon start>mdi-information-outline</v-icon>
-          {{ t('tabs.overview') }}
-        </v-tab>
-        <v-tab value="documents">
-          <v-icon start>mdi-file-document-multiple</v-icon>
-          {{ t('tabs.documents') }}
-          <v-chip class="ml-2" size="small" variant="tonal">{{ kb.doc_count || 0 }}</v-chip>
-        </v-tab>
-        <v-tab value="wiki">
-          <v-icon start>mdi-folder-multiple-outline</v-icon>
-          文件管理
-        </v-tab>
-        <v-tab value="graph">
-          <v-icon start>mdi-graph-outline</v-icon>
-          知识图谱
-        </v-tab>
-        <v-tab value="retrieval">
-          <v-icon start>mdi-magnify</v-icon>
-          {{ t('tabs.retrieval') }}
-        </v-tab>
-        <v-tab value="settings">
-          <v-icon start>mdi-cog</v-icon>
-          {{ t('tabs.settings') }}
-        </v-tab>
-      </v-tabs>
-
       <!-- 标签页内容 -->
-      <v-window v-model="activeTab" style="padding: 8px">
+      <v-window v-model="activeTab" class="kb-tab-window">
         <!-- 概览 -->
         <v-window-item value="overview">
-          <v-row>
-            <v-col cols="12" md="6">
-              <v-card variant="outlined">
-                <v-card-title>{{ t('overview.title') }}</v-card-title>
-                <v-card-text>
-                  <v-list density="comfortable">
-                    <v-list-item>
-                      <template #prepend>
-                        <v-icon>mdi-label</v-icon>
-                      </template>
-                      <v-list-item-title>{{ t('overview.name') }}</v-list-item-title>
-                      <v-list-item-subtitle>{{ kb.kb_name }}</v-list-item-subtitle>
-                    </v-list-item>
+          <div class="overview-layout">
+            <section class="overview-card overview-card--identity">
+              <div class="overview-card__header">
+                <div>
+                  <h2>{{ t('overview.title') }}</h2>
+                  <p>知识库的基础属性与更新时间</p>
+                </div>
+                <div class="overview-emoji">{{ kb.emoji || '📚' }}</div>
+              </div>
 
-                    <v-list-item v-if="kb.description">
-                      <template #prepend>
-                        <v-icon>mdi-text</v-icon>
-                      </template>
-                      <v-list-item-title>{{ t('overview.description') }}</v-list-item-title>
-                      <v-list-item-subtitle>{{ kb.description }}</v-list-item-subtitle>
-                    </v-list-item>
+              <div class="identity-list">
+                <div class="identity-row">
+                  <span class="identity-marker"></span>
+                  <div>
+                    <div class="identity-label">{{ t('overview.name') }}</div>
+                    <div class="identity-value">{{ kb.kb_name }}</div>
+                  </div>
+                </div>
 
-                    <v-list-item>
-                      <template #prepend>
-                        <v-icon>mdi-emoticon</v-icon>
-                      </template>
-                      <v-list-item-title>{{ t('overview.emoji') }}</v-list-item-title>
-                      <v-list-item-subtitle>{{ kb.emoji || '📚' }}</v-list-item-subtitle>
-                    </v-list-item>
+                <div v-if="kb.description" class="identity-row identity-row--wide">
+                  <span class="identity-marker"></span>
+                  <div>
+                    <div class="identity-label">{{ t('overview.description') }}</div>
+                    <div class="identity-value identity-value--muted">{{ kb.description }}</div>
+                  </div>
+                </div>
 
-                    <v-list-item>
-                      <template #prepend>
-                        <v-icon>mdi-calendar-plus</v-icon>
-                      </template>
-                      <v-list-item-title>{{ t('overview.createdAt') }}</v-list-item-title>
-                      <v-list-item-subtitle>{{ formatDate(kb.created_at) }}</v-list-item-subtitle>
-                    </v-list-item>
+                <div class="identity-row">
+                  <span class="identity-marker"></span>
+                  <div>
+                    <div class="identity-label">{{ t('overview.createdAt') }}</div>
+                    <div class="identity-value">{{ formatDate(kb.created_at) }}</div>
+                  </div>
+                </div>
 
-                    <v-list-item>
-                      <template #prepend>
-                        <v-icon>mdi-calendar-edit</v-icon>
-                      </template>
-                      <v-list-item-title>{{ t('overview.updatedAt') }}</v-list-item-title>
-                      <v-list-item-subtitle>{{ formatDate(kb.updated_at) }}</v-list-item-subtitle>
-                    </v-list-item>
-                  </v-list>
-                </v-card-text>
-              </v-card>
-            </v-col>
+                <div class="identity-row">
+                  <span class="identity-marker"></span>
+                  <div>
+                    <div class="identity-label">{{ t('overview.updatedAt') }}</div>
+                    <div class="identity-value">{{ formatDate(kb.updated_at) }}</div>
+                  </div>
+                </div>
+              </div>
+            </section>
 
-            <v-col cols="12" md="6">
-              <v-card variant="outlined" class="mb-4">
-                <v-card-title>{{ t('overview.stats') }}</v-card-title>
-                <v-card-text>
-                  <v-row>
-                    <v-col cols="6">
-                      <div class="stat-box">
-                        <v-icon size="48" color="primary">mdi-file-document</v-icon>
-                        <div class="stat-value">{{ kb.doc_count || 0 }}</div>
-                        <div class="stat-label">
-                          {{ t('overview.docCount') }}
-                        </div>
-                      </div>
-                    </v-col>
-                    <v-col cols="6">
-                      <div class="stat-box">
-                        <v-icon size="48" color="secondary">mdi-text-box</v-icon>
-                        <div class="stat-value">{{ kb.chunk_count || 0 }}</div>
-                        <div class="stat-label">
-                          {{ t('overview.chunkCount') }}
-                        </div>
-                      </div>
-                    </v-col>
-                  </v-row>
-                </v-card-text>
-              </v-card>
+            <div class="overview-side">
+              <section class="overview-card">
+                <div class="overview-card__header">
+                  <div>
+                    <h2>{{ t('overview.stats') }}</h2>
+                    <p>当前知识库索引规模</p>
+                  </div>
+                </div>
 
-              <v-card variant="outlined">
-                <v-card-title>{{ t('overview.embeddingModel') }}</v-card-title>
-                <v-card-text>
-                  <v-list density="comfortable">
-                    <v-list-item>
-                      <template #prepend>
-                        <v-icon>mdi-vector-point</v-icon>
-                      </template>
-                      <v-list-item-title>{{ t('overview.embeddingModel') }}</v-list-item-title>
-                      <v-list-item-subtitle>{{ kb.embedding_provider_id || t('overview.notSet') }}</v-list-item-subtitle>
-                    </v-list-item>
+                <div class="stat-grid">
+                  <div class="stat-box stat-box--docs">
+                    <span class="stat-icon">
+                      <v-icon size="24">mdi-file-document-outline</v-icon>
+                    </span>
+                    <div class="stat-value">{{ kb.doc_count || 0 }}</div>
+                    <div class="stat-label">{{ t('overview.docCount') }}</div>
+                  </div>
 
-                    <v-list-item>
-                      <template #prepend>
-                        <v-icon>mdi-sort-ascending</v-icon>
-                      </template>
-                      <v-list-item-title>{{ t('overview.rerankModel') }}</v-list-item-title>
-                      <v-list-item-subtitle>{{ kb.rerank_provider_id || t('overview.notSet') }}</v-list-item-subtitle>
-                    </v-list-item>
-                  </v-list>
-                </v-card-text>
-              </v-card>
-            </v-col>
-          </v-row>
+                  <div class="stat-box stat-box--chunks">
+                    <span class="stat-icon">
+                      <v-icon size="24">mdi-text-box-outline</v-icon>
+                    </span>
+                    <div class="stat-value">{{ kb.chunk_count || 0 }}</div>
+                    <div class="stat-label">{{ t('overview.chunkCount') }}</div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="overview-card">
+                <div class="overview-card__header">
+                  <div>
+                    <h2>{{ t('overview.embeddingModel') }}</h2>
+                    <p>检索相关模型配置状态</p>
+                  </div>
+                </div>
+
+                <div class="model-list">
+                  <div class="model-row">
+                    <span class="model-marker model-marker--embedding">E</span>
+                    <div>
+                      <div class="model-label">{{ t('overview.embeddingModel') }}</div>
+                      <div class="model-value">{{ kb.embedding_provider_id || t('overview.notSet') }}</div>
+                    </div>
+                  </div>
+
+                  <div class="model-row">
+                    <span class="model-marker model-marker--rerank">R</span>
+                    <div>
+                      <div class="model-label">{{ t('overview.rerankModel') }}</div>
+                      <div class="model-value">{{ kb.rerank_provider_id || t('overview.notSet') }}</div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
         </v-window-item>
 
         <!-- 文档管理 -->
@@ -320,13 +321,69 @@ watch(
   width: 100%;
 }
 
+.kb-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .kb-detail-page :deep(.v-card--variant-outlined) {
   background: rgb(var(--v-theme-surface));
 }
 
-.kb-toolbar {
+.kb-nav-row {
+  align-items: center;
   display: flex;
-  justify-content: flex-end;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.kb-export-btn {
+  flex: 0 0 auto;
+  border-radius: 10px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.kb-tabs {
+  background: #ffffff;
+  border: 1px solid #dceaf3;
+  border-radius: 14px;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 1px;
+}
+
+.kb-tabs :deep(.v-slide-group__content) {
+  gap: 2px;
+}
+
+.kb-tabs :deep(.v-tab) {
+  border-radius: 10px;
+  color: #314756;
+  font-weight: 700;
+  letter-spacing: 0;
+  min-height: 42px;
+  padding: 0 14px;
+}
+
+.kb-tabs :deep(.v-tab--selected) {
+  background: #eaf6fd;
+  color: #2385bd;
+}
+
+.kb-tabs :deep(.v-tab__slider) {
+  display: none;
+}
+
+.kb-tabs :deep(.v-chip) {
+  background: #eef3f6;
+  color: #3f5564;
+  font-weight: 700;
+}
+
+.kb-tab-window {
+  padding: 0;
 }
 
 .loading-container {
@@ -337,36 +394,243 @@ watch(
   min-height: 400px;
 }
 
+.overview-layout {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.9fr);
+}
+
+.overview-side {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.overview-card {
+  background: linear-gradient(180deg, #fbfdff 0%, #ffffff 100%);
+  border: 1px solid #dceaf3;
+  border-radius: 16px;
+  padding: 18px 20px;
+}
+
+.overview-card--identity {
+  min-height: 270px;
+}
+
+.overview-card__header {
+  align-items: flex-start;
+  border-bottom: 1px solid #e5eef5;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+}
+
+.overview-card__header h2 {
+  color: #162331;
+  font-size: 1.08rem;
+  font-weight: 800;
+  line-height: 1.3;
+  margin: 0 0 4px;
+}
+
+.overview-card__header p {
+  color: #687a88;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.overview-emoji {
+  align-items: center;
+  background: #eaf6fd;
+  border: 1px solid #cce8f8;
+  border-radius: 14px;
+  display: flex;
+  font-size: 1.55rem;
+  height: 54px;
+  justify-content: center;
+  width: 54px;
+}
+
+.identity-list {
+  display: grid;
+  gap: 10px 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.identity-row,
+.model-row {
+  align-items: flex-start;
+  background: #ffffff;
+  border: 1px solid #e4eef5;
+  border-radius: 12px;
+  display: flex;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px 14px;
+  transition: background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.identity-row:hover,
+.model-row:hover {
+  background: #f8fcff;
+  border-color: #cfe5f2;
+}
+
+.identity-row--wide {
+  grid-column: 1 / -1;
+}
+
+.identity-marker {
+  background: #49a3d6;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  height: 7px;
+  margin-top: 7px;
+  width: 7px;
+}
+
+.identity-label,
+.model-label {
+  color: #72818b;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  margin-bottom: 3px;
+}
+
+.identity-value,
+.model-value {
+  color: #172331;
+  font-size: 0.96rem;
+  font-weight: 700;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.identity-value--muted,
+.model-value {
+  color: #4d5e6b;
+  font-weight: 600;
+}
+
+.stat-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .stat-box {
+  background: #ffffff;
+  border: 1px solid #dceaf3;
+  border-radius: 14px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 24px;
+  min-height: 154px;
+  padding: 18px;
   text-align: center;
-  border-radius: 12px;
-  background: rgba(var(--v-theme-surface-variant), 0.1);
-  transition: all 0.3s ease;
+  transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
 }
 
 .stat-box:hover {
-  background: rgba(var(--v-theme-surface-variant), 0.5);
+  background: #f7fbfe;
+  border-color: #bee2f7;
+  transform: translateY(-1px);
+}
+
+.stat-icon {
+  align-items: center;
+  border-radius: 12px;
+  display: flex;
+  height: 48px;
+  justify-content: center;
+  margin-bottom: 12px;
+  width: 48px;
+}
+
+.stat-box--docs .stat-icon {
+  background: #eaf6fd;
+  color: #2f96cf;
+}
+
+.stat-box--chunks .stat-icon {
+  background: #eef8f4;
+  color: #2b9d70;
 }
 
 .stat-value {
+  color: #142636;
   font-size: 2rem;
-  font-weight: 600;
-  margin-top: 8px;
+  font-weight: 800;
+  line-height: 1.1;
 }
 
 .stat-label {
+  color: #5e7080;
   font-size: 0.875rem;
   margin-top: 4px;
 }
 
+.model-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.model-marker {
+  align-items: center;
+  border-radius: 10px;
+  display: flex;
+  flex: 0 0 auto;
+  font-size: 0.78rem;
+  font-weight: 800;
+  height: 32px;
+  justify-content: center;
+  letter-spacing: 0;
+  margin-top: 1px;
+  width: 32px;
+}
+
+.model-marker--embedding {
+  background: #eaf6fd;
+  color: #2587bf;
+}
+
+.model-marker--rerank {
+  background: #eef8f4;
+  color: #258461;
+}
+
 /* 响应式设计 */
+@media (max-width: 1080px) {
+  .overview-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 768px) {
   .kb-title {
     font-size: 1.25rem;
+  }
+
+  .kb-nav-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .kb-export-btn {
+    width: 100%;
+  }
+
+  .identity-list,
+  .stat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .overview-card {
+    padding: 16px;
   }
 }
 </style>

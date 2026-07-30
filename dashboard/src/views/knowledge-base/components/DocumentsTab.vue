@@ -1,26 +1,64 @@
 <template>
   <div class="documents-tab">
     <!-- 操作栏 -->
-    <div class="action-bar mb-4">
-      <div class="d-flex flex-wrap ga-2">
-        <v-btn prepend-icon="mdi-upload" color="primary" variant="outlined" @click="showUploadDialog = true">
+    <div class="action-bar">
+      <div class="document-actions">
+        <v-btn
+          prepend-icon="mdi-upload"
+          color="primary"
+          variant="flat"
+          class="document-action-btn document-action-btn--primary"
+          @click="showUploadDialog = true"
+        >
           {{ t('documents.upload') }}
         </v-btn>
-        <v-btn prepend-icon="mdi-folder-upload-outline" color="primary" variant="tonal" :loading="wikiImporting" @click="showWikiImportDialog = true"> 导入 Wiki </v-btn>
+        <v-btn
+          prepend-icon="mdi-folder-upload-outline"
+          color="primary"
+          variant="tonal"
+          class="document-action-btn"
+          :loading="wikiImporting"
+          @click="showWikiImportDialog = true"
+        >
+          导入 Wiki
+        </v-btn>
       </div>
-      <v-text-field v-model="searchQuery" prepend-inner-icon="mdi-magnify" :placeholder="'搜索文档...'" variant="outlined" density="compact" hide-details clearable style="max-width: 300px" />
+      <v-text-field
+        v-model="searchQuery"
+        prepend-inner-icon="mdi-magnify"
+        :placeholder="'搜索文档...'"
+        variant="outlined"
+        density="compact"
+        hide-details
+        clearable
+        class="document-search"
+      />
     </div>
 
     <!-- 文档列表 -->
-    <v-card variant="outlined">
-      <v-data-table-server :headers="headers" :items="documents" :loading="loading" :items-per-page="pageSize" :items-per-page-options="itemsPerPageOptions" :page="page" :items-length="total" @update:page="onPageChange" @update:items-per-page="onItemsPerPageChange">
+    <v-card variant="outlined" class="documents-table-card">
+      <v-data-table-server
+        :headers="headers"
+        :items="documents"
+        :loading="loading"
+        :items-per-page="pageSize"
+        :items-per-page-options="itemsPerPageOptions"
+        :page="page"
+        :items-length="total"
+        class="documents-table"
+        density="compact"
+        @update:page="onPageChange"
+        @update:items-per-page="onItemsPerPageChange"
+      >
         <template #item.doc_name="{ item }">
-          <div class="d-flex align-center gap-2">
-            <v-icon :color="getFileColor(item.file_type)" class="mr-2">
+          <div class="document-name-cell">
+            <span class="document-file-icon">
+              <v-icon :color="getFileColor(item.file_type)" size="18">
               {{ getFileIcon(item.file_type) }}
             </v-icon>
-            <div class="flex-grow-1" style="padding: 4px 0px">
-              <span class="font-weight-medium">{{ item.doc_name }}</span>
+            </span>
+            <div class="document-name-content">
+              <span class="document-name">{{ item.doc_name }}</span>
               <!-- 上传进度 -->
               <div v-if="item.uploading" class="mt-1">
                 <div class="text-caption text-medium-emphasis mb-1">
@@ -33,121 +71,97 @@
           </div>
         </template>
 
+        <template #item.file_type="{ item }">
+          <span class="file-type-pill">{{ item.file_type || '-' }}</span>
+        </template>
+
         <template #item.file_size="{ item }">
-          {{ formatFileSize(item.file_size) }}
+          <span class="table-muted-text">{{ formatFileSize(item.file_size) }}</span>
         </template>
 
         <template #item.created_at="{ item }">
-          {{ formatDate(item.created_at) }}
+          <span class="table-muted-text">{{ formatDate(item.created_at) }}</span>
         </template>
 
         <template #item.actions="{ item }">
-          <v-btn icon="mdi-eye" variant="text" size="small" color="info" @click="viewDocument(item)" />
-          <v-btn icon="mdi-delete" variant="text" size="small" color="error" @click="confirmDelete(item)" />
+          <div class="document-row-actions">
+            <v-btn
+              icon="mdi-eye"
+              variant="text"
+              size="small"
+              class="document-icon-btn document-icon-btn--view"
+              @click="viewDocument(item)"
+            />
+            <v-btn
+              icon="mdi-delete-outline"
+              variant="text"
+              size="small"
+              class="document-icon-btn document-icon-btn--delete"
+              @click="confirmDelete(item)"
+            />
+          </div>
         </template>
 
         <template #no-data>
-          <div class="text-center py-8">
-            <v-icon size="64" color="grey-lighten-2">mdi-file-document-outline</v-icon>
-            <p class="mt-4 text-medium-emphasis">{{ t('documents.empty') }}</p>
+          <div class="document-empty">
+            <span class="document-empty__icon">
+              <v-icon size="32">mdi-file-document-outline</v-icon>
+            </span>
+            <p>{{ t('documents.empty') }}</p>
           </div>
         </template>
       </v-data-table-server>
     </v-card>
 
     <!-- 上传对话框 -->
-    <v-dialog v-model="showUploadDialog" max-width="650px" persistent @after-enter="initUploadSettings">
-      <v-card>
-        <v-card-title class="text-h3 pa-4 pb-0 pl-6 d-flex align-center">
-          <span>{{ t('upload.title') }}</span>
+    <v-dialog v-model="showUploadDialog" max-width="680px" persistent @after-enter="initUploadSettings">
+      <v-card class="upload-dialog-card">
+        <v-card-title class="upload-dialog-title">
+          <div>
+            <span>{{ t('upload.title') }}</span>
+            <p>选择本地文档后，系统会在后台完成解析、分块和索引。</p>
+          </div>
           <v-spacer />
-          <v-btn icon="mdi-close" variant="text" @click="closeUploadDialog" />
+          <v-btn icon="mdi-close" variant="text" class="upload-dialog-close" @click="closeUploadDialog" />
         </v-card-title>
 
-        <v-tabs v-model="uploadMode" grow class="mb-4">
-          <v-tab value="file">{{ t('upload.fileUpload') }}</v-tab>
-          <v-tab value="url">
-            {{ t('upload.fromUrl') }}
-            <v-badge color="warning" :content="t('upload.beta')" inline class="ml-2" />
-          </v-tab>
-        </v-tabs>
+        <v-card-text class="upload-dialog-body">
+          <div class="upload-dropzone" :class="{ dragover: isDragging }" @drop.prevent="handleDrop" @dragover.prevent="isDragging = true" @dragleave="isDragging = false" @click="fileInput?.click()">
+            <p class="upload-dropzone__title">{{ t('upload.dropzone') }}</p>
+            <p class="upload-dropzone__meta">
+              {{ t('upload.supportedFormats') }}
+            </p>
+            <p class="upload-dropzone__meta">
+              {{ t('upload.maxSize') }}
+            </p>
+            <input ref="fileInput" type="file" multiple hidden accept=".txt,.md,.markdown,.rst,.adoc,.pdf,.docx,.epub,.xls,.xlsx" @change="handleFileSelect" />
+          </div>
 
-        <v-card-text class="pa-6 pt-2">
-          <v-window v-model="uploadMode">
-            <!-- 文件上传 -->
-            <v-window-item value="file">
-              <!-- 文件选择 -->
-              <div class="upload-dropzone" :class="{ dragover: isDragging }" @drop.prevent="handleDrop" @dragover.prevent="isDragging = true" @dragleave="isDragging = false" @click="fileInput?.click()">
-                <v-icon size="64" color="primary">mdi-cloud-upload</v-icon>
-                <p class="mt-4 text-h6">{{ t('upload.dropzone') }}</p>
-                <p class="text-caption text-medium-emphasis mt-2">
-                  {{ t('upload.supportedFormats') }}
-                </p>
-                <p class="text-caption text-medium-emphasis">
-                  {{ t('upload.maxSize') }}
-                </p>
-                <input ref="fileInput" type="file" multiple hidden accept=".txt,.md,.markdown,.rst,.adoc,.pdf,.docx,.epub,.xls,.xlsx" @change="handleFileSelect" />
-              </div>
-
-              <div v-if="selectedFiles.length > 0" class="mt-4">
-                <div class="d-flex align-center justify-space-between mb-2">
-                  <span class="text-subtitle-2">已选择 {{ selectedFiles.length }} 个文件</span>
-                  <v-btn variant="text" size="small" @click="selectedFiles = []">清空</v-btn>
-                </div>
-                <div class="files-list">
-                  <div v-for="(file, index) in selectedFiles" :key="index" class="file-item pa-3 mb-2 rounded bg-surface-variant">
-                    <div class="d-flex align-center justify-space-between">
-                      <div class="d-flex align-center gap-2">
-                        <v-icon>{{ getFileIcon(file.name) }}</v-icon>
-                        <div>
-                          <div class="font-weight-medium">{{ file.name }}</div>
-                          <div class="text-caption">
-                            {{ formatFileSize(file.size) }}
-                          </div>
-                        </div>
-                      </div>
-                      <v-btn icon="mdi-close" variant="text" size="small" @click="removeFile(index)" />
+          <div v-if="selectedFiles.length > 0" class="selected-files-panel">
+            <div class="selected-files-header">
+              <span>已选择 {{ selectedFiles.length }} 个文件</span>
+              <v-btn variant="text" size="small" class="selected-files-clear" @click="selectedFiles = []">清空</v-btn>
+            </div>
+            <div class="files-list">
+              <div v-for="(file, index) in selectedFiles" :key="index" class="file-item">
+                <div class="file-item__info">
+                  <span class="file-item__icon">
+                    <v-icon size="18">{{ getFileIcon(file.name) }}</v-icon>
+                  </span>
+                  <div>
+                    <div class="file-item__name">{{ file.name }}</div>
+                    <div class="file-item__size">
+                      {{ formatFileSize(file.size) }}
                     </div>
                   </div>
                 </div>
+                <v-btn icon="mdi-close" variant="text" size="small" class="file-item__remove" @click="removeFile(index)" />
               </div>
-            </v-window-item>
-
-            <!-- URL上传 -->
-            <v-window-item value="url" class="pt-2">
-              <!-- Tavily Key 快速配置 -->
-              <div v-if="tavilyConfigStatus === 'not_configured' || tavilyConfigStatus === 'error'" class="mb-4">
-                <v-alert :type="tavilyConfigStatus === 'error' ? 'error' : 'info'" variant="tonal" density="compact">
-                  <div class="d-flex align-center justify-space-between">
-                    <span>
-                      {{ tavilyConfigStatus === 'error' ? '检查网页搜索配置失败' : '使用此功能需要配置 Tavily Key' }}
-                    </span>
-                    <v-btn size="small" variant="tonal" @click="showTavilyDialog = true"> 配置 </v-btn>
-                  </div>
-                </v-alert>
-              </div>
-
-              <v-text-field v-model="uploadUrl" :label="t('upload.urlPlaceholder')" variant="outlined" clearable :disabled="tavilyConfigStatus === 'not_configured'" autofocus :hint="t('upload.urlHint', { supported: 'HTML' })" persistent-hint />
-            </v-window-item>
-          </v-window>
-
-          <!-- 清洗设置 (仅在URL模式下显示) -->
-          <div v-if="uploadMode === 'url'" class="mt-6">
-            <div class="d-flex align-center mb-4">
-              <h3 class="text-h6">{{ t('upload.cleaningSettings') }}</h3>
             </div>
-            <v-row>
-              <v-col cols="12" sm="4">
-                <v-switch v-model="uploadSettings.enable_cleaning" :label="t('upload.enableCleaning')" color="primary" />
-              </v-col>
-              <v-col cols="12" sm="8">
-                <v-select v-model="uploadSettings.cleaning_provider_id" :items="llmProviders" item-title="id" item-value="id" :label="t('upload.cleaningProvider')" :hint="t('upload.cleaningProviderHint')" persistent-hint variant="outlined" density="compact" :disabled="!uploadSettings.enable_cleaning" />
-              </v-col>
-            </v-row>
           </div>
 
-          <div class="mt-2">
-            <h3 class="text-h6 mb-4">{{ t('upload.batchSettings') }}</h3>
+          <div class="batch-settings-panel">
+            <h3>{{ t('upload.batchSettings') }}</h3>
             <v-row>
               <v-col cols="12" sm="4">
                 <v-text-field v-model.number="uploadSettings.batch_size" :label="t('upload.batchSize')" hint="每批处理的文本数量" persistent-hint type="number" variant="outlined" density="compact" />
@@ -162,12 +176,12 @@
           </div>
         </v-card-text>
 
-        <v-card-actions class="pa-4">
+        <v-card-actions class="upload-dialog-actions">
           <v-spacer />
-          <v-btn variant="text" @click="closeUploadDialog" :disabled="uploading">
+          <v-btn variant="text" class="upload-cancel-btn" @click="closeUploadDialog" :disabled="uploading">
             {{ t('upload.cancel') }}
           </v-btn>
-          <v-btn color="primary" variant="tonal" @click="startUpload" :loading="uploading" :disabled="isUploadDisabled">
+          <v-btn color="primary" variant="flat" class="upload-submit-btn" @click="startUpload" :loading="uploading" :disabled="isUploadDisabled">
             {{ t('upload.submit') }}
           </v-btn>
         </v-card-actions>
@@ -802,6 +816,9 @@ onUnmounted(() => {
 <style scoped>
 .documents-tab {
   animation: fadeIn 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 @keyframes fadeIn {
@@ -815,41 +832,385 @@ onUnmounted(() => {
 }
 
 .action-bar {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
+  background: linear-gradient(180deg, #f8fcff 0%, #ffffff 100%);
+  border: 1px solid #dceaf3;
+  border-radius: 14px;
+  display: flex;
   gap: 16px;
+  justify-content: space-between;
+  padding: 10px;
   flex-wrap: wrap;
 }
 
-.upload-dropzone {
-  border: 2px dashed rgba(var(--v-theme-primary), 0.3);
+.document-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.document-action-btn {
+  border-radius: 10px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.document-action-btn--primary {
+  box-shadow: 0 8px 18px rgba(47, 150, 207, 0.16);
+}
+
+.document-search {
+  flex: 0 1 330px;
+  min-width: 240px;
+}
+
+.document-search :deep(.v-field) {
+  background: #ffffff;
   border-radius: 12px;
-  padding: 48px 24px;
-  text-align: center;
+}
+
+.documents-table-card {
+  background: #ffffff;
+  border-color: #dceaf3;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.documents-table {
+  background: transparent;
+}
+
+.documents-table :deep(thead th) {
+  background: #f7fbfe !important;
+  border-bottom: 1px solid #dceaf3 !important;
+  color: #263d4f !important;
+  font-size: 0.82rem;
+  font-weight: 800 !important;
+  height: 44px !important;
+}
+
+.documents-table :deep(tbody tr) {
+  transition: background-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.documents-table :deep(tbody tr:hover) {
+  background: #f8fcff !important;
+  box-shadow: inset 3px 0 0 #49a3d6;
+}
+
+.documents-table :deep(tbody td) {
+  border-bottom: 1px solid #e5eef5 !important;
+  color: #152638;
+  font-size: 0.88rem;
+  height: 48px !important;
+  padding-bottom: 6px !important;
+  padding-top: 6px !important;
+}
+
+.document-name-cell {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.document-file-icon {
+  align-items: center;
+  background: #eaf6fd;
+  border: 1px solid #cce8f8;
+  border-radius: 7px;
+  display: flex;
+  flex: 0 0 auto;
+  height: 24px;
+  justify-content: center;
+  width: 24px;
+}
+
+.document-name-content {
+  min-width: 0;
+  padding: 2px 0;
+}
+
+.document-name {
+  color: #152638;
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 700;
+  max-width: 560px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-type-pill {
+  background: #eef8f4;
+  border: 1px solid #d2efe3;
+  border-radius: 999px;
+  color: #23805e;
+  display: inline-flex;
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1;
+  padding: 4px 8px;
+}
+
+.table-muted-text {
+  color: #526776;
+  font-weight: 600;
+}
+
+.document-row-actions {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.document-icon-btn {
+  border-radius: 9px;
+  height: 30px;
+  width: 30px;
+}
+
+.document-icon-btn--view {
+  background: #eaf6fd;
+  color: #2385bd;
+}
+
+.document-icon-btn--view:hover {
+  background: #d9effc;
+}
+
+.document-icon-btn--delete {
+  background: #fff0f0;
+  color: #e54848;
+}
+
+.document-icon-btn--delete:hover {
+  background: #ffe1e1;
+}
+
+.document-empty {
+  align-items: center;
+  color: #647482;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  justify-content: center;
+  min-height: 220px;
+  padding: 28px;
+}
+
+.document-empty__icon {
+  align-items: center;
+  background: #eaf6fd;
+  border: 1px solid #cce8f8;
+  border-radius: 14px;
+  color: #2f96cf;
+  display: flex;
+  height: 62px;
+  justify-content: center;
+  width: 62px;
+}
+
+.document-empty p {
+  margin: 0;
+}
+
+.upload-dialog-card {
+  border: 1px solid #dceaf3;
+  border-radius: 16px !important;
+  overflow: hidden;
+}
+
+.upload-dialog-title {
+  align-items: flex-start;
+  background: linear-gradient(180deg, #f8fcff 0%, #ffffff 100%);
+  border-bottom: 1px solid #e4eef5;
+  display: flex;
+  padding: 20px 24px 16px;
+}
+
+.upload-dialog-title span {
+  color: #162331;
+  display: block;
+  font-size: 1.2rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.upload-dialog-title p {
+  color: #657785;
+  font-size: 0.86rem;
+  font-weight: 400;
+  line-height: 1.45;
+  margin: 4px 0 0;
+}
+
+.upload-dialog-close {
+  background: #f3f7fa;
+  border-radius: 10px;
+  color: #425766;
+}
+
+.upload-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 24px 18px !important;
+}
+
+.upload-dropzone {
+  align-items: center;
+  background: #f8fcff;
+  border: 1px dashed #8ec7e8;
+  border-radius: 14px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  background: rgba(var(--v-theme-surface-variant), 0.3);
+  display: flex;
+  flex-direction: column;
+  min-height: 160px;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
 }
 
 .upload-dropzone:hover,
 .upload-dropzone.dragover {
-  border-color: rgb(var(--v-theme-primary));
-  background: rgba(var(--v-theme-primary), 0.05);
-  transform: scale(1.02);
+  background: #eef9ff;
+  border-color: #3c9bd2;
+  transform: translateY(-1px);
+}
+
+.upload-dropzone__title {
+  color: #172331;
+  font-size: 1.02rem;
+  font-weight: 800;
+  line-height: 1.4;
+  margin: 0 0 10px;
+}
+
+.upload-dropzone__meta {
+  color: #657785;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.selected-files-panel,
+.batch-settings-panel {
+  background: #ffffff;
+  border: 1px solid #dceaf3;
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.selected-files-header {
+  align-items: center;
+  color: #263d4f;
+  display: flex;
+  font-size: 0.9rem;
+  font-weight: 800;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.selected-files-clear {
+  border-radius: 9px;
+  color: #2f89be;
+  font-weight: 700;
 }
 
 .files-list {
-  max-height: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
   overflow-y: auto;
 }
 
 .file-item {
-  transition: all 0.2s ease;
+  align-items: center;
+  background: #f8fcff;
+  border: 1px solid #e2edf5;
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 12px;
+  transition: background-color 0.18s ease, border-color 0.18s ease;
 }
 
 .file-item:hover {
-  background: rgba(var(--v-theme-surface-variant), 0.8) !important;
+  background: #f1f9fe;
+  border-color: #cce8f8;
+}
+
+.file-item__info {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  min-width: 0;
+}
+
+.file-item__icon {
+  align-items: center;
+  background: #eaf6fd;
+  border: 1px solid #cce8f8;
+  border-radius: 9px;
+  color: #2f96cf;
+  display: flex;
+  flex: 0 0 auto;
+  height: 32px;
+  justify-content: center;
+  width: 32px;
+}
+
+.file-item__name {
+  color: #172331;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.4;
+  max-width: 500px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-item__size {
+  color: #6d7c88;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.file-item__remove {
+  border-radius: 9px;
+  color: #6d7c88;
+}
+
+.batch-settings-panel h3 {
+  color: #263d4f;
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1.4;
+  margin: 0 0 12px;
+}
+
+.upload-dialog-actions {
+  background: #fbfdff;
+  border-top: 1px solid #e4eef5;
+  padding: 14px 24px !important;
+}
+
+.upload-cancel-btn,
+.upload-submit-btn {
+  border-radius: 10px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.upload-submit-btn {
+  min-width: 86px;
 }
 
 @media (max-width: 768px) {
@@ -858,8 +1219,18 @@ onUnmounted(() => {
     align-items: stretch;
   }
 
-  .action-bar > * {
+  .action-bar > *,
+  .document-search {
     width: 100%;
+    max-width: none;
+  }
+
+  .document-name {
+    max-width: 260px;
+  }
+
+  .file-item__name {
+    max-width: 220px;
   }
 }
 </style>

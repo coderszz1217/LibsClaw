@@ -215,28 +215,42 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <v-card variant="outlined" class="graph-card">
+  <v-card variant="flat" class="graph-card">
     <v-card-title class="graph-toolbar">
-      <div>
-        <div class="text-h6">知识图谱</div>
-        <div class="text-caption text-medium-emphasis">
-          {{ filteredNodes.length }} / {{ nodes.length }} 个节点 · {{ filteredEdges.length }} 条关系
+      <div class="graph-title-block">
+        <div class="graph-title-line">
+          <span class="graph-title">知识图谱</span>
+          <span class="graph-count-pill">
+            {{ filteredNodes.length }} / {{ nodes.length }} 个节点
+          </span>
+          <span class="graph-count-pill graph-count-pill--muted">
+            {{ filteredEdges.length }} 条关系
+          </span>
         </div>
+        <div class="graph-subtitle">查看知识节点之间的引用、概念与来源关系。</div>
       </div>
       <v-spacer />
-      <v-text-field
-        v-model="searchInput"
-        prepend-inner-icon="mdi-magnify"
-        density="compact"
-        hide-details
-        clearable
-        placeholder="搜索节点"
-        variant="outlined"
-        class="graph-search"
-      />
-      <v-btn prepend-icon="mdi-refresh" variant="text" :loading="loading" @click="loadGraph">
-        刷新
-      </v-btn>
+      <div class="graph-toolbar-actions">
+        <v-text-field
+          v-model="searchInput"
+          prepend-inner-icon="mdi-magnify"
+          density="compact"
+          hide-details
+          clearable
+          placeholder="搜索节点"
+          variant="outlined"
+          class="graph-search"
+        />
+        <v-btn
+          prepend-icon="mdi-refresh"
+          variant="tonal"
+          class="graph-refresh-btn"
+          :loading="loading"
+          @click="loadGraph"
+        >
+          刷新
+        </v-btn>
+      </div>
     </v-card-title>
 
     <v-card-text class="graph-content">
@@ -263,8 +277,13 @@ onUnmounted(() => {
 
         <div class="graph-legend">
           <div class="legend-heading">
-            <span class="text-subtitle-2">节点类型</span>
-            <v-btn size="x-small" variant="text" @click="showAllTypes"> 全部显示 </v-btn>
+            <div>
+              <span class="legend-title">节点类型</span>
+              <span class="legend-subtitle">点击切换显示</span>
+            </div>
+            <v-btn size="x-small" variant="tonal" class="legend-reset-btn" @click="showAllTypes">
+              全部
+            </v-btn>
           </div>
           <button
             v-for="item in legendItems"
@@ -373,33 +392,100 @@ onUnmounted(() => {
 
 <style scoped>
 .graph-card {
-  min-height: 800px;
+  min-height: 760px;
+  overflow: hidden;
+  border: 1px solid #d8e8f3;
+  border-radius: 16px;
+  background: #ffffff;
 }
 
 .graph-toolbar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 74px;
+  gap: 16px;
+  min-height: 86px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid #e1edf6;
+  background: linear-gradient(180deg, #f7fbfe 0%, #ffffff 100%);
+  padding: 16px 18px;
+}
+
+.graph-title-block {
+  min-width: 0;
+}
+
+.graph-title-line,
+.graph-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
+.graph-title {
+  color: #102033;
+  font-size: 1rem;
+  font-weight: 750;
+}
+
+.graph-subtitle {
+  color: #6b7d8f;
+  font-size: 0.78rem;
+  margin-top: 5px;
+}
+
+.graph-count-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border: 1px solid #c8e3f6;
+  border-radius: 999px;
+  background: #eaf6fd;
+  color: #2584bd;
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 0 9px;
+}
+
+.graph-count-pill--muted {
+  border-color: #dfe8ef;
+  background: #f4f8fb;
+  color: #5f7285;
+}
+
 .graph-search {
-  max-width: 280px;
+  width: 300px;
+}
+
+.graph-search :deep(.v-field) {
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.graph-refresh-btn {
+  border-radius: 10px;
+  color: #2a8cc7;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 
 .graph-content {
-  padding: 12px;
+  padding: 16px;
+  background: #fbfdff;
 }
 
 .graph-shell {
   position: relative;
-  min-height: 720px;
+  min-height: 660px;
+  overflow: hidden;
+  border: 1px solid #dceaf4;
+  border-radius: 16px;
+  background: #ffffff;
 }
 
 .graph-empty {
   display: flex;
-  min-height: 720px;
+  min-height: 660px;
   align-items: center;
   flex-direction: column;
   justify-content: center;
@@ -410,16 +496,17 @@ onUnmounted(() => {
 .graph-detail {
   position: absolute;
   z-index: 3;
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border: 1px solid #d9e8f3;
 }
 
 .graph-legend {
-  right: 16px;
-  bottom: 16px;
-  width: 190px;
-  border-radius: 12px;
-  background: rgb(var(--v-theme-surface));
-  padding: 10px;
+  right: 18px;
+  bottom: 18px;
+  width: 210px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 12px 34px rgba(42, 79, 110, 0.12);
+  padding: 12px;
 }
 
 .legend-heading,
@@ -430,24 +517,47 @@ onUnmounted(() => {
 
 .legend-heading {
   justify-content: space-between;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
+}
+
+.legend-title,
+.legend-subtitle {
+  display: block;
+}
+
+.legend-title {
+  color: #14263a;
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.legend-subtitle {
+  color: #8090a2;
+  font-size: 0.68rem;
+  margin-top: 2px;
+}
+
+.legend-reset-btn {
+  border-radius: 8px;
+  color: #2a8cc7;
+  font-weight: 700;
 }
 
 .legend-row {
   width: 100%;
-  gap: 8px;
+  gap: 9px;
   border: 0;
-  border-radius: 7px;
+  border-radius: 9px;
   background: transparent;
-  color: inherit;
+  color: #203247;
   cursor: pointer;
   font-size: 0.78rem;
-  padding: 6px;
+  padding: 7px 6px;
   text-align: left;
 }
 
 .legend-row:hover {
-  background: rgba(var(--v-theme-primary), 0.07);
+  background: #f1f8fd;
 }
 
 .legend-row--inactive {
@@ -455,21 +565,23 @@ onUnmounted(() => {
 }
 
 .legend-dot {
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
   flex: 0 0 auto;
   border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(47, 150, 211, 0.08);
 }
 
 .graph-detail {
-  top: 16px;
-  right: 16px;
+  top: 18px;
+  right: 18px;
   display: flex;
   width: min(390px, calc(100% - 32px));
   max-height: 610px;
   flex-direction: column;
-  border-radius: 14px;
-  background: rgb(var(--v-theme-surface));
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 18px 46px rgba(42, 79, 110, 0.16);
 }
 
 .graph-detail-title {

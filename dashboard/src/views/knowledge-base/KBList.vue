@@ -1,8 +1,38 @@
 <template>
   <div class="kb-list-page">
+    <div class="kb-list-toolbar">
+      <div class="kb-list-summary">
+        <v-icon icon="mdi-bookshelf" size="20" />
+        <span class="kb-list-summary__value">{{ total || kbList.length }}</span>
+        <span>{{ t('list.title') }}</span>
+      </div>
+
+      <div class="kb-list-toolbar__actions">
+        <v-btn
+          prepend-icon="mdi-refresh"
+          color="primary"
+          variant="tonal"
+          class="kb-toolbar-btn"
+          :loading="loading"
+          @click="loadKnowledgeBases(true)"
+        >
+          {{ t('list.refresh') }}
+        </v-btn>
+        <v-btn
+          prepend-icon="mdi-plus"
+          color="primary"
+          variant="flat"
+          class="kb-toolbar-btn kb-toolbar-btn--primary"
+          @click="showCreateDialog = true"
+        >
+          {{ t('list.create') }}
+        </v-btn>
+      </div>
+    </div>
+
     <div v-if="loading && kbList.length === 0" class="loading-container">
-      <v-progress-circular indeterminate color="primary" size="64" />
-      <p class="mt-4 text-medium-emphasis">{{ t('list.loading') }}</p>
+      <v-progress-circular indeterminate color="primary" size="42" width="3" />
+      <p>{{ t('list.loading') }}</p>
     </div>
 
     <div v-else-if="kbList.length > 0" class="kb-list">
@@ -59,7 +89,7 @@
                 icon="mdi-pencil-outline"
                 variant="text"
                 size="small"
-                class="list-action-icon-btn"
+                class="list-action-icon-btn list-action-icon-btn--edit"
                 @click.stop="editKB(kb)"
               />
             </template>
@@ -72,7 +102,7 @@
                 icon="mdi-delete-outline"
                 variant="text"
                 size="small"
-                class="list-action-icon-btn"
+                class="list-action-icon-btn list-action-icon-btn--delete"
                 @click.stop="confirmDelete(kb)"
               />
             </template>
@@ -92,42 +122,15 @@
 
     <!-- 空状态 -->
     <div v-else class="empty-state">
-      <v-icon size="100" color="grey-lighten-2">mdi-book-open-variant</v-icon>
-      <h2 class="mt-4">{{ t('list.empty') }}</h2>
-      <v-btn class="mt-6" prepend-icon="mdi-plus" color="primary" variant="elevated" size="large"
+      <div class="empty-state__icon">
+        <v-icon size="34">mdi-book-open-variant</v-icon>
+      </div>
+      <h2>{{ t('list.empty') }}</h2>
+      <p>创建一个知识库后，可以集中管理文档、分块和检索配置。</p>
+      <v-btn prepend-icon="mdi-plus" color="primary" variant="tonal" size="large"
         @click="showCreateDialog = true">
         {{ t('list.create') }}
       </v-btn>
-    </div>
-
-    <div class="kb-fab-stack">
-      <v-tooltip :text="t('list.refresh')" location="left">
-        <template #activator="{ props }">
-          <v-btn
-            v-bind="props"
-            color="darkprimary"
-            icon="mdi-refresh"
-            size="x-large"
-            variant="elevated"
-            class="kb-fab"
-            :loading="loading"
-            @click="loadKnowledgeBases()"
-          />
-        </template>
-      </v-tooltip>
-      <v-tooltip :text="t('list.create')" location="left">
-        <template #activator="{ props }">
-          <v-btn
-            v-bind="props"
-            color="darkprimary"
-            icon="mdi-plus"
-            size="x-large"
-            variant="elevated"
-            class="kb-fab"
-            @click="showCreateDialog = true"
-          />
-        </template>
-      </v-tooltip>
     </div>
 
     <!-- 创建/编辑对话框 -->
@@ -258,8 +261,10 @@
       {{ snackbar.text }}
     </v-snackbar>
 
-    <div class="position-absolute" style="bottom: 0px; right: 16px;">
-      <small @click="router.push('/alkaid/knowledge-base')"><a style="text-decoration: underline; cursor: pointer;">切换到旧版知识库</a></small>
+    <div class="kb-legacy-link">
+      <button type="button" @click="router.push('/alkaid/knowledge-base')">
+        切换到旧版知识库
+      </button>
     </div>
 
   </div>
@@ -505,31 +510,143 @@ onMounted(() => {
 
 <style scoped>
 .kb-list-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
   width: 100%;
 }
 
+.kb-list-toolbar {
+  align-items: center;
+  background: linear-gradient(180deg, #f8fcff 0%, #ffffff 100%);
+  border: 1px solid #d9ebf7;
+  border-radius: 14px;
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  padding: 12px 14px;
+}
+
+.kb-list-summary {
+  align-items: center;
+  color: #416071;
+  display: inline-flex;
+  font-size: 0.9rem;
+  gap: 8px;
+  min-width: 0;
+}
+
+.kb-list-summary :deep(.v-icon) {
+  color: #2f96cf;
+}
+
+.kb-list-summary__value {
+  color: #15384c;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.kb-list-toolbar__actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.kb-toolbar-btn {
+  border-radius: 10px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.kb-toolbar-btn--primary {
+  box-shadow: 0 8px 18px rgba(47, 150, 207, 0.18);
+}
+
 .kb-list {
+  background: #ffffff;
+  border: 1px solid #dceaf3;
+  border-radius: 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0;
+  overflow: hidden;
+}
+
+.kb-list :deep(.outlined-action-list-item) {
+  background: #ffffff;
+  border: 0;
+  border-bottom: 1px solid #e4eef5;
+  border-radius: 0 !important;
+  box-shadow: none;
+  transition: background-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.kb-list :deep(.outlined-action-list-item:last-of-type) {
+  border-bottom: 0;
+}
+
+.kb-list :deep(.outlined-action-list-item:hover),
+.kb-list :deep(.outlined-action-list-item:focus-within) {
+  background: #f6fbff;
+  box-shadow: inset 3px 0 0 #49a3d6;
+}
+
+.kb-list :deep(.outlined-action-list-item__main) {
+  min-height: 112px;
+  padding: 18px 20px;
+}
+
+.kb-list :deep(.outlined-action-list-item__content) {
+  flex: 1 1 auto;
+}
+
+.kb-list :deep(.outlined-action-list-item__header) {
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.kb-list :deep(.outlined-action-list-item__title) {
+  color: #162331;
+  font-size: 1.05rem;
+}
+
+.kb-list :deep(.outlined-action-list-item__actions) {
+  border-left: 1px solid #e2edf4;
+  padding-left: 14px;
 }
 
 .kb-list-emoji {
+  align-items: center;
+  background: #eaf6fd;
+  border: 1px solid #cce8f8;
+  border-radius: 10px;
+  color: #2f96cf;
+  display: inline-flex;
   font-size: 1.25rem;
+  height: 38px;
+  justify-content: center;
   line-height: 1;
+  width: 38px;
 }
 
 .kb-description {
+  color: #5b6b78;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 1;
+  font-size: 0.875rem;
+  line-height: 1.5;
   overflow: hidden;
 }
 
 .kb-stats {
   display: flex;
-  gap: 16px;
-  margin-top: 6px;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
 }
 
 .kb-error-panel {
@@ -563,63 +680,106 @@ onMounted(() => {
 }
 
 .stat-item {
+  background: #f7fafc;
+  border: 1px solid #dfeaf1;
+  border-radius: 999px;
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.875rem;
-  color: rgba(var(--v-theme-on-surface), 0.62);
+  font-size: 0.82rem;
+  color: #526776;
+  padding: 4px 9px;
 }
 
 .list-action-icon-btn {
-  color: rgba(var(--v-theme-on-surface), 0.78);
+  border-radius: 10px;
+  color: #2879aa;
+  height: 34px;
+  width: 34px;
 }
 
-.list-action-icon-btn:hover {
-  background: rgba(var(--v-theme-on-surface), 0.08);
-  color: rgb(var(--v-theme-on-surface));
+.list-action-icon-btn--edit {
+  background: #eaf6fd;
 }
 
-.kb-fab-stack {
-  align-items: center;
-  bottom: 52px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  position: fixed;
-  right: 52px;
-  z-index: 10000;
+.list-action-icon-btn--edit:hover {
+  background: #d9effc;
+  color: #1676ad;
 }
 
-.kb-fab {
-  border-radius: 16px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+.list-action-icon-btn--delete {
+  background: #fff0f0;
+  color: #e54848;
 }
 
-.kb-fab:hover {
-  box-shadow: 0 12px 20px rgba(var(--v-theme-primary), 0.4);
-  transform: translateY(-4px) scale(1.05);
+.list-action-icon-btn--delete:hover {
+  background: #ffe1e1;
+  color: #d72f2f;
 }
 
 /* 空状态 */
-.empty-state {
+.empty-state,
+.loading-container {
+  align-items: center;
   display: flex;
   flex-direction: column;
-  align-items: center;
   justify-content: center;
-  min-height: 400px;
+  min-height: 320px;
   text-align: center;
+  background: linear-gradient(180deg, #fbfdff 0%, #ffffff 100%);
+  border: 1px solid #dceaf3;
+  border-radius: 16px;
+  color: #62717d;
+  gap: 12px;
+}
+
+.empty-state__icon {
+  align-items: center;
+  background: #eaf6fd;
+  border: 1px solid #cce8f8;
+  border-radius: 16px;
+  color: #2f96cf;
+  display: flex;
+  height: 68px;
+  justify-content: center;
+  width: 68px;
+}
+
+.empty-state h2 {
+  color: #162331;
+  font-size: 1.1rem;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.empty-state p,
+.loading-container p {
+  color: #647482;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.kb-legacy-link {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.kb-legacy-link button {
+  background: transparent;
+  border: 0;
+  color: #4f8fb8;
+  cursor: pointer;
+  font-size: 0.82rem;
+  padding: 0;
+}
+
+.kb-legacy-link button:hover {
+  color: #237aac;
+  text-decoration: underline;
 }
 
 /* 加载状态 */
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 400px;
-}
-
+/* .loading-container shared with empty state */
 /* Emoji 显示和选择器 */
 .emoji-display {
   font-size: 72px;
@@ -660,6 +820,17 @@ onMounted(() => {
 
 /* 响应式设计 */
 @media (max-width: 768px) {
+  .kb-list-toolbar,
+  .kb-list-toolbar__actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .kb-list :deep(.outlined-action-list-item__actions) {
+    border-left: 0;
+    padding-left: 0;
+  }
+
   .emoji-grid {
     grid-template-columns: repeat(6, 1fr);
   }

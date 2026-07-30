@@ -385,9 +385,9 @@ watch(
 <template>
   <div>
     <div class="wiki-actions mb-4">
-      <div>
-        <div class="text-h6">知识文件</div>
-        <div class="text-caption text-medium-emphasis">
+      <div class="wiki-actions__copy">
+        <div class="wiki-actions__title">知识文件</div>
+        <div class="wiki-actions__desc">
           文件夹是真实目录，移动后会自动维护内部链接和索引。
         </div>
       </div>
@@ -396,6 +396,7 @@ watch(
         prepend-icon="mdi-file-plus-outline"
         color="primary"
         variant="tonal"
+        class="wiki-action-btn wiki-action-btn--primary"
         :disabled="operationBusy"
         @click="newPage"
       >
@@ -404,6 +405,7 @@ watch(
       <v-btn
         prepend-icon="mdi-folder-upload-outline"
         variant="outlined"
+        class="wiki-action-btn"
         :disabled="operationBusy"
         :loading="importing"
         @click="openImportDialog"
@@ -413,6 +415,7 @@ watch(
       <v-btn
         prepend-icon="mdi-database-refresh"
         variant="text"
+        class="wiki-action-btn wiki-action-btn--ghost"
         :disabled="operationBusy"
         :loading="rebuilding"
         @click="rebuildIndex"
@@ -432,8 +435,12 @@ watch(
         @request-delete="requestDelete"
       />
 
-      <v-card class="wiki-editor" variant="outlined">
+      <v-card class="wiki-editor" variant="flat">
         <v-card-title class="wiki-toolbar">
+          <div class="wiki-toolbar__label">
+            <v-icon size="18">mdi-file-document-edit-outline</v-icon>
+            编辑页面
+          </div>
           <v-text-field
             v-model="editorPath"
             density="compact"
@@ -461,6 +468,7 @@ watch(
             color="primary"
             prepend-icon="mdi-content-save-outline"
             variant="tonal"
+            class="wiki-save-btn"
             :disabled="operationBusy || (!hasChanges && !!selectedPath)"
             :loading="saving"
             @click="savePage"
@@ -562,45 +570,119 @@ watch(
 <style scoped>
 .wiki-layout {
   display: grid;
-  grid-template-columns: minmax(360px, 38%) minmax(0, 1fr);
-  gap: 16px;
-  min-height: 680px;
+  grid-template-columns: minmax(340px, 34%) minmax(0, 1fr);
+  gap: 18px;
+  min-height: 620px;
 }
 
 .wiki-editor {
-  min-height: 680px;
+  display: flex;
+  min-height: 620px;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #d8e8f3;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #fbfdff 0%, #ffffff 34%);
 }
 
 .wiki-actions {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
+  border-bottom: 1px solid #dcebf5;
+  padding-bottom: 12px;
+}
+
+.wiki-actions__title {
+  color: #102033;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.wiki-actions__desc {
+  color: #667789;
+  font-size: 0.8rem;
+  margin-top: 3px;
+}
+
+.wiki-action-btn {
+  border-radius: 10px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.wiki-action-btn--primary {
+  background: #e7f4fd;
+}
+
+.wiki-action-btn--ghost {
+  color: #2f8fc8;
 }
 
 .wiki-toolbar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 64px;
+  gap: 10px;
+  min-height: 68px;
+  border-bottom: 1px solid #e1edf6;
+  background: #f7fbfe;
+  padding: 12px 16px;
+}
+
+.wiki-toolbar__label {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 6px;
+  color: #365268;
+  font-size: 0.86rem;
+  font-weight: 700;
 }
 
 .wiki-editor-content {
   display: flex;
   flex-direction: column;
-  height: 608px;
+  flex: 1;
+  min-height: 0;
+  padding: 16px;
+  background: #ffffff;
 }
 
 .wiki-path-field {
-  max-width: 520px;
+  max-width: 560px;
+}
+
+.wiki-path-field :deep(.v-field) {
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.wiki-save-btn {
+  min-width: 88px;
+  border-radius: 10px;
+  font-weight: 700;
 }
 
 .wiki-textarea {
   flex: 1;
 }
 
+.wiki-textarea :deep(.v-field) {
+  min-height: 100%;
+  border-radius: 14px;
+  background:
+    linear-gradient(#ffffff, #ffffff) padding-box,
+    linear-gradient(180deg, #dcebf6, #edf4f9) border-box;
+}
+
+.wiki-textarea :deep(.v-field__input) {
+  padding: 18px 20px;
+}
+
 .wiki-textarea :deep(textarea) {
-  min-height: 430px;
+  min-height: 470px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   line-height: 1.6;
 }

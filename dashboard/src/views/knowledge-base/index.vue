@@ -48,8 +48,8 @@ const goToList = () => {
 <style scoped>
 .kb-container {
   margin: 0 auto;
-  max-width: 1040px;
-  padding: 24px;
+  max-width: 1120px;
+  padding: 28px 28px 32px;
   width: 100%;
   height: 100%;
   position: relative;
@@ -57,9 +57,11 @@ const goToList = () => {
 
 .page-header {
   align-items: flex-start;
+  border-bottom: 1px solid rgba(var(--v-theme-primary), 0.14);
   display: flex;
   justify-content: space-between;
-  margin-bottom: 24px;
+  margin-bottom: 18px;
+  padding-bottom: 18px;
 }
 
 .kb-page-title {
@@ -98,6 +100,11 @@ const goToList = () => {
 @media (max-width: 768px) {
   .kb-container {
     padding: 16px;
+  }
+
+  .page-header {
+    margin-bottom: 14px;
+    padding-bottom: 14px;
   }
 }
 </style>

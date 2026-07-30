@@ -442,18 +442,24 @@ onUnmounted(() => {
   <div ref="containerRef" class="graph-canvas-shell">
     <svg ref="svgRef" class="graph-canvas" aria-label="知识图谱" />
     <div class="graph-controls">
-      <v-btn icon="mdi-plus" size="small" variant="tonal" aria-label="放大" @click="zoomBy(1.3)" />
+      <v-btn
+        icon="mdi-plus"
+        size="small"
+        variant="flat"
+        aria-label="放大"
+        @click="zoomBy(1.3)"
+      />
       <v-btn
         icon="mdi-minus"
         size="small"
-        variant="tonal"
+        variant="flat"
         aria-label="缩小"
         @click="zoomBy(0.77)"
       />
       <v-btn
         icon="mdi-fit-to-screen-outline"
         size="small"
-        variant="tonal"
+        variant="flat"
         aria-label="适应画布"
         @click="fitGraph()"
       />
@@ -470,13 +476,14 @@ onUnmounted(() => {
   contain: layout paint;
   isolation: isolate;
   width: 100%;
-  height: 720px;
+  height: 660px;
   overflow: hidden;
-  border-radius: 14px;
-  background-color: rgb(var(--v-theme-surface));
-  background-image: linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
-  background-size: 28px 28px;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(47, 150, 211, 0.08), transparent 34%),
+    linear-gradient(rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+    #fbfdff;
+  background-size: auto, 32px 32px, 32px 32px, auto;
 }
 
 .graph-canvas {
@@ -488,21 +495,39 @@ onUnmounted(() => {
 
 .graph-controls {
   position: absolute;
-  top: 14px;
-  left: 14px;
+  top: 16px;
+  left: 16px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 7px;
+  border: 1px solid #d8e8f3;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 10px 28px rgba(42, 79, 110, 0.1);
+  padding: 6px;
+}
+
+.graph-controls :deep(.v-btn) {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: #eef8ff;
+  color: #2a8cc7;
+}
+
+.graph-controls :deep(.v-btn:hover) {
+  background: #dff1fb;
 }
 
 .graph-help {
   position: absolute;
   left: 16px;
-  bottom: 14px;
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  border-radius: 8px;
-  background: rgba(var(--v-theme-surface), 0.88);
-  padding: 6px 10px;
+  bottom: 16px;
+  border: 1px solid #d8e8f3;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #6c7d8f;
+  padding: 6px 12px;
   pointer-events: none;
 }
 

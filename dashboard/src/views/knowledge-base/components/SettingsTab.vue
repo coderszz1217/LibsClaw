@@ -1,72 +1,101 @@
 <template>
   <div class="settings-tab">
-    <v-card variant="outlined">
-      <v-card-title class="pa-4">{{ t('settings.title') }}</v-card-title>
+    <v-card class="settings-panel" variant="flat">
+      <div class="settings-panel__header">
+        <div>
+          <div class="settings-panel__eyebrow">Retrieval Settings</div>
+          <h2>{{ t('settings.title') }}</h2>
+          <p>控制知识库分块、检索召回和模型提供商配置。</p>
+        </div>
+        <div class="settings-panel__actions">
+          <span>提示：修改检索设置后，将影响后续的知识库查询效果。</span>
+          <v-btn
+            color="success"
+            variant="tonal"
+            prepend-icon="mdi-content-save"
+            class="settings-save-btn"
+            @click="saveSettings"
+            :loading="saving"
+          >
+            {{ t('settings.save') }}
+          </v-btn>
+        </div>
+      </div>
 
-      <v-card-text class="pa-6">
-        <v-form ref="formRef">
-          <!-- 基本设置 -->
-          <h3 class="text-h6 mb-4">{{ t('settings.basic') }}</h3>
+      <v-card-text class="settings-panel__body">
+        <v-form ref="formRef" class="settings-form">
+          <section class="settings-section">
+            <div class="settings-section__header">
+              <span class="settings-section__index">01</span>
+              <div>
+                <h3>{{ t('settings.basic') }}</h3>
+                <p>设置文档切分后的片段长度与重叠范围。</p>
+              </div>
+            </div>
 
-          <v-row>
-            <v-col cols="12" md="6">
+            <div class="settings-grid">
               <v-text-field
                 v-model.number="formData.chunk_size"
                 :label="t('settings.chunkSize')"
                 type="number"
                 variant="outlined"
                 density="comfortable"
+                class="settings-field"
+                hide-details="auto"
               />
-            </v-col>
-            <v-col cols="12" md="6">
               <v-text-field
                 v-model.number="formData.chunk_overlap"
                 :label="t('settings.chunkOverlap')"
                 type="number"
                 variant="outlined"
                 density="comfortable"
+                class="settings-field"
+                hide-details="auto"
               />
-            </v-col>
-          </v-row>
+            </div>
+          </section>
 
-          <!-- 检索设置 -->
-          <h3 class="text-h6 mb-4 mt-6">{{ t('settings.retrieval') }}</h3>
+          <section class="settings-section">
+            <div class="settings-section__header">
+              <span class="settings-section__index">02</span>
+              <div>
+                <h3>{{ t('settings.retrieval') }}</h3>
+                <p>调整粗召回与精确检索的候选数量。</p>
+              </div>
+            </div>
 
-          <v-row>
-            <v-col cols="12" md="6">
+            <div class="settings-grid">
               <v-text-field
                 v-model.number="formData.top_k_dense"
                 :label="t('settings.topKDense')"
                 type="number"
                 variant="outlined"
                 density="comfortable"
+                class="settings-field"
+                hide-details="auto"
               />
-            </v-col>
-            <v-col cols="12" md="6">
               <v-text-field
                 v-model.number="formData.top_k_sparse"
                 :label="t('settings.topKSparse')"
                 type="number"
                 variant="outlined"
                 density="comfortable"
+                class="settings-field"
+                hide-details="auto"
               />
-            </v-col>
-            <!-- <v-col cols="12" md="4">
-              <v-text-field
-                v-model.number="formData.top_m_final"
-                :label="t('settings.topMFinal')"
-                type="number"
-                variant="outlined"
-                density="comfortable"
-              />
-            </v-col> -->
-          </v-row>
+            </div>
+          </section>
 
-          <!-- 模型设置 -->
-          <h3 class="text-h6 mb-4 mt-6">{{ t('settings.embeddingProvider') }}</h3>
+          <section class="settings-section">
+            <div class="settings-section__header">
+              <span class="settings-section__index">03</span>
+              <div>
+                <h3>{{ t('settings.embeddingProvider') }}</h3>
+                <p>选择嵌入模型与重排序模型，影响知识库检索效果。</p>
+              </div>
+            </div>
 
-          <v-row>
-            <v-col cols="12" md="6">
+            <div class="settings-grid">
               <v-select
                 v-model="formData.embedding_provider_id"
                 :items="embeddingProviders"
@@ -75,11 +104,11 @@
                 :label="t('settings.embeddingProvider')"
                 variant="outlined"
                 density="comfortable"
+                class="settings-field"
+                hide-details="auto"
                 @update:model-value="handleEmbeddingProviderChange"
                 clearable
               />
-            </v-col>
-            <v-col cols="12" md="6">
               <v-select
                 v-model="formData.rerank_provider_id"
                 :items="rerankProviders"
@@ -88,33 +117,21 @@
                 :label="t('settings.rerankProvider')"
                 variant="outlined"
                 density="comfortable"
+                class="settings-field"
+                hide-details="auto"
                 clearable
               />
-            </v-col>
-          </v-row>
+            </div>
+          </section>
 
-          <v-alert type="info" variant="tonal" class="mt-4">
-            {{ t('settings.tips') }}
-          </v-alert>
-
-          <v-alert type="warning" variant="tonal" class="mt-4" v-if="showEmbeddingWarning">
-            <strong>注意:</strong> 保存后系统会从 Markdown 真源重建全部派生索引，完成前请勿重复修改设置。
-          </v-alert>
+          <div class="settings-alerts">
+            <v-alert type="warning" variant="tonal" class="settings-note settings-note--warning" v-if="showEmbeddingWarning">
+              <strong>注意:</strong> 保存后系统会从 Markdown 真源重建全部派生索引，完成前请勿重复修改设置。
+            </v-alert>
+          </div>
         </v-form>
       </v-card-text>
 
-      <v-card-actions class="pa-4">
-        <v-spacer />
-        <v-btn
-          color="primary"
-          variant="elevated"
-          prepend-icon="mdi-content-save"
-          @click="saveSettings"
-          :loading="saving"
-        >
-          {{ t('settings.save') }}
-        </v-btn>
-      </v-card-actions>
     </v-card>
 
     <!-- 消息提示 -->
@@ -303,6 +320,184 @@ onMounted(() => {
 <style scoped>
 .settings-tab {
   animation: fadeIn 0.3s ease;
+}
+
+.settings-panel {
+  overflow: hidden;
+  border: 1px solid #d7e8f3;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.settings-panel__header {
+  padding: 22px 28px 18px;
+  border-bottom: 1px solid #dbeaf4;
+  background: #fff;
+}
+
+.settings-panel__eyebrow {
+  margin-bottom: 6px;
+  color: #5a9dca;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.settings-panel__header h2 {
+  margin: 0;
+  color: #172333;
+  font-size: 21px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.settings-panel__header p {
+  margin: 8px 0 0;
+  color: #6a7a89;
+  font-size: 14px;
+}
+
+.settings-panel__body {
+  padding: 18px 28px 4px !important;
+}
+
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.settings-section {
+  position: relative;
+  padding: 16px 18px;
+  border: 1px solid #e0ebf3;
+  border-radius: 12px;
+  background: #fcfdff;
+}
+
+.settings-section__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.settings-section__index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #cce5f5;
+  border-radius: 8px;
+  background: #eef8ff;
+  color: #238cca;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.settings-section__header h3 {
+  margin: 0;
+  color: #101a27;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.settings-section__header p {
+  margin: 4px 0 0;
+  color: #718292;
+  font-size: 13px;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 18px;
+}
+
+.settings-field :deep(.v-field) {
+  border-radius: 10px;
+  background: #fff;
+}
+
+.settings-field :deep(.v-field__outline) {
+  color: #cfe0ec;
+}
+
+.settings-field :deep(.v-field--focused .v-field__outline) {
+  color: #8fc7ea;
+}
+
+.settings-field :deep(.v-label) {
+  color: #6f7f8d;
+  font-size: 13px;
+}
+
+.settings-field :deep(input) {
+  color: #142235;
+  font-weight: 600;
+}
+
+.settings-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.settings-note {
+  min-height: 44px;
+  border: 1px solid #d7edf3;
+  border-radius: 10px;
+  background: #f7fcfd !important;
+  color: #357888;
+}
+
+.settings-note--warning {
+  border-color: #ffe0a8;
+  background: #fff9ed !important;
+  color: #9a650d;
+}
+
+.settings-panel__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 14px;
+  padding: 10px 12px 10px 14px;
+  border: 1px solid #cfeadc;
+  border-radius: 10px;
+  background: #f5fcf8;
+}
+
+.settings-panel__actions span {
+  color: #28724a;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.settings-save-btn {
+  min-width: 108px;
+  border: 1px solid #addbc0;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+@media (max-width: 960px) {
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-panel__actions {
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .settings-save-btn {
+    width: 100%;
+  }
 }
 
 @keyframes fadeIn {

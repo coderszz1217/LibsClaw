@@ -128,14 +128,14 @@ watch(
 </script>
 
 <template>
-  <v-card class="file-browser" variant="outlined">
+  <v-card class="file-browser" variant="flat">
     <v-card-title class="file-browser-title">
       <div>
-        <div class="text-subtitle-1 font-weight-bold">文件管理</div>
-        <div class="text-caption text-medium-emphasis">按目录浏览 Markdown 真源</div>
+        <div class="file-browser-heading">文件管理</div>
+        <div class="file-browser-desc">按目录浏览 Markdown 真源</div>
       </div>
       <v-spacer />
-      <v-chip size="small" variant="tonal">
+      <v-chip class="file-browser-count" size="small" variant="tonal">
         {{ tree ? descendantPageCount(tree) : 0 }} 个页面
       </v-chip>
     </v-card-title>
@@ -149,7 +149,7 @@ watch(
         clearable
         placeholder="搜索文件名或路径"
         variant="outlined"
-        class="mb-3"
+        class="file-search mb-3"
       />
 
       <div v-if="!search" class="breadcrumb-bar mb-3">
@@ -269,18 +269,49 @@ watch(
 
 <style scoped>
 .file-browser {
-  min-height: 680px;
+  min-height: 620px;
+  overflow: hidden;
+  border: 1px solid #d8e8f3;
+  border-radius: 16px;
+  background: #ffffff;
 }
 
 .file-browser-title {
   display: flex;
   align-items: center;
-  min-height: 72px;
+  min-height: 76px;
+  border-bottom: 1px solid #e1edf6;
+  background: #f7fbfe;
+  padding: 16px 18px;
+}
+
+.file-browser-heading {
+  color: #102033;
+  font-size: 0.98rem;
+  font-weight: 750;
+}
+
+.file-browser-desc {
+  color: #6b7d8f;
+  font-size: 0.76rem;
+  margin-top: 4px;
+}
+
+.file-browser-count {
+  background: #e6f3fb;
+  color: #2b83b9;
+  font-weight: 700;
 }
 
 .file-browser-body {
-  height: 608px;
+  height: 544px;
   overflow: auto;
+  padding: 16px;
+}
+
+.file-search :deep(.v-field) {
+  border-radius: 12px;
+  background: #fbfdff;
 }
 
 .breadcrumb-bar,
@@ -291,8 +322,9 @@ watch(
 
 .breadcrumb-bar {
   min-height: 36px;
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  border-radius: 8px;
+  border: 1px solid #dceaf4;
+  border-radius: 12px;
+  background: #f8fbfd;
   padding: 2px 6px;
 }
 
@@ -304,48 +336,48 @@ watch(
 .breadcrumb-button {
   border: 0;
   background: transparent;
-  color: rgb(var(--v-theme-on-surface-variant));
+  color: #607184;
   cursor: pointer;
   font-size: 0.78rem;
-  padding: 4px 6px;
+  padding: 4px 7px;
   white-space: nowrap;
 }
 
 .breadcrumb-button--active {
-  color: rgb(var(--v-theme-on-surface));
+  color: #172437;
   font-weight: 600;
 }
 
 .file-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(158px, 1fr));
-  gap: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .file-card {
   position: relative;
   display: flex;
   min-width: 0;
-  min-height: 92px;
+  min-height: 66px;
   align-items: center;
-  gap: 10px;
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  gap: 12px;
+  border: 1px solid #e3edf5;
   border-radius: 12px;
-  background: rgb(var(--v-theme-surface));
+  background: #ffffff;
   color: inherit;
   cursor: pointer;
-  padding: 12px 34px 12px 12px;
+  padding: 10px 40px 10px 12px;
   text-align: left;
   transition:
+    background-color 0.18s ease,
     border-color 0.18s ease,
-    box-shadow 0.18s ease,
-    transform 0.18s ease;
+    box-shadow 0.18s ease;
 }
 
 .file-card:hover {
-  border-color: rgba(var(--v-theme-primary), 0.45);
-  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
-  transform: translateY(-1px);
+  border-color: #b9dcf3;
+  background: #f6fbff;
+  box-shadow: inset 3px 0 0 #46a1d8;
 }
 
 .file-card--disabled {
@@ -354,20 +386,29 @@ watch(
 }
 
 .file-card--folder {
-  background: rgba(var(--v-theme-warning), 0.045);
+  background: #fffdf8;
 }
 
 .file-card--selected {
-  border-color: rgb(var(--v-theme-primary));
-  box-shadow: 0 0 0 2px rgba(var(--v-theme-primary), 0.12);
+  border-color: #95cdf0;
+  background: #eef8ff;
+  box-shadow: inset 3px 0 0 #2f96d3;
 }
 
 .file-card-icon {
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  align-items: center;
   flex: 0 0 auto;
+  justify-content: center;
+  border-radius: 11px;
+  background: #eef8ff;
 }
 
 .file-card-content {
   min-width: 0;
+  flex: 1;
 }
 
 .file-card-name,
@@ -378,13 +419,14 @@ watch(
 }
 
 .file-card-name {
-  font-size: 0.88rem;
-  font-weight: 600;
+  color: #172437;
+  font-size: 0.86rem;
+  font-weight: 700;
 }
 
 .file-card-meta,
 .file-card-path {
-  color: rgb(var(--v-theme-on-surface-variant));
+  color: #718296;
   font-size: 0.72rem;
   margin-top: 4px;
 }
