@@ -33,7 +33,10 @@
           <div v-for="(platform, index) in config_data.platform || []" :key="index" class="platform-card-shell">
             <item-card :item="platform" title-field="id" enabled-field="enable"
               variant="outlined"
-              :bglogo="getPlatformIcon(platform.type || platform.id)" @toggle-enabled="platformStatusChange"
+              :bglogo="getPlatformIcon(platform.type || platform.id)"
+              :disable-toggle="isPlatformExpired(platform)"
+              :toggle-tooltip="getPlatformToggleTooltip(platform)"
+              @toggle-enabled="platformStatusChange"
               @delete="deletePlatform" @edit="editPlatform">
               <template #item-details="{ item }">
                 <!-- 平台运行状态 - 只在非运行状态或有错误时显示 -->
@@ -77,6 +80,19 @@
                     <v-icon size="small" start>mdi-qrcode</v-icon>
                     {{ tm('platformQr.show') }}
                   </v-chip>
+                </div>
+                <div class="platform-meta-row">
+                  <v-chip
+                    size="small"
+                    :color="isPlatformExpired(item) ? 'error' : 'primary'"
+                    variant="tonal"
+                    class="platform-expiry-chip"
+                  >
+                    {{ getPlatformExpiryText(item) }}
+                  </v-chip>
+                </div>
+                <div v-if="getPlatformNote(item)" class="platform-note">
+                  <div class="platform-note__body">{{ getPlatformNote(item) }}</div>
                 </div>
                 <div v-if="getPlatformStat(item.id)?.unified_webhook && item.webhook_uuid" class="webhook-info">
                   <v-chip
@@ -358,10 +374,28 @@ export default {
             stats[platform.id] = platform;
           }
           this.platformStats = stats;
+          this.syncExpiredPlatformEnabledState();
         }
       }).catch((err) => {
         console.warn('获取平台统计信息失败:', err);
       });
+    },
+
+    syncExpiredPlatformEnabledState() {
+      const platforms = this.config_data.platform || [];
+      let changed = false;
+      for (const platform of platforms) {
+        if (platform.enable && this.isPlatformExpired(platform)) {
+          platform.enable = false;
+          changed = true;
+        }
+      }
+      if (changed) {
+        this.config_data = {
+          ...this.config_data,
+          platform: [...platforms],
+        };
+      }
     },
 
     getPlatformStat(platformId) {
@@ -391,6 +425,41 @@ export default {
     openPlatformQrDialog(platformId) {
       this.currentQrPlatformId = platformId;
       this.showQrDialog = true;
+    },
+
+    getPlatformNote(platform) {
+      return String(platform?.note || "").trim();
+    },
+
+    parsePlatformExpiresAt(value) {
+      if (!value) {
+        return null;
+      }
+      const date = new Date(String(value));
+      return Number.isNaN(date.getTime()) ? null : date;
+    },
+
+    isPlatformExpired(platform) {
+      const expiresAt = this.parsePlatformExpiresAt(platform?.expires_at);
+      return expiresAt ? expiresAt.getTime() <= Date.now() : false;
+    },
+
+    getPlatformExpiryText(platform) {
+      const expiresAt = this.parsePlatformExpiresAt(platform?.expires_at);
+      if (!expiresAt) {
+        return this.tm('platformExpiry.permanent');
+      }
+      const text = expiresAt.toLocaleString();
+      return this.isPlatformExpired(platform)
+        ? this.tm('platformExpiry.expiredAt', { time: text })
+        : this.tm('platformExpiry.expiresAt', { time: text });
+    },
+
+    getPlatformToggleTooltip(platform) {
+      if (this.isPlatformExpired(platform)) {
+        return this.tm('messages.expiredCannotEnable');
+      }
+      return '';
     },
 
     getStatusColor(status) {
@@ -536,6 +605,10 @@ export default {
     },
 
     platformStatusChange(platform) {
+      if (this.isPlatformExpired(platform)) {
+        this.showError(this.tm('messages.expiredCannotEnable'));
+        return;
+      }
       platform.enable = !platform.enable; // 切换状态
 
       botApi.setEnabled(platform.id, { enabled: platform.enable }).then((res) => {
@@ -763,6 +836,42 @@ export default {
 
 .webhook-info {
   margin-top: 4px;
+}
+
+.platform-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.platform-expiry-chip {
+  max-width: 100%;
+}
+
+.platform-note {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  max-width: min(100%, 218px);
+  min-height: 28px;
+  margin-top: 8px;
+  padding: 5px 12px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 999px;
+  background: rgba(var(--v-theme-on-surface), 0.035);
+  color: rgba(var(--v-theme-on-surface), 0.68);
+  font-size: 12px;
+  line-height: 1.3;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.62);
+}
+
+.platform-note__body {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .webhook-chip {

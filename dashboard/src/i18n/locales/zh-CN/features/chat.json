@@ -31,7 +31,7 @@
     "liveMode": "实时对话"
   },
   "welcome": {
-    "title": "今天想聊点什么？",
+    "title": "老板 活都交给我干",
     "subtitle": "您的智能对话助手",
     "quickActions": "快速操作",
     "examples": "示例问题"
@@ -128,7 +128,10 @@
   "project": {
     "title": "项目",
     "create": "创建项目",
+    "createDialogTitle": "创建项目",
+    "createDialogSubtitle": "创建项目，后续对话和工作区都会归在这里。",
     "edit": "编辑项目",
+    "editSubtitle": "修改项目名称、描述与工作区。",
     "name": "项目名称",
     "emoji": "图标 (Emoji)",
     "description": "项目描述（可选）",

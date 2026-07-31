@@ -2189,14 +2189,15 @@ function toggleTheme() {
 }
 
 .welcome-state {
-  width: min(560px, calc(100vw - 420px));
-  min-height: 156px;
+  width: min(430px, calc(100vw - 48px));
+  min-height: 108px;
+  padding: 24px 30px;
   margin: 0 auto;
-  border: 1px solid rgba(42, 143, 204, 0.12);
-  border-radius: 24px;
+  border: 1px solid rgba(42, 143, 204, 0.13);
+  border-radius: 18px;
   background:
-    radial-gradient(circle at 50% 0%, rgba(42, 143, 204, 0.12), transparent 44%),
-    rgba(255, 255, 255, 0.72);
+    radial-gradient(circle at 50% 0%, rgba(42, 143, 204, 0.08), transparent 46%),
+    rgba(255, 255, 255, 0.82);
 }
 
 .conversation-stack.is-empty .welcome-state {
@@ -2205,8 +2206,9 @@ function toggleTheme() {
 
 .welcome-title {
   font-family: "Outfit", "Noto Sans", sans-serif;
-  font-size: 27px;
+  font-size: 22px;
   font-weight: 800;
+  line-height: 1.35;
   color: #172635;
 }
 

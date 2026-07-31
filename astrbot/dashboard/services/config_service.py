@@ -20,6 +20,7 @@ from astrbot.core.config.default import (
 from astrbot.core.config.i18n_utils import ConfigMetadataI18n
 from astrbot.core.core_lifecycle import AstrBotCoreLifecycle
 from astrbot.core.db import BaseDatabase
+from astrbot.core.platform.expiration import is_platform_expired
 from astrbot.core.platform.register import platform_cls_map, platform_registry
 from astrbot.core.provider.register import provider_registry
 from astrbot.core.star.star import star_registry
@@ -1139,6 +1140,20 @@ class BotConfigService:
         self.core_lifecycle = core_lifecycle
         self.config = core_lifecycle.astrbot_config
 
+    def _disable_expired_bots(self) -> None:
+        changed = False
+        platform_manager = getattr(self.core_lifecycle, "platform_manager", None)
+        if hasattr(platform_manager, "disable_expired_platforms"):
+            platform_manager.disable_expired_platforms()
+            return
+
+        for bot in self.config.get("platform", []):
+            if is_platform_expired(bot) and bot.get("enable", False):
+                bot["enable"] = False
+                changed = True
+        if changed:
+            save_config(copy.deepcopy(self.config), self.config, is_core=True)
+
     def list_bot_types(self) -> dict:
         bot_types = []
         for platform in platform_registry:
@@ -1159,6 +1174,7 @@ class BotConfigService:
     def list_bots(
         self, *, enabled: bool | None = None, type_: str | None = None
     ) -> dict:
+        self._disable_expired_bots()
         bots = []
         for bot in self.config.get("platform", []):
             if enabled is not None and bool(bot.get("enable", False)) != enabled:
@@ -1169,12 +1185,14 @@ class BotConfigService:
         return {"bots": bots}
 
     def get_bot(self, bot_id: str) -> dict:
+        self._disable_expired_bots()
         bot = self._find_bot(bot_id)
         if bot is None:
             raise ValueError(f"Bot {bot_id} not found")
         return {"bot": copy.deepcopy(bot)}
 
     def get_bot_stats(self) -> dict:
+        self._disable_expired_bots()
         return self.core_lifecycle.platform_manager.get_all_stats()
 
     async def create_bot(self, config: dict) -> None:
@@ -1183,6 +1201,8 @@ class BotConfigService:
             raise ValueError("Bot config must have an 'id' field")
         if self._find_bot(bot_id) is not None:
             raise ValueError(f"Bot {bot_id} already exists")
+        if is_platform_expired(config):
+            config["enable"] = False
         ensure_platform_webhook_config(config)
         self.config["platform"].append(config)
         save_config(self.config, self.config, is_core=True)
@@ -1191,6 +1211,8 @@ class BotConfigService:
     async def update_bot(self, bot_id: str, config: dict) -> None:
         if config.get("id") != bot_id:
             raise ValueError("Bot id cannot be changed")
+        if is_platform_expired(config):
+            config["enable"] = False
         ensure_platform_webhook_config(config)
         for idx, bot in enumerate(self.config.get("platform", [])):
             if bot.get("id") == bot_id:
@@ -1204,6 +1226,8 @@ class BotConfigService:
         bot = self._find_bot(bot_id)
         if bot is None:
             raise ValueError(f"Bot {bot_id} not found")
+        if enabled and is_platform_expired(bot):
+            raise ValueError("机器人已到期，无法开启。")
         new_config = copy.deepcopy(bot)
         new_config["enable"] = enabled
         await self.update_bot(bot_id, new_config)

@@ -7,6 +7,12 @@
   "viewWebhook": "查看 Webhook 链接",
   "webhookCopied": "Webhook URL 已复制到剪贴板",
   "webhookCopyFailed": "复制失败，请手动复制",
+  "noteLabel": "备注",
+  "platformExpiry": {
+    "permanent": "永久开启",
+    "expiresAt": "到期：{time}",
+    "expiredAt": "已到期：{time}"
+  },
   "webhookDialog": {
     "title": "Webhook 回调地址",
     "description": "回调地址如下，请确保网络环境可以公网访问。也可以在日志中查看回调地址信息。建议填写 设置 -> 常规 中的「对外可达的回调接口地址」配置项。",
@@ -48,6 +54,12 @@
     "optional": "可选",
     "configHint": "想如何配置机器人？配置文件包含了聊天模型、人格、知识库、插件范围等丰富的机器人配置项。",
     "configDefaultHint": "默认使用默认配置文件 “default”。您也可以稍后配置。",
+    "lifecycleTitle": "有效期与备注",
+    "lifecycleHint": "设置机器人的启用截止时间和用于识别的备注信息。",
+    "expiresAtLabel": "到期时间",
+    "expiresAtHint": "不设置则永久开启；到期后会自动关闭这个机器人。",
+    "noteLabel": "备注",
+    "noteHint": "备注会显示在机器人卡片中，可稍后再次编辑。",
     "useExistingConfig": "使用现有配置文件",
     "selectConfigLabel": "选择配置文件",
     "createNewConfig": "创建新配置文件",
@@ -103,6 +115,7 @@
     "platformUpdateFailed": "平台更新失败。",
     "addSuccessWithConfig": "平台添加成功，配置文件已更新",
     "configIdMissing": "无法获取配置文件ID。",
+    "expiredCannotEnable": "机器人已到期，无法开启；到期后仅回复试用到期提示。",
     "routingUpdateFailed": "更新路由表失败: {message}",
     "createConfigFailed": "创建新配置文件失败: {message}",
     "platformIdMissing": "无法获取平台 ID。",

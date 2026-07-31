@@ -4,18 +4,19 @@
       <span class="text-h2 text-truncate" :title="getItemTitle()">{{ getItemTitle() }}</span>
       <v-tooltip location="top">
         <template v-slot:activator="{ props }">
-          <v-switch
-            color="primary"
-            hide-details
-            density="compact"
-            :model-value="getItemEnabled()"
-            :loading="loading"
-            :disabled="loading || disableToggle"
-            v-bind="props"
-            @update:model-value="toggleEnabled"
-          ></v-switch>
+          <div v-bind="props" class="item-card__switch-wrapper">
+            <v-switch
+              color="primary"
+              hide-details
+              density="compact"
+              :model-value="getItemEnabled()"
+              :loading="loading"
+              :disabled="loading || disableToggle"
+              @update:model-value="toggleEnabled"
+            ></v-switch>
+          </div>
         </template>
-        <span>{{ getItemEnabled() ? t('core.common.itemCard.enabled') : t('core.common.itemCard.disabled') }}</span>
+        <span>{{ getToggleTooltip() }}</span>
       </v-tooltip>
     </v-card-title>
 
@@ -113,6 +114,10 @@ export default {
       type: Boolean,
       default: false
     },
+    toggleTooltip: {
+      type: String,
+      default: ''
+    },
     disableDelete: {
       type: Boolean,
       default: false
@@ -130,7 +135,16 @@ export default {
     getItemEnabled() {
       return this.item[this.enabledField];
     },
+    getToggleTooltip() {
+      if (this.toggleTooltip) {
+        return this.toggleTooltip;
+      }
+      return this.getItemEnabled() ? this.t('core.common.itemCard.enabled') : this.t('core.common.itemCard.disabled');
+    },
     toggleEnabled() {
+      if (this.loading || this.disableToggle) {
+        return;
+      }
       this.$emit('toggle-enabled', this.item);
     }
   }
@@ -149,6 +163,11 @@ export default {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+}
+
+.item-card__switch-wrapper {
+  display: inline-flex;
+  align-items: center;
 }
 
 .hover-elevation:hover {

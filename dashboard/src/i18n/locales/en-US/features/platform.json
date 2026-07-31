@@ -7,6 +7,12 @@
   "viewWebhook": "View Webhook URL",
   "webhookCopied": "Webhook URL copied to clipboard",
   "webhookCopyFailed": "Copy failed, please copy manually",
+  "noteLabel": "Note",
+  "platformExpiry": {
+    "permanent": "Always on",
+    "expiresAt": "Expires: {time}",
+    "expiredAt": "Expired: {time}"
+  },
   "webhookDialog": {
     "title": "Webhook Callback URL",
     "description": "The callback address is as follows, please ensure that the network environment can be publicly accessible. You can also view the callback address information in the logs. It is recommended to fill in the \"Externally Accessible Callback API Address\" in Settings -> General.",
@@ -48,6 +54,12 @@
     "optional": "Optional",
     "configHint": "How do you want to configure the bot? The config file includes model, persona, knowledge base, plugins, and more.",
     "configDefaultHint": "Uses the default config file \"default\" by default. You can configure it later.",
+    "lifecycleTitle": "Expiration and Note",
+    "lifecycleHint": "Set this bot's enable-until time and a note for quick identification.",
+    "expiresAtLabel": "Expiration time",
+    "expiresAtHint": "Leave empty to keep it always on. The bot will be disabled automatically after this time.",
+    "noteLabel": "Note",
+    "noteHint": "The note appears on the bot card and can be edited later.",
     "useExistingConfig": "Use existing config file",
     "selectConfigLabel": "Select config file",
     "createNewConfig": "Create new config file",
@@ -103,6 +115,7 @@
     "platformUpdateFailed": "Platform update failed.",
     "addSuccessWithConfig": "Platform added. Config file updated.",
     "configIdMissing": "Unable to get config file ID.",
+    "expiredCannotEnable": "This bot has expired and cannot be enabled. It will only send the trial expiration notice.",
     "routingUpdateFailed": "Failed to update routing table: {message}",
     "createConfigFailed": "Failed to create config file: {message}",
     "platformIdMissing": "Unable to get platform ID.",

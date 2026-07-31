@@ -673,6 +673,47 @@
             </div>
           </div>
         </div>
+        <div
+          v-if="activePlatformConfig.type"
+          class="platform-dialog-step mt-6"
+        >
+          <div class="platform-dialog-step__marker">
+            3
+          </div>
+          <div class="platform-dialog-step__content">
+            <h3 class="platform-dialog-step__title">
+              {{ tm("createDialog.lifecycleTitle") }}
+            </h3>
+            <small class="platform-dialog-step__hint">
+              {{ tm("createDialog.lifecycleHint") }}
+            </small>
+            <div class="platform-lifecycle-settings mt-4">
+              <v-text-field
+                v-model="activePlatformConfig.expires_at"
+                :label="tm('createDialog.expiresAtLabel')"
+                :hint="tm('createDialog.expiresAtHint')"
+                type="datetime-local"
+                variant="outlined"
+                density="compact"
+                clearable
+                persistent-hint
+              />
+              <v-textarea
+                v-model="activePlatformConfig.note"
+                :label="tm('createDialog.noteLabel')"
+                :hint="tm('createDialog.noteHint')"
+                variant="outlined"
+                density="compact"
+                rows="2"
+                auto-grow
+                clearable
+                counter="200"
+                maxlength="200"
+                persistent-hint
+              />
+            </div>
+          </div>
+        </div>
       </v-card-text>
 
       <v-card-actions class="platform-dialog-actions">
@@ -1039,18 +1080,23 @@ export default {
         return parsed && parsed.platform === platformId;
       });
     },
+    activePlatformConfig() {
+      return this.updatingMode
+        ? this.updatingPlatformConfig || {}
+        : this.selectedPlatformConfig || {};
+    },
     isLarkPlatform() {
-      return this.selectedPlatformConfig?.type === "lark";
+      return this.activePlatformConfig?.type === "lark";
     },
     isWeixinOcPlatform() {
-      return this.selectedPlatformConfig?.type === "weixin_oc";
+      return this.activePlatformConfig?.type === "weixin_oc";
     },
     isDingtalkPlatform() {
-      return this.selectedPlatformConfig?.type === "dingtalk";
+      return this.activePlatformConfig?.type === "dingtalk";
     },
     isQqOfficialPlatform() {
       return ["qq_official", "qq_official_webhook"].includes(
-        this.selectedPlatformConfig?.type,
+        this.activePlatformConfig?.type,
       );
     },
     scanPlatformIdError() {
@@ -1972,6 +2018,12 @@ export default {
   color: rgba(var(--v-theme-on-surface), 0.62);
   font-size: 13px;
   line-height: 1.65;
+}
+
+.platform-lifecycle-settings {
+  display: grid;
+  gap: 14px;
+  max-width: 540px;
 }
 
 .platform-dialog-select {

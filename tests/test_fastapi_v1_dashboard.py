@@ -871,6 +871,18 @@ def fake_core_lifecycle():
     async def terminate_platform(platform_id: str) -> None:
         terminated_platform_ids.append(platform_id)
 
+    def get_all_platform_stats():
+        platforms = [{"id": "webchat-main", "status": "running"}]
+        platforms.extend(
+            {
+                "id": item["id"],
+                "status": "running",
+            }
+            for item in config.get("platform", [])
+            if item.get("enable") and item.get("id") != "webchat-main"
+        )
+        return {"platforms": platforms}
+
     demo_plugin = SimpleNamespace(
         name="astrbot_plugin_demo",
         repo=None,
@@ -932,9 +944,7 @@ def fake_core_lifecycle():
             reload=reload_platform,
             load_platform=load_platform,
             terminate_platform=terminate_platform,
-            get_all_stats=lambda: {
-                "platforms": [{"id": "webchat-main", "status": "running"}]
-            },
+            get_all_stats=get_all_platform_stats,
         ),
         provider_manager=provider_manager,
         persona_mgr=FakePersonaManager(),
@@ -1337,6 +1347,32 @@ async def test_v1_bots_matches_dashboard_platform_alias_list(
 
 
 @pytest.mark.asyncio
+async def test_v1_bots_disables_expired_bot(
+    asgi_client: httpx.AsyncClient,
+    fake_core_lifecycle,
+):
+    fake_core_lifecycle.astrbot_config["platform"].append(
+        {
+            "id": "telegram-expired",
+            "type": "telegram",
+            "enable": True,
+            "expires_at": "2000-01-01T00:00",
+            "note": "temporary test bot",
+        }
+    )
+
+    response = await asgi_client.get("/api/v1/bots", headers=_jwt_headers())
+
+    assert response.status_code == 200
+    data = response.json()
+    expired_bot = next(
+        bot for bot in data["data"]["bots"] if bot["id"] == "telegram-expired"
+    )
+    assert expired_bot["enable"] is False
+    assert fake_core_lifecycle.astrbot_config["platform"][-1]["enable"] is False
+
+
+@pytest.mark.asyncio
 async def test_v1_bot_stats_match_platform_manager(asgi_client: httpx.AsyncClient):
     response = await asgi_client.get("/api/v1/bots/stats", headers=_jwt_headers())
 
@@ -1344,6 +1380,87 @@ async def test_v1_bot_stats_match_platform_manager(asgi_client: httpx.AsyncClien
     data = response.json()
     assert data["status"] == "ok"
     assert data["data"]["platforms"] == [{"id": "webchat-main", "status": "running"}]
+
+
+@pytest.mark.asyncio
+async def test_v1_bot_stats_disables_expired_bot(
+    asgi_client: httpx.AsyncClient,
+    fake_core_lifecycle,
+):
+    fake_core_lifecycle.astrbot_config["platform"].append(
+        {
+            "id": "stats-expired",
+            "type": "lark",
+            "enable": True,
+            "expires_at": "2000-01-01T00:00",
+        }
+    )
+
+    response = await asgi_client.get("/api/v1/bots/stats", headers=_jwt_headers())
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert all(
+        platform["id"] != "stats-expired" for platform in data["data"]["platforms"]
+    )
+    assert fake_core_lifecycle.astrbot_config["platform"][-1]["enable"] is False
+
+
+@pytest.mark.asyncio
+async def test_v1_update_bot_keeps_expired_bot_disabled(
+    asgi_client: httpx.AsyncClient,
+    fake_core_lifecycle,
+):
+    fake_core_lifecycle.astrbot_config["platform"].append(
+        {
+            "id": "update-expired",
+            "type": "lark",
+            "enable": False,
+            "expires_at": "2000-01-01T00:00",
+        }
+    )
+
+    response = await asgi_client.put(
+        "/api/v1/bots/update-expired",
+        headers=_jwt_headers(),
+        json={
+            "config": {
+                "id": "update-expired",
+                "type": "lark",
+                "enable": True,
+                "expires_at": "2000-01-01T00:00",
+            }
+        },
+    )
+
+    assert response.status_code == 200
+    assert fake_core_lifecycle.platform_reload_configs[-1]["enable"] is False
+
+
+@pytest.mark.asyncio
+async def test_v1_set_enabled_rejects_expired_bot(
+    asgi_client: httpx.AsyncClient,
+    fake_core_lifecycle,
+):
+    fake_core_lifecycle.astrbot_config["platform"].append(
+        {
+            "id": "enable-expired",
+            "type": "lark",
+            "enable": False,
+            "expires_at": "2000-01-01T00:00",
+        }
+    )
+
+    response = await asgi_client.patch(
+        "/api/v1/bots/enable-expired/enabled",
+        headers=_jwt_headers(),
+        json={"enabled": True},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["message"] == "机器人已到期，无法开启。"
+    assert fake_core_lifecycle.astrbot_config["platform"][-1]["enable"] is False
 
 
 @pytest.mark.asyncio

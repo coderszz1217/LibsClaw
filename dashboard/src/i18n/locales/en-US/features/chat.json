@@ -128,7 +128,10 @@
   "project": {
     "title": "Projects",
     "create": "Create Project",
+    "createDialogTitle": "Boss, leave it all to me",
+    "createDialogSubtitle": "Create a project to keep conversations and workspace files together.",
     "edit": "Edit Project",
+    "editSubtitle": "Update the project name, description, and workspace.",
     "name": "Project Name",
     "emoji": "Icon (Emoji)",
     "description": "Description (Optional)",

@@ -2,9 +2,14 @@ import asyncio
 import traceback
 from asyncio import Queue
 from dataclasses import dataclass
+from datetime import datetime
 
 from astrbot.core import logger
 from astrbot.core.config.astrbot_config import AstrBotConfig
+from astrbot.core.platform.expiration import (
+    is_platform_expired,
+    parse_platform_expires_at,
+)
 from astrbot.core.star.star_handler import EventType, star_handlers_registry, star_map
 from astrbot.core.utils.webhook_utils import ensure_platform_webhook_config
 
@@ -26,6 +31,7 @@ class PlatformManager:
 
         self._inst_map: dict[str, dict] = {}
         self._platform_tasks: dict[str, PlatformTasks] = {}
+        self._platform_expiry_tasks: dict[str, asyncio.Task] = {}
 
         self.astrbot_config = config
         self.platforms_config = config["platform"]
@@ -45,6 +51,86 @@ class PlatformManager:
             return platform_id, False
         sanitized = platform_id.replace(":", "_").replace("!", "_")
         return sanitized, sanitized != platform_id
+
+    def disable_expired_platforms(self) -> bool:
+        """Disable expired platforms in the current config.
+
+        Returns:
+            True when at least one platform was changed.
+        """
+        changed = False
+        expired_platform_ids = []
+        for platform_config in self.platforms_config:
+            if is_platform_expired(platform_config) and platform_config.get(
+                "enable",
+                False,
+            ):
+                platform_config["enable"] = False
+                changed = True
+                platform_id = platform_config.get("id")
+                if platform_id:
+                    expired_platform_ids.append(platform_id)
+                logger.info(
+                    "Platform adapter %s expired and switched to expiration reply mode.",
+                    platform_config.get("id"),
+                )
+        if changed:
+            self.astrbot_config.save_config()
+            for platform_id in expired_platform_ids:
+                info = self._inst_map.get(platform_id)
+                if info:
+                    info["inst"].config["enable"] = False
+        return changed
+
+    def _cancel_platform_expiry_task(self, platform_id: str) -> None:
+        task = self._platform_expiry_tasks.pop(platform_id, None)
+        if task and not task.done() and task is not asyncio.current_task():
+            task.cancel()
+
+    def _schedule_platform_expiry_task(self, platform_config: dict) -> None:
+        platform_id = platform_config.get("id")
+        if not platform_id:
+            return
+        self._cancel_platform_expiry_task(platform_id)
+        if not platform_config.get("enable"):
+            return
+
+        expires_at = parse_platform_expires_at(platform_config.get("expires_at"))
+        if expires_at is None:
+            return
+        now = datetime.now(expires_at.tzinfo) if expires_at.tzinfo else datetime.now()
+        delay = max((expires_at - now).total_seconds(), 0)
+        self._platform_expiry_tasks[platform_id] = asyncio.create_task(
+            self._expire_platform_when_due(platform_id, delay),
+            name=f"platform_{platform_id}_expiry",
+        )
+
+    async def _expire_platform_when_due(self, platform_id: str, delay: float) -> None:
+        try:
+            await asyncio.sleep(delay)
+            for platform_config in self.platforms_config:
+                if platform_config.get("id") != platform_id:
+                    continue
+                if is_platform_expired(platform_config) and platform_config.get(
+                    "enable",
+                    False,
+                ):
+                    platform_config["enable"] = False
+                    info = self._inst_map.get(platform_id)
+                    if info:
+                        info["inst"].config["enable"] = False
+                    self.astrbot_config.save_config()
+                    logger.info(
+                        "Platform adapter %s expired and switched to expiration reply mode.",
+                        platform_id,
+                    )
+                break
+        except asyncio.CancelledError:
+            raise
+        finally:
+            task = self._platform_expiry_tasks.get(platform_id)
+            if task is asyncio.current_task():
+                self._platform_expiry_tasks.pop(platform_id, None)
 
     def _start_platform_task(self, task_name: str, inst: Platform) -> None:
         run_task = asyncio.create_task(inst.run(), name=task_name)
@@ -103,8 +189,21 @@ class PlatformManager:
         """实例化一个平台"""
         # 动态导入
         try:
-            if not platform_config["enable"]:
+            platform_expired = is_platform_expired(platform_config)
+            if platform_expired and platform_config.get("enable", False):
+                platform_config["enable"] = False
+                self.astrbot_config.save_config()
+                logger.info(
+                    "Platform adapter %s expired and switched to expiration reply mode.",
+                    platform_config.get("id"),
+                )
+            if not platform_config["enable"] and not platform_expired:
                 return
+            if platform_expired:
+                logger.info(
+                    "Platform adapter %s is expired and will only send expiration replies.",
+                    platform_config.get("id"),
+                )
             platform_id = platform_config.get("id")
             if not self._is_valid_platform_id(platform_id):
                 sanitized_id, changed = self._sanitize_platform_id(platform_id)
@@ -217,6 +316,7 @@ class PlatformManager:
             f"platform_{platform_config['type']}_{platform_config['id']}",
             inst,
         )
+        self._schedule_platform_expiry_task(platform_config)
         handlers = star_handlers_registry.get_handlers_by_event_type(
             EventType.OnPlatformLoadedEvent,
         )
@@ -254,8 +354,9 @@ class PlatformManager:
                 platform.record_error(error_msg, tb_str)
 
     async def reload(self, platform_config: dict) -> None:
+        self._cancel_platform_expiry_task(platform_config["id"])
         await self.terminate_platform(platform_config["id"])
-        if platform_config["enable"]:
+        if platform_config["enable"] or is_platform_expired(platform_config):
             await self.load_platform(platform_config)
 
         # 和配置文件保持同步
@@ -265,6 +366,7 @@ class PlatformManager:
                 await self.terminate_platform(key)
 
     async def terminate_platform(self, platform_id: str) -> None:
+        self._cancel_platform_expiry_task(platform_id)
         if platform_id in self._inst_map:
             logger.info(f"正在尝试终止 {platform_id} 平台适配器 ...")
 
@@ -302,6 +404,8 @@ class PlatformManager:
         self.platform_insts.clear()
         self._inst_map.clear()
         self._platform_tasks.clear()
+        for platform_id in list(self._platform_expiry_tasks.keys()):
+            self._cancel_platform_expiry_task(platform_id)
 
     def get_insts(self):
         return self.platform_insts
@@ -312,6 +416,7 @@ class PlatformManager:
         Returns:
             包含所有平台统计信息的字典
         """
+        self.disable_expired_platforms()
         stats_list = []
         total_errors = 0
         running_count = 0
@@ -320,6 +425,9 @@ class PlatformManager:
         for inst in self.platform_insts:
             try:
                 stat = inst.get_stats()
+                platform_config = getattr(inst, "config", {})
+                if is_platform_expired(platform_config):
+                    continue
                 stats_list.append(stat)
                 total_errors += stat.get("error_count", 0)
                 if stat.get("status") == PlatformStatus.RUNNING.value:

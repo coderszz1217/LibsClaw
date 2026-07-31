@@ -8,11 +8,13 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
+from astrbot.core import logger
 from astrbot.core.message.message_event_result import MessageChain
 from astrbot.core.utils.metrics import Metric
 
 from .astr_message_event import AstrMessageEvent
 from .astrbot_message import AstrBotMessage
+from .expiration import is_platform_expired
 from .message_session import MessageSesion
 from .platform_metadata import PlatformMetadata
 
@@ -146,6 +148,24 @@ class Platform(abc.ABC):
 
     def commit_event(self, event: AstrMessageEvent) -> None:
         """提交一个事件到事件队列。"""
+        if is_platform_expired(self.config):
+            try:
+                task = asyncio.create_task(
+                    event.send(MessageChain().message("试用已到期，请联系管理员续期。")),
+                )
+                task.add_done_callback(
+                    lambda send_task: send_task.exception()
+                    if not send_task.cancelled()
+                    else None,
+                )
+            except RuntimeError:
+                logger.warning(
+                    "Platform adapter %s expired, but no running loop is available for the expiration reply.",
+                    self.meta().id,
+                )
+            return
+        if not self.config.get("enable", True):
+            return
         self._event_queue.put_nowait(event)
 
     def create_event(self, message: AstrBotMessage) -> AstrMessageEvent:
