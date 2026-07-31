@@ -298,38 +298,50 @@ onBeforeUnmount(() => {
     :persistent="importing"
     @update:model-value="updateModelValue"
   >
-    <v-card>
-      <v-card-title class="text-h3 pa-4 pb-0 pl-6 d-flex align-center">
-        <span>导入 Wiki</span>
+    <v-card class="wiki-import-dialog">
+      <v-card-title class="wiki-import-header">
+        <div class="wiki-import-title">
+          <span class="wiki-import-title__icon">
+            <v-icon size="22">mdi-folder-upload-outline</v-icon>
+          </span>
+          <div>
+            <h3>导入 Wiki</h3>
+            <p>导入 Markdown、ZIP 或文件夹，自动保留目录结构。</p>
+          </div>
+        </div>
         <v-spacer />
         <v-btn
           icon="mdi-close"
           variant="text"
           :disabled="importing"
+          class="wiki-import-close"
           @click="close"
         />
       </v-card-title>
 
-      <v-card-text class="pa-6">
-        <v-alert type="info" variant="tonal" density="compact" class="mb-4">
-          可选择多个 Markdown、ZIP
-          压缩包或整个文件夹。文件数量不设上限；文件夹根目录会被去掉，其下分类结构会完整保留。为防止压缩炸弹，单次原始文件总量最多
-          512 MiB，ZIP 展开后最多 2 GiB。
-        </v-alert>
+      <v-card-text class="wiki-import-body">
+        <div class="wiki-import-tip">
+          <v-icon size="18">mdi-information-outline</v-icon>
+          <span>
+            支持多个 Markdown、ZIP 压缩包或整个文件夹；文件夹根目录会被去掉，分类结构会完整保留。单次原始文件总量最多 512 MiB，ZIP 展开后最多 2 GiB。
+          </span>
+        </div>
 
-        <div class="import-actions mb-4">
+        <div class="import-actions">
           <v-btn
             prepend-icon="mdi-file-multiple-outline"
-            variant="outlined"
+            variant="tonal"
             :disabled="importing"
+            class="wiki-import-picker"
             @click="fileInput?.click()"
           >
             选择 Markdown / ZIP
           </v-btn>
           <v-btn
             prepend-icon="mdi-folder-upload-outline"
-            variant="outlined"
+            variant="tonal"
             :disabled="importing"
+            class="wiki-import-picker wiki-import-picker--folder"
             @click="directoryInput?.click()"
           >
             选择文件夹
@@ -359,7 +371,7 @@ onBeforeUnmount(() => {
           type="error"
           variant="tonal"
           density="compact"
-          class="mb-4"
+          class="wiki-import-alert"
         >
           {{ errorMessage }}
         </v-alert>
@@ -368,44 +380,49 @@ onBeforeUnmount(() => {
           type="success"
           variant="tonal"
           density="compact"
-          class="mb-4"
+          class="wiki-import-alert"
         >
           {{ successMessage }}
         </v-alert>
 
         <div v-if="entries.length > 0" class="selected-files">
-          <div class="d-flex align-center justify-space-between mb-2">
-            <span class="text-subtitle-2">
-              已选择 {{ entries.length }} 个文件，共
-              {{ formatFileSize(totalSize) }}
-            </span>
+          <div class="selected-files__header">
+            <div>
+              <strong>已选择 {{ entries.length }} 个文件</strong>
+              <span>共 {{ formatFileSize(totalSize) }}</span>
+            </div>
             <v-btn
               size="small"
               variant="text"
               :disabled="importing"
+              class="selected-files__clear"
               @click="entries = []"
             >
               清空
             </v-btn>
           </div>
-          <v-list class="file-preview" density="compact" border rounded>
+          <v-list class="file-preview" density="compact">
             <v-list-item
               v-for="entry in previewEntries"
               :key="entry.id"
+              class="file-preview__item"
               :title="entry.path || entry.file.name"
               :subtitle="formatFileSize(entry.file.size)"
-              :prepend-icon="
-                entry.archive
-                  ? 'mdi-folder-zip-outline'
-                  : 'mdi-language-markdown-outline'
-              "
             >
+              <template #prepend>
+                <span class="file-preview__icon">
+                  <v-icon size="18">
+                    {{ entry.archive ? 'mdi-folder-zip-outline' : 'mdi-language-markdown-outline' }}
+                  </v-icon>
+                </span>
+              </template>
               <template #append>
                 <v-btn
                   icon="mdi-close"
                   size="small"
                   variant="text"
                   :disabled="importing"
+                  class="file-preview__remove"
                   @click="removeEntry(entry.id)"
                 />
               </template>
@@ -413,24 +430,25 @@ onBeforeUnmount(() => {
           </v-list>
           <p
             v-if="hiddenEntryCount > 0"
-            class="text-caption text-medium-emphasis mt-2"
+            class="selected-files__more"
           >
             仅预览前 100 个文件，另有 {{ hiddenEntryCount }} 个文件也会导入。
           </p>
         </div>
 
-        <v-checkbox
-          v-model="overwrite"
-          label="覆盖知识库中路径相同的页面"
-          color="primary"
-          density="compact"
-          hide-details
-          :disabled="importing"
-          class="mt-4"
-        />
+        <div class="wiki-import-option">
+          <v-checkbox
+            v-model="overwrite"
+            label="覆盖知识库中路径相同的页面"
+            color="primary"
+            density="compact"
+            hide-details
+            :disabled="importing"
+          />
+        </div>
 
-        <div v-if="importing" class="mt-4">
-          <div class="text-caption text-medium-emphasis mb-2">
+        <div v-if="importing" class="wiki-import-progress">
+          <div>
             {{ statusMessage }}
           </div>
           <v-progress-linear
@@ -442,14 +460,15 @@ onBeforeUnmount(() => {
         </div>
       </v-card-text>
 
-      <v-card-actions class="pa-4">
+      <v-card-actions class="wiki-import-actions">
         <v-spacer />
-        <v-btn variant="text" :disabled="importing" @click="close">取消</v-btn>
+        <v-btn variant="text" :disabled="importing" class="wiki-import-cancel" @click="close">取消</v-btn>
         <v-btn
           color="primary"
-          variant="tonal"
+          variant="flat"
           :loading="importing"
           :disabled="entries.length === 0"
+          class="wiki-import-submit"
           @click="submit"
         >
           开始导入
@@ -460,14 +479,231 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.import-actions {
+.wiki-import-dialog {
+  border: 1px solid #dceaf3;
+  border-radius: 16px !important;
+  overflow: hidden;
+}
+
+.wiki-import-header {
+  align-items: flex-start;
+  background: #fbfdff;
+  border-bottom: 1px solid #e3edf5;
   display: flex;
-  flex-wrap: wrap;
+  padding: 20px 26px 16px !important;
+}
+
+.wiki-import-title {
+  align-items: center;
+  display: flex;
   gap: 12px;
 }
 
+.wiki-import-title__icon {
+  align-items: center;
+  background: #eaf6fd;
+  border: 1px solid #cce8f8;
+  border-radius: 12px;
+  color: #2f96cf;
+  display: flex;
+  flex: 0 0 auto;
+  height: 42px;
+  justify-content: center;
+  width: 42px;
+}
+
+.wiki-import-title h3 {
+  color: #152638;
+  font-size: 1.22rem;
+  font-weight: 850;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.wiki-import-title p {
+  color: #647482;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  margin: 3px 0 0;
+}
+
+.wiki-import-close {
+  background: #f1f6fa;
+  border-radius: 10px;
+  color: #425766;
+}
+
+.wiki-import-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 26px 16px !important;
+}
+
+.wiki-import-tip {
+  align-items: flex-start;
+  background: #eef9ff;
+  border: 1px solid #cce8f8;
+  border-radius: 12px;
+  color: #247fac;
+  display: flex;
+  font-size: 0.88rem;
+  font-weight: 650;
+  gap: 10px;
+  line-height: 1.65;
+  padding: 12px 14px;
+}
+
+.import-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.wiki-import-picker {
+  border-radius: 10px;
+  color: #247fac;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.wiki-import-picker--folder {
+  color: #23805e;
+}
+
+.wiki-import-alert {
+  border-radius: 12px;
+}
+
+.selected-files {
+  background: #ffffff;
+  border: 1px solid #dceaf3;
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.selected-files__header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.selected-files__header strong {
+  color: #152638;
+  display: block;
+  font-size: 0.92rem;
+  font-weight: 850;
+  line-height: 1.35;
+}
+
+.selected-files__header span {
+  color: #657785;
+  display: block;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  margin-top: 2px;
+}
+
+.selected-files__clear {
+  border-radius: 9px;
+  color: #2f89be;
+  font-weight: 800;
+}
+
 .file-preview {
-  max-height: 320px;
+  background: #f8fcff;
+  border: 1px solid #e2edf5;
+  border-radius: 12px;
+  max-height: 260px;
   overflow-y: auto;
+  padding: 4px;
+}
+
+.file-preview__item {
+  border-radius: 10px !important;
+  margin: 2px 0;
+  min-height: 50px;
+}
+
+.file-preview__item:hover {
+  background: #eef8ff;
+}
+
+.file-preview__icon {
+  align-items: center;
+  background: #eaf6fd;
+  border: 1px solid #cce8f8;
+  border-radius: 8px;
+  color: #2f96cf;
+  display: flex;
+  height: 28px;
+  justify-content: center;
+  width: 28px;
+}
+
+.file-preview__item :deep(.v-list-item-title) {
+  color: #152638;
+  font-size: 0.9rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.file-preview__item :deep(.v-list-item-subtitle) {
+  color: #6d7c88;
+  font-size: 0.78rem;
+  opacity: 1;
+}
+
+.file-preview__remove {
+  border-radius: 9px;
+  color: #5e6e7a;
+}
+
+.selected-files__more {
+  color: #657785;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  margin: 9px 0 0;
+}
+
+.wiki-import-option {
+  background: #fbfdff;
+  border: 1px solid #e2edf5;
+  border-radius: 12px;
+  padding: 8px 10px;
+}
+
+.wiki-import-option :deep(.v-label) {
+  color: #263d4f;
+  font-size: 0.9rem;
+  font-weight: 700;
+  opacity: 1;
+}
+
+.wiki-import-progress {
+  color: #657785;
+  display: flex;
+  flex-direction: column;
+  font-size: 0.82rem;
+  gap: 8px;
+}
+
+.wiki-import-actions {
+  background: #fbfdff;
+  border-top: 1px solid #e3edf5;
+  padding: 14px 26px 18px !important;
+}
+
+.wiki-import-cancel,
+.wiki-import-submit {
+  border-radius: 10px;
+  font-weight: 800;
+  letter-spacing: 0;
+  min-width: 92px;
+}
+
+.wiki-import-submit {
+  box-shadow: 0 8px 18px rgba(47, 150, 207, 0.16);
 }
 </style>

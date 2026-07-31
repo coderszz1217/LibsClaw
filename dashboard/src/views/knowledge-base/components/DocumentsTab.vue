@@ -22,6 +22,19 @@
         >
           导入 Wiki
         </v-btn>
+        <div v-if="selectedDocumentIds.length > 0" class="bulk-delete-actions">
+          <span class="bulk-selected-count">已选 {{ selectedDocumentIds.length }} 个</span>
+          <v-btn
+            prepend-icon="mdi-delete-outline"
+            color="error"
+            variant="tonal"
+            class="document-action-btn bulk-delete-btn"
+            :loading="batchDeleting"
+            @click="showBatchDeleteDialog = true"
+          >
+            批量删除
+          </v-btn>
+        </div>
       </div>
       <v-text-field
         v-model="searchQuery"
@@ -45,6 +58,9 @@
         :items-per-page-options="itemsPerPageOptions"
         :page="page"
         :items-length="total"
+        v-model="selectedDocumentIds"
+        item-value="doc_id"
+        show-select
         class="documents-table"
         density="compact"
         @update:page="onPageChange"
@@ -212,6 +228,39 @@
       </v-card>
     </v-dialog>
 
+    <!-- 批量删除确认对话框 -->
+    <v-dialog v-model="showBatchDeleteDialog" max-width="520px">
+      <v-card class="delete-dialog-card delete-dialog-card--batch">
+        <v-card-title class="delete-dialog-title">
+          <span class="delete-dialog-icon">
+            <v-icon size="22">mdi-delete-outline</v-icon>
+          </span>
+          <div>
+            <h3>批量删除文档</h3>
+            <p>将删除选中的 {{ selectedDocumentIds.length }} 个文档及其所有分块。</p>
+          </div>
+        </v-card-title>
+        <v-card-text class="delete-dialog-body">
+          <div class="delete-target-list">
+            <div v-for="doc in selectedDocumentsPreview" :key="doc.doc_id" class="delete-target-item">
+              {{ doc.doc_name }}
+            </div>
+            <div v-if="selectedDocumentIds.length > selectedDocumentsPreview.length" class="delete-target-more">
+              还有 {{ selectedDocumentIds.length - selectedDocumentsPreview.length }} 个文档
+            </div>
+          </div>
+          <p class="delete-dialog-warning">此操作不可恢复，请确认后再删除。</p>
+        </v-card-text>
+        <v-card-actions class="delete-dialog-actions">
+          <v-spacer />
+          <v-btn variant="text" class="delete-cancel-btn" @click="showBatchDeleteDialog = false">取消</v-btn>
+          <v-btn color="error" variant="tonal" class="delete-confirm-btn" :loading="batchDeleting" @click="batchDeleteDocuments">
+            确认删除
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- 消息提示 -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color">
       {{ snackbar.text }}
@@ -245,6 +294,7 @@ const emit = defineEmits(['refresh'])
 const loading = ref(false)
 const uploading = ref(false)
 const deleting = ref(false)
+const batchDeleting = ref(false)
 const documents = ref<any[]>([])
 const page = ref(1)
 const pageSize = ref(10)
@@ -254,7 +304,9 @@ const showUploadDialog = ref(false)
 const showWikiImportDialog = ref(false)
 const wikiImporting = ref(false)
 const showDeleteDialog = ref(false)
+const showBatchDeleteDialog = ref(false)
 const selectedFiles = ref<File[]>([])
+const selectedDocumentIds = ref<string[]>([])
 const deleteTarget = ref<any>(null)
 const isDragging = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -317,6 +369,11 @@ const isUploadDisabled = computed(() => {
   return true
 })
 
+const selectedDocumentsPreview = computed(() => {
+  const selectedSet = new Set(selectedDocumentIds.value)
+  return documents.value.filter((doc) => selectedSet.has(doc.doc_id)).slice(0, 4)
+})
+
 // 表格列
 const headers = [
   { title: t('documents.name'), key: 'doc_name', sortable: true },
@@ -353,6 +410,7 @@ const loadDocuments = async () => {
       const data = response.data.data
       documents.value = data.items || []
       total.value = data.total || 0
+      selectedDocumentIds.value = selectedDocumentIds.value.filter((docId) => documents.value.some((doc) => doc.doc_id === docId))
     }
   } catch (error) {
     console.error('Failed to load documents:', error)
@@ -705,6 +763,42 @@ const deleteDocument = async () => {
   }
 }
 
+// 批量删除文档
+const batchDeleteDocuments = async () => {
+  const ids = [...selectedDocumentIds.value]
+  if (ids.length === 0) return
+
+  batchDeleting.value = true
+  try {
+    const results = await Promise.allSettled(ids.map((docId) => knowledgeApi.deleteDocument(props.kbId, docId)))
+    const successCount = results.filter((result) => result.status === 'fulfilled' && result.value.data.status === 'ok').length
+    const failedCount = ids.length - successCount
+
+    if (successCount > 0) {
+      selectedDocumentIds.value = []
+      showBatchDeleteDialog.value = false
+      if (documents.value.length <= successCount && page.value > 1) {
+        page.value -= 1
+      }
+      await loadDocuments()
+      emit('refresh')
+    }
+
+    if (failedCount === 0) {
+      showSnackbar(`已删除 ${successCount} 个文档`)
+    } else if (successCount > 0) {
+      showSnackbar(`批量删除完成：成功 ${successCount} 个，失败 ${failedCount} 个`, 'warning')
+    } else {
+      showSnackbar('批量删除失败', 'error')
+    }
+  } catch (error) {
+    console.error('Failed to batch delete documents:', error)
+    showSnackbar('批量删除失败', 'error')
+  } finally {
+    batchDeleting.value = false
+  }
+}
+
 // 工具函数
 const getFileIcon = (fileType: string) => {
   const type = fileType?.toLowerCase() || ''
@@ -860,6 +954,28 @@ onUnmounted(() => {
   box-shadow: 0 8px 18px rgba(47, 150, 207, 0.16);
 }
 
+.bulk-delete-actions {
+  align-items: center;
+  background: #fff7f7;
+  border: 1px solid #ffd4d4;
+  border-radius: 12px;
+  display: flex;
+  gap: 8px;
+  padding: 4px;
+}
+
+.bulk-selected-count {
+  color: #b42323;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 0 8px;
+  white-space: nowrap;
+}
+
+.bulk-delete-btn {
+  background: #ffe8e8;
+}
+
 .document-search {
   flex: 0 1 330px;
   min-width: 240px;
@@ -888,6 +1004,20 @@ onUnmounted(() => {
   font-size: 0.82rem;
   font-weight: 800 !important;
   height: 44px !important;
+}
+
+.documents-table :deep(.v-data-table__td--select-row),
+.documents-table :deep(.v-data-table__th--select) {
+  width: 44px;
+}
+
+.documents-table :deep(.v-selection-control) {
+  min-height: 30px;
+}
+
+.documents-table :deep(.v-selection-control__wrapper) {
+  height: 28px;
+  width: 28px;
 }
 
 .documents-table :deep(tbody tr) {
@@ -1016,6 +1146,97 @@ onUnmounted(() => {
 
 .document-empty p {
   margin: 0;
+}
+
+.delete-dialog-card {
+  background: linear-gradient(180deg, #fffafa 0%, #ffffff 48%);
+  border: 1px solid #ffcaca;
+  border-radius: 16px !important;
+  overflow: hidden;
+}
+
+.delete-dialog-title {
+  align-items: center;
+  display: flex;
+  gap: 14px;
+  padding: 24px 28px 12px !important;
+}
+
+.delete-dialog-icon {
+  align-items: center;
+  background: #fff0f0;
+  border: 1px solid #ffbcbc;
+  border-radius: 11px;
+  color: #ef4444;
+  display: flex;
+  flex: 0 0 auto;
+  height: 42px;
+  justify-content: center;
+  width: 42px;
+}
+
+.delete-dialog-title h3 {
+  color: #162331;
+  font-size: 1.18rem;
+  font-weight: 850;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.delete-dialog-title p {
+  color: #6d4d4d;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  margin: 4px 0 0;
+}
+
+.delete-dialog-body {
+  padding: 14px 28px 8px !important;
+}
+
+.delete-target-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.delete-target-item,
+.delete-target-more {
+  background: #fff5f5;
+  border: 1px solid #ffd8d8;
+  border-radius: 10px;
+  color: #d73333;
+  font-size: 0.84rem;
+  font-weight: 800;
+  line-height: 1.4;
+  overflow: hidden;
+  padding: 9px 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.delete-target-more {
+  color: #8d4a4a;
+  font-weight: 700;
+}
+
+.delete-dialog-warning {
+  color: #805454;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  margin: 12px 0 0;
+}
+
+.delete-dialog-actions {
+  padding: 12px 28px 24px !important;
+}
+
+.delete-cancel-btn,
+.delete-confirm-btn {
+  border-radius: 10px;
+  font-weight: 800;
+  letter-spacing: 0;
+  min-width: 86px;
 }
 
 .upload-dialog-card {

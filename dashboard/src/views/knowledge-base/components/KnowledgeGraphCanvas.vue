@@ -8,6 +8,7 @@ interface Props {
   edges: WikiGraphEdge[]
   selectedNodeId?: string
   nodeColors: Record<string, string>
+  expanded?: boolean
 }
 
 interface SimulationNode extends WikiGraphNode, d3.SimulationNodeDatum {
@@ -27,10 +28,12 @@ interface ConnectedEdgeElement {
 
 const props = withDefaults(defineProps<Props>(), {
   selectedNodeId: '',
+  expanded: false,
 })
 
 const emit = defineEmits<{
   selectNode: [nodeId: string]
+  toggleExpanded: []
 }>()
 
 const containerRef = shallowRef<HTMLDivElement | null>(null)
@@ -71,6 +74,7 @@ const applyLabelVisibility = () => {
   const activeId = hoveredNodeId || props.selectedNodeId
   const connectedIds = activeId ? connectedNodeIds(activeId) : null
   labelSelection?.attr('opacity', (node) => {
+    if (props.expanded) return !connectedIds || connectedIds.has(node.id) ? 1 : 0.2
     if (labelsHiddenByScale && node.id !== activeId) return 0
     return !connectedIds || connectedIds.has(node.id) ? 1 : 0.08
   })
@@ -108,12 +112,14 @@ const fitGraph = (animate = true) => {
   if (!bounds.width || !bounds.height) return
   const width = containerRef.value.clientWidth
   const height = containerRef.value.clientHeight
-  const padding = 72
+  const padding = props.expanded ? 72 : 34
+  const scaleBoost = props.expanded ? 1 : 1.28
   const scale = Math.min(
     2.4,
     Math.max(
       0.12,
-      Math.min((width - padding * 2) / bounds.width, (height - padding * 2) / bounds.height),
+      Math.min((width - padding * 2) / bounds.width, (height - padding * 2) / bounds.height) *
+        scaleBoost,
     ),
   )
   const translateX = width / 2 - (bounds.x + bounds.width / 2) * scale
@@ -205,7 +211,7 @@ const renderGraph = async () => {
         pendingZoomTransform = null
         currentScale = transform.k
         graphGroup?.attr('transform', transform.toString())
-        labelsHiddenByScale = currentScale < labelVisibilityThreshold
+        labelsHiddenByScale = !props.expanded && currentScale < labelVisibilityThreshold
       })
     })
     .on('end', () => {
@@ -216,7 +222,7 @@ const renderGraph = async () => {
         graphGroup?.attr('transform', pendingZoomTransform.toString())
         pendingZoomTransform = null
       }
-      labelsHiddenByScale = currentScale < labelVisibilityThreshold
+      labelsHiddenByScale = !props.expanded && currentScale < labelVisibilityThreshold
       edgeSelection?.attr('marker-end', 'url(#knowledge-graph-arrow)')
       labelSelection?.attr('visibility', null)
       nodeSelection?.style('pointer-events', null)
@@ -422,6 +428,19 @@ watch(
   () => applyHighlight(),
 )
 
+watch(
+  () => props.expanded,
+  async () => {
+    await nextTick()
+    resizeGraph()
+    labelsHiddenByScale = false
+    window.setTimeout(() => {
+      fitGraph()
+      applyHighlight()
+    }, 240)
+  },
+)
+
 onMounted(() => {
   void renderGraph()
   if (containerRef.value) {
@@ -439,7 +458,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="containerRef" class="graph-canvas-shell">
+  <div ref="containerRef" class="graph-canvas-shell" :class="{ 'graph-canvas-shell--expanded': expanded }">
     <svg ref="svgRef" class="graph-canvas" aria-label="知识图谱" />
     <div class="graph-controls">
       <v-btn
@@ -457,11 +476,12 @@ onUnmounted(() => {
         @click="zoomBy(0.77)"
       />
       <v-btn
-        icon="mdi-fit-to-screen-outline"
+        :icon="expanded ? 'mdi-fullscreen-exit' : 'mdi-fit-to-screen-outline'"
         size="small"
         variant="flat"
-        aria-label="适应画布"
-        @click="fitGraph()"
+        :aria-label="expanded ? '收起图谱' : '放大图谱'"
+        :class="{ 'graph-control-btn--active': expanded }"
+        @click="emit('toggleExpanded')"
       />
     </div>
     <div class="graph-help text-caption text-medium-emphasis">
@@ -484,6 +504,11 @@ onUnmounted(() => {
     linear-gradient(90deg, rgba(148, 163, 184, 0.06) 1px, transparent 1px),
     #fbfdff;
   background-size: auto, 32px 32px, 32px 32px, auto;
+  transition: height 0.22s ease;
+}
+
+.graph-canvas-shell--expanded {
+  height: 100vh;
 }
 
 .graph-canvas {
@@ -519,6 +544,15 @@ onUnmounted(() => {
   background: #dff1fb;
 }
 
+.graph-controls :deep(.graph-control-btn--active) {
+  background: #2f96d3;
+  color: #ffffff;
+}
+
+.graph-controls :deep(.graph-control-btn--active:hover) {
+  background: #2388c5;
+}
+
 .graph-help {
   position: absolute;
   left: 16px;
@@ -534,6 +568,10 @@ onUnmounted(() => {
 @media (max-width: 960px) {
   .graph-canvas-shell {
     height: 620px;
+  }
+
+  .graph-canvas-shell--expanded {
+    height: 100vh;
   }
 
   .graph-help {

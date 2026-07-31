@@ -134,37 +134,39 @@
     </div>
 
     <!-- 创建/编辑对话框 -->
-    <v-dialog v-model="showCreateDialog" max-width="600px" persistent>
-      <v-card>
-        <v-card-title class="text-h3 pa-4 pb-0 pl-6 d-flex align-center">
-          <span>{{ editingKB ? t('edit.title') : t('create.title') }}</span>
-          <v-spacer />
-          <v-btn icon="mdi-close" variant="text" @click="closeCreateDialog" />
-        </v-card-title>
-
-        <v-divider />
-
-        <v-card-text class="pa-6">
-          <!-- Emoji 选择器 -->
-          <div class="text-center mb-6">
-            <div class="emoji-display" @click="showEmojiPicker = true">
-              {{ formData.emoji }}
+    <v-dialog v-model="showCreateDialog" max-width="640px" persistent>
+      <v-card class="kb-form-card">
+        <div class="kb-form-header">
+          <div class="kb-form-header__main">
+            <div>
+              <h3>{{ editingKB ? t('edit.title') : t('create.title') }}</h3>
+              <p>设置名称、描述与检索模型。</p>
             </div>
-            <p class="text-caption text-medium-emphasis mt-2">{{ t('create.emojiLabel') }}</p>
           </div>
+          <v-btn icon="mdi-close" variant="tonal" class="kb-form-close" @click="closeCreateDialog" />
+        </div>
 
-          <!-- 表单 -->
-          <v-form ref="formRef" @submit.prevent="submitForm">
+        <v-card-text class="kb-form-body">
+          <button type="button" class="kb-icon-selector" @click="showEmojiPicker = true">
+            <span class="kb-icon-selector__preview">{{ formData.emoji }}</span>
+            <span class="kb-icon-selector__text">
+              <strong>{{ t('create.emojiLabel') }}</strong>
+              <small>用于列表展示</small>
+            </span>
+            <v-icon icon="mdi-chevron-right" size="18" />
+          </button>
+
+          <v-form ref="formRef" class="kb-form-fields" @submit.prevent="submitForm">
             <v-text-field v-model="formData.kb_name" :label="t('create.nameLabel')"
               :placeholder="t('create.namePlaceholder')" variant="outlined"
-              :rules="[v => !!v || t('create.nameRequired')]" required class="mb-4" hint="后续如修改知识库名称，需重新在配置文件更新。" persistent-hint />
+              :rules="[v => !!v || t('create.nameRequired')]" required class="kb-form-input" hint="后续如修改知识库名称，需重新在配置文件更新。" persistent-hint />
 
             <v-textarea v-model="formData.description" :label="t('create.descriptionLabel')"
-              :placeholder="t('create.descriptionPlaceholder')" variant="outlined" rows="3" class="mb-4" />
+              :placeholder="t('create.descriptionPlaceholder')" variant="outlined" rows="3" class="kb-form-input" />
 
             <v-select v-model="formData.embedding_provider_id" :items="embeddingProviders"
               :item-title="item => item.embedding_model || item.id" :item-value="'id'"
-              :label="t('create.embeddingModelLabel')" variant="outlined" class="mb-4"
+              :label="t('create.embeddingModelLabel')" variant="outlined" class="kb-form-input"
               clearable
               hint="可选。修改后会从 Markdown 自动重建索引；未配置时使用关键词检索。" persistent-hint>
               <template #item="{ props, item }">
@@ -181,7 +183,7 @@
 
             <v-select v-model="formData.rerank_provider_id" :items="rerankProviders"
               :item-title="item => item.rerank_model || item.id" :item-value="'id'"
-              :label="t('create.rerankModelLabel')" variant="outlined" clearable class="mb-2">
+              :label="t('create.rerankModelLabel')" variant="outlined" clearable class="kb-form-input">
               <template #item="{ props, item }">
                 <v-list-item v-bind="props">
                   <template #subtitle>
@@ -193,14 +195,12 @@
           </v-form>
         </v-card-text>
 
-        <v-divider />
-
-        <v-card-actions class="pa-4">
+        <v-card-actions class="kb-form-actions">
           <v-spacer />
-          <v-btn variant="text" @click="closeCreateDialog">
+          <v-btn variant="tonal" class="kb-form-cancel" @click="closeCreateDialog">
             {{ t('create.cancel') }}
           </v-btn>
-          <v-btn color="primary" variant="tonal" @click="submitForm" :loading="saving">
+          <v-btn color="primary" variant="flat" class="kb-form-submit" @click="submitForm" :loading="saving">
             {{ editingKB ? t('edit.submit') : t('create.submit') }}
           </v-btn>
         </v-card-actions>
@@ -776,6 +776,165 @@ onMounted(() => {
 .kb-legacy-link button:hover {
   color: #237aac;
   text-decoration: underline;
+}
+
+.kb-form-card {
+  border: 1px solid #d9e9f5;
+  border-radius: 18px !important;
+  box-shadow: 0 22px 58px rgba(28, 54, 74, 0.2) !important;
+  overflow: hidden;
+}
+
+.kb-form-header {
+  align-items: center;
+  background: #f7fbfe;
+  border-bottom: 1px solid #dfeaf3;
+  display: flex;
+  justify-content: space-between;
+  padding: 18px 22px;
+}
+
+.kb-form-header__main {
+  align-items: center;
+  display: flex;
+  gap: 14px;
+  min-width: 0;
+}
+
+.kb-form-header h3 {
+  color: #162331;
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1.25;
+  margin: 0;
+}
+
+.kb-form-header p {
+  color: #607381;
+  font-size: 0.86rem;
+  margin: 5px 0 0;
+}
+
+.kb-form-close {
+  background: #edf5fa;
+  border-radius: 12px;
+  color: #335163;
+  height: 38px;
+  width: 38px;
+}
+
+.kb-form-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 22px 22px !important;
+}
+
+.kb-icon-selector {
+  align-items: center;
+  background: #fbfdff;
+  border: 1px solid #dbeaf4;
+  border-radius: 14px;
+  color: #162331;
+  cursor: pointer;
+  display: flex;
+  gap: 12px;
+  padding: 12px 14px;
+  text-align: left;
+  transition: border-color 0.18s ease, background-color 0.18s ease;
+  width: 100%;
+}
+
+.kb-icon-selector:hover {
+  background: #f4faff;
+  border-color: #acd8f2;
+}
+
+.kb-icon-selector__preview {
+  align-items: center;
+  background: #eaf6fd;
+  border: 1px solid #cbe8f8;
+  border-radius: 13px;
+  display: flex;
+  flex: 0 0 auto;
+  font-size: 1.65rem;
+  height: 52px;
+  justify-content: center;
+  line-height: 1;
+  width: 52px;
+}
+
+.kb-icon-selector__text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.kb-icon-selector__text strong {
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.kb-icon-selector__text small {
+  color: #6b7c88;
+  font-size: 0.8rem;
+}
+
+.kb-form-fields {
+  background: #ffffff;
+  border: 1px solid #e1edf5;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+}
+
+.kb-form-input {
+  margin: 0;
+}
+
+.kb-form-input :deep(.v-field) {
+  background: #ffffff;
+  border-radius: 12px;
+}
+
+.kb-form-input :deep(.v-field__outline) {
+  --v-field-border-opacity: 0.22;
+}
+
+.kb-form-input :deep(.v-field--focused .v-field__outline) {
+  --v-field-border-opacity: 0.55;
+}
+
+.kb-form-input :deep(.v-messages__message) {
+  color: #738393;
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.kb-form-actions {
+  background: #fbfdff;
+  border-top: 1px solid #e2edf5;
+  gap: 10px;
+  padding: 14px 18px !important;
+}
+
+.kb-form-actions :deep(.v-btn) {
+  border-radius: 10px;
+  font-weight: 700;
+  letter-spacing: 0;
+  min-width: 82px;
+}
+
+.kb-form-cancel {
+  color: #455d6d;
+}
+
+.kb-form-submit {
+  box-shadow: 0 8px 18px rgba(47, 150, 207, 0.18);
 }
 
 /* 加载状态 */

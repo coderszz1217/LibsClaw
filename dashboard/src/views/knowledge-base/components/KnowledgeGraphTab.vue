@@ -47,9 +47,11 @@ const selectedExcerpt = shallowRef('')
 const searchInput = shallowRef('')
 const search = shallowRef('')
 const activeTypes = shallowRef(new Set(Object.keys(typeStyles)))
+const graphExpanded = shallowRef(false)
 let graphLoadRequestId = 0
 let detailLoadRequestId = 0
 let searchTimer: number | null = null
+let previousBodyOverflow = ''
 
 const nodeMap = computed(() => new Map(nodes.value.map((node) => [node.id, node])))
 
@@ -207,10 +209,20 @@ watch(searchInput, (value) => {
   }, 140)
 })
 
+watch(graphExpanded, (expanded) => {
+  if (expanded) {
+    previousBodyOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return
+  }
+  document.body.style.overflow = previousBodyOverflow
+})
+
 onMounted(loadGraph)
 
 onUnmounted(() => {
   if (searchTimer !== null) window.clearTimeout(searchTimer)
+  if (graphExpanded.value) document.body.style.overflow = previousBodyOverflow
 })
 </script>
 
@@ -266,126 +278,137 @@ onUnmounted(() => {
         <div class="mt-3">当前筛选条件下没有节点</div>
         <v-btn class="mt-3" variant="tonal" @click="showAllTypes"> 显示全部类型 </v-btn>
       </div>
-      <div v-else class="graph-shell">
-        <KnowledgeGraphCanvas
-          :nodes="filteredNodes"
-          :edges="filteredEdges"
-          :selected-node-id="selectedNodeId"
-          :node-colors="nodeColors"
-          @select-node="selectNode"
-        />
+      <Teleport v-else to="body" :disabled="!graphExpanded">
+        <div class="graph-shell" :class="{ 'graph-shell--expanded': graphExpanded }">
+          <KnowledgeGraphCanvas
+            :nodes="filteredNodes"
+            :edges="filteredEdges"
+            :selected-node-id="selectedNodeId"
+            :node-colors="nodeColors"
+            :expanded="graphExpanded"
+            @select-node="selectNode"
+            @toggle-expanded="graphExpanded = !graphExpanded"
+          />
 
-        <div class="graph-legend">
-          <div class="legend-heading">
-            <div>
-              <span class="legend-title">节点类型</span>
-              <span class="legend-subtitle">点击切换显示</span>
-            </div>
-            <v-btn size="x-small" variant="tonal" class="legend-reset-btn" @click="showAllTypes">
-              全部
-            </v-btn>
-          </div>
-          <button
-            v-for="item in legendItems"
-            :key="item.type"
-            type="button"
-            class="legend-row"
-            :class="{ 'legend-row--inactive': !item.active }"
-            @click="toggleType(item.type)"
-          >
-            <span class="legend-dot" :style="{ backgroundColor: item.color }" />
-            <span>{{ item.label }}</span>
-            <v-spacer />
-            <span class="text-medium-emphasis">{{ item.count }}</span>
-            <v-icon size="16">
-              {{ item.active ? 'mdi-eye-outline' : 'mdi-eye-off-outline' }}
-            </v-icon>
-          </button>
-        </div>
-
-        <v-card v-if="selectedNode" class="graph-detail" variant="elevated">
-          <v-card-title class="graph-detail-title">
-            <div class="min-width-0">
-              <div class="text-subtitle-1 font-weight-bold text-truncate">
-                {{ selectedNode.label }}
+          <div class="graph-legend">
+            <div class="legend-heading">
+              <div>
+                <span class="legend-title">节点类型</span>
+                <span class="legend-subtitle">点击切换显示</span>
               </div>
-              <div class="text-caption text-medium-emphasis text-truncate">
-                {{ selectedNode.id }}
-              </div>
+              <v-btn size="x-small" variant="tonal" class="legend-reset-btn" @click="showAllTypes">
+                全部
+              </v-btn>
             </div>
-            <v-spacer />
-            <v-btn icon="mdi-close" size="small" variant="text" @click="closeDetails" />
-          </v-card-title>
-          <v-divider />
-          <v-card-text class="graph-detail-body">
-            <div class="d-flex align-center flex-wrap ga-2 mb-4">
-              <v-chip
-                size="small"
-                :color="
-                  typeStyles[normalizeNodeType(selectedNode.node_type)].color ||
-                  typeStyles.other.color
-                "
-                variant="tonal"
-              >
-                {{ typeStyles[normalizeNodeType(selectedNode.node_type)].label }}
-              </v-chip>
-              <v-chip size="small" variant="outlined">
-                {{ selectedNode.category }}
-              </v-chip>
-              <v-chip size="small" variant="outlined">
-                {{ selectedRelations.length }} 条关系
-              </v-chip>
-            </div>
-
-            <div v-if="selectedNode.source" class="detail-section">
-              <div class="detail-label">来源</div>
-              <div class="text-body-2">{{ selectedNode.source }}</div>
-            </div>
-
-            <div class="detail-section">
-              <div class="detail-label">笔记摘要</div>
-              <v-progress-linear v-if="detailLoading" indeterminate color="primary" class="mb-3" />
-              <div class="detail-excerpt">
-                {{ selectedExcerpt || selectedNode.evidence || '暂无摘要' }}
-              </div>
-            </div>
-
-            <div v-if="selectedRelations.length" class="detail-section">
-              <div class="detail-label">关联节点</div>
-              <div class="relation-list">
-                <button
-                  v-for="relation in selectedRelations"
-                  :key="relation.edge.id"
-                  type="button"
-                  class="relation-row"
-                  @click="relation.node && selectNode(relation.node.id)"
-                >
-                  <v-icon size="16">
-                    {{ relation.direction === 'outgoing' ? 'mdi-arrow-right' : 'mdi-arrow-left' }}
-                  </v-icon>
-                  <span class="relation-label">
-                    {{ relation.node?.label || '未知节点' }}
-                  </span>
-                  <span class="relation-type">{{ relation.edge.relation }}</span>
-                </button>
-              </div>
-            </div>
-          </v-card-text>
-          <v-divider />
-          <v-card-actions class="px-4 py-3">
-            <v-spacer />
-            <v-btn
-              v-if="selectedNode.page_path"
-              prepend-icon="mdi-file-edit-outline"
-              color="primary"
-              variant="tonal"
-              @click="emit('openPage', selectedNode.page_path)"
+            <button
+              v-for="item in legendItems"
+              :key="item.type"
+              type="button"
+              class="legend-row"
+              :class="{ 'legend-row--inactive': !item.active }"
+              @click="toggleType(item.type)"
             >
-              打开笔记
-            </v-btn>
-          </v-card-actions>
-        </v-card>
-      </div>
+              <span class="legend-dot" :style="{ backgroundColor: item.color }" />
+              <span>{{ item.label }}</span>
+              <v-spacer />
+              <span class="text-medium-emphasis">{{ item.count }}</span>
+              <v-icon size="16">
+                {{ item.active ? 'mdi-eye-outline' : 'mdi-eye-off-outline' }}
+              </v-icon>
+            </button>
+          </div>
+
+          <v-card v-if="selectedNode" class="graph-detail" variant="elevated">
+            <v-card-title class="graph-detail-title">
+              <div class="min-width-0">
+                <div class="text-subtitle-1 font-weight-bold text-truncate">
+                  {{ selectedNode.label }}
+                </div>
+                <div class="text-caption text-medium-emphasis text-truncate">
+                  {{ selectedNode.id }}
+                </div>
+              </div>
+              <v-spacer />
+              <v-btn icon="mdi-close" size="small" variant="text" @click="closeDetails" />
+            </v-card-title>
+            <v-divider />
+            <v-card-text class="graph-detail-body">
+              <div class="d-flex align-center flex-wrap ga-2 mb-4">
+                <v-chip
+                  size="small"
+                  :color="
+                    typeStyles[normalizeNodeType(selectedNode.node_type)].color ||
+                    typeStyles.other.color
+                  "
+                  variant="tonal"
+                >
+                  {{ typeStyles[normalizeNodeType(selectedNode.node_type)].label }}
+                </v-chip>
+                <v-chip size="small" variant="outlined">
+                  {{ selectedNode.category }}
+                </v-chip>
+                <v-chip size="small" variant="outlined">
+                  {{ selectedRelations.length }} 条关系
+                </v-chip>
+              </div>
+
+              <div v-if="selectedNode.source" class="detail-section">
+                <div class="detail-label">来源</div>
+                <div class="text-body-2">{{ selectedNode.source }}</div>
+              </div>
+
+              <div class="detail-section">
+                <div class="detail-label">笔记摘要</div>
+                <v-progress-linear
+                  v-if="detailLoading"
+                  indeterminate
+                  color="primary"
+                  class="mb-3"
+                />
+                <div class="detail-excerpt">
+                  {{ selectedExcerpt || selectedNode.evidence || '暂无摘要' }}
+                </div>
+              </div>
+
+              <div v-if="selectedRelations.length" class="detail-section">
+                <div class="detail-label">关联节点</div>
+                <div class="relation-list">
+                  <button
+                    v-for="relation in selectedRelations"
+                    :key="relation.edge.id"
+                    type="button"
+                    class="relation-row"
+                    @click="relation.node && selectNode(relation.node.id)"
+                  >
+                    <v-icon size="16">
+                      {{
+                        relation.direction === 'outgoing' ? 'mdi-arrow-right' : 'mdi-arrow-left'
+                      }}
+                    </v-icon>
+                    <span class="relation-label">
+                      {{ relation.node?.label || '未知节点' }}
+                    </span>
+                    <span class="relation-type">{{ relation.edge.relation }}</span>
+                  </button>
+                </div>
+              </div>
+            </v-card-text>
+            <v-divider />
+            <v-card-actions class="px-4 py-3">
+              <v-spacer />
+              <v-btn
+                v-if="selectedNode.page_path"
+                prepend-icon="mdi-file-edit-outline"
+                color="primary"
+                variant="tonal"
+                @click="emit('openPage', selectedNode.page_path)"
+              >
+                打开笔记
+              </v-btn>
+            </v-card-actions>
+          </v-card>
+        </div>
+      </Teleport>
     </v-card-text>
   </v-card>
 </template>
@@ -481,6 +504,24 @@ onUnmounted(() => {
   border: 1px solid #dceaf4;
   border-radius: 16px;
   background: #ffffff;
+  transition: min-height 0.22s ease;
+}
+
+.graph-shell--expanded {
+  position: fixed;
+  z-index: 10050;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  min-height: 100vh;
+  border: 0;
+  border-radius: 0;
+  background: #fbfdff;
+  box-shadow: none;
+}
+
+.graph-shell--expanded .graph-detail {
+  max-height: calc(100vh - 36px);
 }
 
 .graph-empty {

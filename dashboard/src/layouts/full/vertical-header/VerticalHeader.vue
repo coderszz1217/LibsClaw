@@ -1091,17 +1091,8 @@ onMounted(async () => {
       }"
       @click="handleLogoClick"
     >
-      <span class="logo-text Outfit"
-        >Astr<span class="logo-text bot-text-wrapper"
-          >Bot
-          <img
-            v-if="isChristmas"
-            src="@/assets/images/xmas-hat.png"
-            alt="Christmas hat"
-            class="xmas-hat"
-          /> </span
-      ></span>
-      <span class="version-text hidden-xs">{{ botCurrVersion }}</span>
+      <span class="logo-text Outfit">Libs · Claw</span>
+      <span class="version-text hidden-xs">老板 活都交给我干</span>
     </div>
 
     <v-btn
