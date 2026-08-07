@@ -9,6 +9,8 @@ from lark_oapi.api.cardkit.v1 import (
     ContentCardElementRequestBody,
     CreateCardRequest,
     CreateCardRequestBody,
+    DeleteCardElementRequest,
+    DeleteCardElementRequestBody,
     SettingsCardRequest,
     SettingsCardRequestBody,
 )
@@ -38,6 +40,10 @@ from astrbot.core.utils.metrics import Metric
 
 
 class LarkMessageEvent(AstrMessageEvent):
+    STREAMING_MARKDOWN_ELEMENT_ID = "markdown_1"
+    STREAMING_LOADING_ELEMENT_ID = "streaming_loading"
+    STREAMING_LOADING_TEXT = "收到，正在处理..."
+
     def __init__(
         self,
         message_str,
@@ -783,8 +789,13 @@ class LarkMessageEvent(AstrMessageEvent):
                     {
                         "tag": "markdown",
                         "content": "",
-                        "element_id": "markdown_1",
-                    }
+                        "element_id": self.STREAMING_MARKDOWN_ELEMENT_ID,
+                    },
+                    {
+                        "tag": "markdown",
+                        "content": self.STREAMING_LOADING_TEXT,
+                        "element_id": self.STREAMING_LOADING_ELEMENT_ID,
+                    },
                 ]
             },
         }
@@ -855,7 +866,7 @@ class LarkMessageEvent(AstrMessageEvent):
         request = (
             ContentCardElementRequest.builder()
             .card_id(card_id)
-            .element_id("markdown_1")
+            .element_id(self.STREAMING_MARKDOWN_ELEMENT_ID)
             .request_body(
                 ContentCardElementRequestBody.builder()
                 .content(content)
@@ -874,6 +885,51 @@ class LarkMessageEvent(AstrMessageEvent):
 
         if not response.success():
             logger.debug(f"[Lark] 流式更新文本失败({response.code}): {response.msg}")
+            return False
+
+        return True
+
+    async def _delete_streaming_loading(
+        self,
+        card_id: str,
+        sequence: int,
+    ) -> bool:
+        """Remove the temporary loading element from a streaming card.
+
+        Args:
+            card_id: The CardKit card entity ID.
+            sequence: The monotonic update sequence for this card.
+
+        Returns:
+            Whether the loading element was deleted successfully.
+        """
+        if self.bot.cardkit is None:
+            logger.error("[Lark] API Client cardkit 模块未初始化")
+            return False
+
+        request = (
+            DeleteCardElementRequest.builder()
+            .card_id(card_id)
+            .element_id(self.STREAMING_LOADING_ELEMENT_ID)
+            .request_body(
+                DeleteCardElementRequestBody.builder()
+                .sequence(sequence)
+                .uuid(str(uuid.uuid4()))
+                .build()
+            )
+            .build()
+        )
+
+        try:
+            response = await self.bot.cardkit.v1.card_element.adelete(request)
+        except Exception as e:
+            logger.debug(f"[Lark] 删除流式 loading 失败 (ignored): {e}")
+            return False
+
+        if not response.success():
+            logger.debug(
+                f"[Lark] 删除流式 loading 失败({response.code}): {response.msg}"
+            )
             return False
 
         return True
@@ -938,12 +994,10 @@ class LarkMessageEvent(AstrMessageEvent):
     async def send_streaming(self, generator, use_fallback: bool = False):
         """使用 CardKit 流式卡片实现打字机效果。
 
-        流程：首字到来时创建卡片实体 → 发送消息 → 流式更新文本 → 关闭流式模式。
-        卡片创建延迟到第一个文本 token 到达时，避免工具调用阶段就渲染空卡片。
+        流程：先创建带 loading 的卡片实体 → 发送消息 → 流式更新文本 → 关闭流式模式。
         使用解耦发送循环，LLM token 到达时只更新 buffer 并唤醒发送协程，
         发送频率由网络 RTT 自然限流。
         """
-        # Lazy-init: card & sender loop created on first text token
         card_id = None
         sequence = 0
         delta = ""
@@ -993,13 +1047,34 @@ class LarkMessageEvent(AstrMessageEvent):
             if not card_id:
                 return
             nonlocal sequence
-            if delta and delta != last_sent:
+            if delta:
+                if delta != last_sent:
+                    sequence += 1
+                    await self._update_streaming_text(card_id, delta, sequence)
                 sequence += 1
-                await self._update_streaming_text(card_id, delta, sequence)
+                await self._delete_streaming_loading(card_id, sequence)
             sequence += 1
             await self._close_streaming_mode(card_id, sequence)
 
         try:
+            card_id = await self._create_streaming_card()
+            if not card_id:
+                logger.warning("[Lark] 无法创建流式卡片，回退到非流式发送")
+                await _consume_rest_and_fallback(generator, "")
+                return
+
+            sent = await self._send_card_message(
+                card_id,
+                reply_message_id=self.message_obj.message_id,
+            )
+            if not sent:
+                logger.error("[Lark] 发送流式卡片消息失败，回退到非流式发送")
+                await _consume_rest_and_fallback(generator, "")
+                return
+
+            logger.info("[Lark] 流式输出: 使用 CardKit 流式卡片")
+            sender_task = asyncio.create_task(_sender_loop())
+
             async for chain in generator:
                 if not isinstance(chain, MessageChain):
                     continue
@@ -1008,7 +1083,7 @@ class LarkMessageEvent(AstrMessageEvent):
                     # Tool call boundary: close current card, next text
                     # token will lazily create a new one below the tool
                     # status message.
-                    if card_id and sender_task:
+                    if card_id and sender_task and delta:
                         done = True
                         text_changed.set()
                         await sender_task
@@ -1026,7 +1101,6 @@ class LarkMessageEvent(AstrMessageEvent):
                     if isinstance(comp, Plain):
                         delta += comp.text
 
-                        # Lazy card creation on first text token
                         if card_id is None:
                             card_id = await self._create_streaming_card()
                             if not card_id:

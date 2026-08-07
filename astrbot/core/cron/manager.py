@@ -452,8 +452,9 @@ class CronJobManager:
         if delivery_session_str:
             if not req.func_tool:
                 req.func_tool = ToolSet()
+            tool_mgr = self.ctx.get_llm_tool_manager()
             req.func_tool.add_tool(
-                self.ctx.get_llm_tool_manager().get_builtin_tool(SendMessageToUserTool)
+                tool_mgr.guard_tool(tool_mgr.get_builtin_tool(SendMessageToUserTool))
             )
 
         result = await build_main_agent(

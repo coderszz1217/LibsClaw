@@ -466,6 +466,12 @@
                 "description": "Имя бота",
                 "hint": "Отображаемое имя бота"
             },
+            "note": {
+                "description": "Примечание"
+            },
+            "expires_at": {
+                "description": "Время истечения"
+            },
             "is_sandbox": {
                 "description": "Режим песочницы"
             },

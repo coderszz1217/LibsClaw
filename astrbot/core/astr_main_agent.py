@@ -294,14 +294,16 @@ async def _apply_kb(
     if has_file_attachment:
         if req.func_tool is None:
             req.func_tool = ToolSet()
+        tool_mgr = plugin_context.get_llm_tool_manager()
         req.func_tool.add_tool(
-            plugin_context.get_llm_tool_manager().get_builtin_tool(
-                KnowledgeBaseImportAttachmentTool
+            tool_mgr.guard_tool(
+                tool_mgr.get_builtin_tool(KnowledgeBaseImportAttachmentTool)
             )
         )
 
     if req.func_tool is None:
         req.func_tool = ToolSet()
+    tool_mgr = plugin_context.get_llm_tool_manager()
     for tool_class in (
         KnowledgeBaseWritePageTool,
         KnowledgeBaseListPagesTool,
@@ -311,7 +313,7 @@ async def _apply_kb(
         KnowledgeBaseExportTool,
     ):
         req.func_tool.add_tool(
-            plugin_context.get_llm_tool_manager().get_builtin_tool(tool_class)
+            tool_mgr.guard_tool(tool_mgr.get_builtin_tool(tool_class))
         )
 
     message_text = (req.prompt or "").casefold()
@@ -383,10 +385,9 @@ async def _apply_kb(
     else:
         if req.func_tool is None:
             req.func_tool = ToolSet()
+        tool_mgr = plugin_context.get_llm_tool_manager()
         req.func_tool.add_tool(
-            plugin_context.get_llm_tool_manager().get_builtin_tool(
-                KnowledgeBaseQueryTool
-            )
+            tool_mgr.guard_tool(tool_mgr.get_builtin_tool(KnowledgeBaseQueryTool))
         )
 
 
@@ -513,12 +514,18 @@ def _apply_local_env_tools(req: ProviderRequest, plugin_context: Context) -> Non
     if req.func_tool is None:
         req.func_tool = ToolSet()
     tool_mgr = plugin_context.get_llm_tool_manager()
-    req.func_tool.add_tool(tool_mgr.get_builtin_tool(ExecuteShellTool))
-    req.func_tool.add_tool(tool_mgr.get_builtin_tool(LocalPythonTool))
-    req.func_tool.add_tool(tool_mgr.get_builtin_tool(FileReadTool))
-    req.func_tool.add_tool(tool_mgr.get_builtin_tool(FileWriteTool))
-    req.func_tool.add_tool(tool_mgr.get_builtin_tool(FileEditTool))
-    req.func_tool.add_tool(tool_mgr.get_builtin_tool(GrepTool))
+    req.func_tool.add_tool(
+        tool_mgr.guard_tool(tool_mgr.get_builtin_tool(ExecuteShellTool))
+    )
+    req.func_tool.add_tool(
+        tool_mgr.guard_tool(tool_mgr.get_builtin_tool(LocalPythonTool))
+    )
+    req.func_tool.add_tool(tool_mgr.guard_tool(tool_mgr.get_builtin_tool(FileReadTool)))
+    req.func_tool.add_tool(
+        tool_mgr.guard_tool(tool_mgr.get_builtin_tool(FileWriteTool))
+    )
+    req.func_tool.add_tool(tool_mgr.guard_tool(tool_mgr.get_builtin_tool(FileEditTool)))
+    req.func_tool.add_tool(tool_mgr.guard_tool(tool_mgr.get_builtin_tool(GrepTool)))
     req.system_prompt = f"{req.system_prompt or ''}\n{_build_local_mode_prompt()}\n"
 
 
@@ -1280,14 +1287,22 @@ def _apply_sandbox_tools(
         os.environ["SHIPYARD_ACCESS_TOKEN"] = at
 
     tool_mgr = llm_tools
-    req.func_tool.add_tool(tool_mgr.get_builtin_tool(ExecuteShellTool))
-    req.func_tool.add_tool(tool_mgr.get_builtin_tool(PythonTool))
-    req.func_tool.add_tool(tool_mgr.get_builtin_tool(FileUploadTool))
-    req.func_tool.add_tool(tool_mgr.get_builtin_tool(FileDownloadTool))
-    req.func_tool.add_tool(tool_mgr.get_builtin_tool(FileReadTool))
-    req.func_tool.add_tool(tool_mgr.get_builtin_tool(FileWriteTool))
-    req.func_tool.add_tool(tool_mgr.get_builtin_tool(FileEditTool))
-    req.func_tool.add_tool(tool_mgr.get_builtin_tool(GrepTool))
+    req.func_tool.add_tool(
+        tool_mgr.guard_tool(tool_mgr.get_builtin_tool(ExecuteShellTool))
+    )
+    req.func_tool.add_tool(tool_mgr.guard_tool(tool_mgr.get_builtin_tool(PythonTool)))
+    req.func_tool.add_tool(
+        tool_mgr.guard_tool(tool_mgr.get_builtin_tool(FileUploadTool))
+    )
+    req.func_tool.add_tool(
+        tool_mgr.guard_tool(tool_mgr.get_builtin_tool(FileDownloadTool))
+    )
+    req.func_tool.add_tool(tool_mgr.guard_tool(tool_mgr.get_builtin_tool(FileReadTool)))
+    req.func_tool.add_tool(
+        tool_mgr.guard_tool(tool_mgr.get_builtin_tool(FileWriteTool))
+    )
+    req.func_tool.add_tool(tool_mgr.guard_tool(tool_mgr.get_builtin_tool(FileEditTool)))
+    req.func_tool.add_tool(tool_mgr.guard_tool(tool_mgr.get_builtin_tool(GrepTool)))
     if booter == "shipyard_neo":
         # Neo-specific path rule: filesystem tools operate relative to sandbox
         # workspace root. Do not prepend "/workspace".
@@ -1323,22 +1338,50 @@ def _apply_sandbox_tools(
         # Browser tools: only register if profile supports browser
         # (or if capabilities are unknown because sandbox hasn't booted yet)
         if sandbox_capabilities is None or "browser" in sandbox_capabilities:
-            req.func_tool.add_tool(tool_mgr.get_builtin_tool(BrowserExecTool))
-            req.func_tool.add_tool(tool_mgr.get_builtin_tool(BrowserBatchExecTool))
-            req.func_tool.add_tool(tool_mgr.get_builtin_tool(RunBrowserSkillTool))
+            req.func_tool.add_tool(
+                tool_mgr.guard_tool(tool_mgr.get_builtin_tool(BrowserExecTool))
+            )
+            req.func_tool.add_tool(
+                tool_mgr.guard_tool(tool_mgr.get_builtin_tool(BrowserBatchExecTool))
+            )
+            req.func_tool.add_tool(
+                tool_mgr.guard_tool(tool_mgr.get_builtin_tool(RunBrowserSkillTool))
+            )
 
         # Neo-specific tools (always available for shipyard_neo)
-        req.func_tool.add_tool(tool_mgr.get_builtin_tool(GetExecutionHistoryTool))
-        req.func_tool.add_tool(tool_mgr.get_builtin_tool(AnnotateExecutionTool))
-        req.func_tool.add_tool(tool_mgr.get_builtin_tool(CreateSkillPayloadTool))
-        req.func_tool.add_tool(tool_mgr.get_builtin_tool(GetSkillPayloadTool))
-        req.func_tool.add_tool(tool_mgr.get_builtin_tool(CreateSkillCandidateTool))
-        req.func_tool.add_tool(tool_mgr.get_builtin_tool(ListSkillCandidatesTool))
-        req.func_tool.add_tool(tool_mgr.get_builtin_tool(EvaluateSkillCandidateTool))
-        req.func_tool.add_tool(tool_mgr.get_builtin_tool(PromoteSkillCandidateTool))
-        req.func_tool.add_tool(tool_mgr.get_builtin_tool(ListSkillReleasesTool))
-        req.func_tool.add_tool(tool_mgr.get_builtin_tool(RollbackSkillReleaseTool))
-        req.func_tool.add_tool(tool_mgr.get_builtin_tool(SyncSkillReleaseTool))
+        req.func_tool.add_tool(
+            tool_mgr.guard_tool(tool_mgr.get_builtin_tool(GetExecutionHistoryTool))
+        )
+        req.func_tool.add_tool(
+            tool_mgr.guard_tool(tool_mgr.get_builtin_tool(AnnotateExecutionTool))
+        )
+        req.func_tool.add_tool(
+            tool_mgr.guard_tool(tool_mgr.get_builtin_tool(CreateSkillPayloadTool))
+        )
+        req.func_tool.add_tool(
+            tool_mgr.guard_tool(tool_mgr.get_builtin_tool(GetSkillPayloadTool))
+        )
+        req.func_tool.add_tool(
+            tool_mgr.guard_tool(tool_mgr.get_builtin_tool(CreateSkillCandidateTool))
+        )
+        req.func_tool.add_tool(
+            tool_mgr.guard_tool(tool_mgr.get_builtin_tool(ListSkillCandidatesTool))
+        )
+        req.func_tool.add_tool(
+            tool_mgr.guard_tool(tool_mgr.get_builtin_tool(EvaluateSkillCandidateTool))
+        )
+        req.func_tool.add_tool(
+            tool_mgr.guard_tool(tool_mgr.get_builtin_tool(PromoteSkillCandidateTool))
+        )
+        req.func_tool.add_tool(
+            tool_mgr.guard_tool(tool_mgr.get_builtin_tool(ListSkillReleasesTool))
+        )
+        req.func_tool.add_tool(
+            tool_mgr.guard_tool(tool_mgr.get_builtin_tool(RollbackSkillReleaseTool))
+        )
+        req.func_tool.add_tool(
+            tool_mgr.guard_tool(tool_mgr.get_builtin_tool(SyncSkillReleaseTool))
+        )
 
     if booter == "cua":
         req.system_prompt += (
@@ -1352,9 +1395,15 @@ def _apply_sandbox_tools(
             "`astrbot_cua_mouse_click` for coordinates and `astrbot_cua_keyboard_type` "
             "for text input; use text=`\\n` for Enter.\n"
         )
-        req.func_tool.add_tool(tool_mgr.get_builtin_tool(CuaScreenshotTool))
-        req.func_tool.add_tool(tool_mgr.get_builtin_tool(CuaMouseClickTool))
-        req.func_tool.add_tool(tool_mgr.get_builtin_tool(CuaKeyboardTypeTool))
+        req.func_tool.add_tool(
+            tool_mgr.guard_tool(tool_mgr.get_builtin_tool(CuaScreenshotTool))
+        )
+        req.func_tool.add_tool(
+            tool_mgr.guard_tool(tool_mgr.get_builtin_tool(CuaMouseClickTool))
+        )
+        req.func_tool.add_tool(
+            tool_mgr.guard_tool(tool_mgr.get_builtin_tool(CuaKeyboardTypeTool))
+        )
 
     req.system_prompt = f"{req.system_prompt or ''}\n{SANDBOX_MODE_PROMPT}\n"
 
@@ -1363,7 +1412,9 @@ def _proactive_cron_job_tools(req: ProviderRequest, plugin_context: Context) -> 
     if req.func_tool is None:
         req.func_tool = ToolSet()
     tool_mgr = plugin_context.get_llm_tool_manager()
-    req.func_tool.add_tool(tool_mgr.get_builtin_tool(FutureTaskTool))
+    req.func_tool.add_tool(
+        tool_mgr.guard_tool(tool_mgr.get_builtin_tool(FutureTaskTool))
+    )
 
 
 async def _apply_web_search_tools(
@@ -1384,20 +1435,38 @@ async def _apply_web_search_tools(
     tool_mgr = plugin_context.get_llm_tool_manager()
     provider = prov_settings.get("websearch_provider", "tavily")
     if provider == "tavily":
-        req.func_tool.add_tool(tool_mgr.get_builtin_tool(TavilyWebSearchTool))
-        req.func_tool.add_tool(tool_mgr.get_builtin_tool(TavilyExtractWebPageTool))
+        req.func_tool.add_tool(
+            tool_mgr.guard_tool(tool_mgr.get_builtin_tool(TavilyWebSearchTool))
+        )
+        req.func_tool.add_tool(
+            tool_mgr.guard_tool(tool_mgr.get_builtin_tool(TavilyExtractWebPageTool))
+        )
     elif provider == "bocha":
-        req.func_tool.add_tool(tool_mgr.get_builtin_tool(BochaWebSearchTool))
+        req.func_tool.add_tool(
+            tool_mgr.guard_tool(tool_mgr.get_builtin_tool(BochaWebSearchTool))
+        )
     elif provider == "brave":
-        req.func_tool.add_tool(tool_mgr.get_builtin_tool(BraveWebSearchTool))
+        req.func_tool.add_tool(
+            tool_mgr.guard_tool(tool_mgr.get_builtin_tool(BraveWebSearchTool))
+        )
     elif provider == "firecrawl":
-        req.func_tool.add_tool(tool_mgr.get_builtin_tool(FirecrawlWebSearchTool))
-        req.func_tool.add_tool(tool_mgr.get_builtin_tool(FirecrawlExtractWebPageTool))
+        req.func_tool.add_tool(
+            tool_mgr.guard_tool(tool_mgr.get_builtin_tool(FirecrawlWebSearchTool))
+        )
+        req.func_tool.add_tool(
+            tool_mgr.guard_tool(tool_mgr.get_builtin_tool(FirecrawlExtractWebPageTool))
+        )
     elif provider == "baidu_ai_search":
-        req.func_tool.add_tool(tool_mgr.get_builtin_tool(BaiduWebSearchTool))
+        req.func_tool.add_tool(
+            tool_mgr.guard_tool(tool_mgr.get_builtin_tool(BaiduWebSearchTool))
+        )
     elif provider == "exa":
-        req.func_tool.add_tool(tool_mgr.get_builtin_tool(ExaWebSearchTool))
-        req.func_tool.add_tool(tool_mgr.get_builtin_tool(ExaGetContentsTool))
+        req.func_tool.add_tool(
+            tool_mgr.guard_tool(tool_mgr.get_builtin_tool(ExaWebSearchTool))
+        )
+        req.func_tool.add_tool(
+            tool_mgr.guard_tool(tool_mgr.get_builtin_tool(ExaGetContentsTool))
+        )
 
 
 def _apply_web_search_citation_prompt(
@@ -1744,10 +1813,9 @@ async def build_main_agent(
     if event.platform_meta.support_proactive_message:
         if req.func_tool is None:
             req.func_tool = ToolSet()
+        tool_mgr = plugin_context.get_llm_tool_manager()
         req.func_tool.add_tool(
-            plugin_context.get_llm_tool_manager().get_builtin_tool(
-                SendMessageToUserTool
-            )
+            tool_mgr.guard_tool(tool_mgr.get_builtin_tool(SendMessageToUserTool))
         )
 
     fallback_providers = _get_fallback_chat_providers(

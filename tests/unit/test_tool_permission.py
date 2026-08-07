@@ -319,7 +319,7 @@ def test_get_full_tool_set_excludes_builtin_tools():
     assert "astrbot_execute_shell" not in names
 
 
-def test_get_full_tool_set_wraps_non_builtin():
+def test_get_full_tool_set_wraps_tools():
     mgr = FunctionToolManager()
     _clear_tool_permissions()
 
@@ -328,9 +328,7 @@ def test_get_full_tool_set_wraps_non_builtin():
 
     plugin_tools = [t for t in tool_set.tools if t.name == "my_plugin_tool"]
     assert plugin_tools
-    assert isinstance(plugin_tools[0], _PermissionGuardedTool), (
-        "non-builtin tools must be wrapped"
-    )
+    assert isinstance(plugin_tools[0], _PermissionGuardedTool), "tools must be wrapped"
 
 
 # ── API: get_tool_list permission fields ──────────────────────────────
@@ -358,14 +356,14 @@ class TestGetToolListPermission:
             _clear_tool_permissions()
 
     @pytest.mark.asyncio
-    async def test_list_no_permission_fields_for_builtin(self):
+    async def test_list_includes_permission_fields_for_builtin(self):
         service = _make_tools_service()
         tools = service.get_tool_list()
 
         target = next(t for t in tools if t["name"] == "astrbot_execute_shell")
-        assert "permission" not in target
-        assert "permission_configured" not in target
-        assert target["readonly"] is True
+        assert target["permission"] == "member"
+        assert target["permission_configured"] is False
+        assert target["readonly"] is False
 
 
 # ── API: update_tool_permission ──────────────────────────────────────
@@ -387,12 +385,67 @@ class TestUpdateToolPermission:
         assert stored["_default"]["target_tool"] == "admin"
 
     @pytest.mark.asyncio
-    async def test_reject_builtin_tool(self):
+    async def test_set_builtin_tool_permission(self):
+        service = _make_tools_service()
+        _clear_tool_permissions()
+
+        try:
+            message = service.update_tool_permission(
+                {"name": "astrbot_execute_shell", "permission": "admin"}
+            )
+            assert "astrbot_execute_shell" in message
+
+            stored = sp.get("tool_permissions", {}, scope="global", scope_id="global")
+            assert stored["_default"]["astrbot_execute_shell"] == "admin"
+        finally:
+            _clear_tool_permissions()
+
+    def test_toggle_builtin_tool(self):
+        service = _make_tools_service()
+        sp.put("inactivated_llm_tools", [], scope="global", scope_id="global")
+
+        try:
+            message = service.toggle_tool(
+                {"name": "astrbot_execute_shell", "activate": False}
+            )
+            assert message == "Operation successful."
+            stored = sp.get(
+                "inactivated_llm_tools",
+                [],
+                scope="global",
+                scope_id="global",
+            )
+            assert "astrbot_execute_shell" in stored
+            assert (
+                service.tool_mgr.get_builtin_tool("astrbot_execute_shell").active
+                is False
+            )
+
+            message = service.toggle_tool(
+                {"name": "astrbot_execute_shell", "activate": True}
+            )
+            assert message == "Operation successful."
+            stored = sp.get(
+                "inactivated_llm_tools",
+                [],
+                scope="global",
+                scope_id="global",
+            )
+            assert "astrbot_execute_shell" not in stored
+            assert (
+                service.tool_mgr.get_builtin_tool("astrbot_execute_shell").active
+                is True
+            )
+        finally:
+            sp.put("inactivated_llm_tools", [], scope="global", scope_id="global")
+
+    @pytest.mark.asyncio
+    async def test_reject_unknown_builtin_like_tool(self):
         service = _make_tools_service()
 
-        with pytest.raises(ToolsServiceError, match="Builtin"):
+        with pytest.raises(ToolsServiceError, match="not found"):
             service.update_tool_permission(
-                {"name": "astrbot_execute_shell", "permission": "admin"}
+                {"name": "astrbot_not_registered", "permission": "admin"}
             )
 
     @pytest.mark.asyncio

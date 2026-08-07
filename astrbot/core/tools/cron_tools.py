@@ -50,13 +50,7 @@ def _parse_run_at(run_at: Any) -> datetime | None:
 @dataclass
 class FutureTaskTool(FunctionTool[AstrAgentContext]):
     name: str = "future_task"
-    description: str = (
-        "Manage your future tasks. "
-        "Use action='create' to schedule a recurring cron task or one-time run_at task. "
-        "Use action='edit' to update an existing task. "
-        "Use action='list' to inspect existing tasks. "
-        "Use action='delete' to remove a task by job_id."
-    )
+    description: str = "创建、编辑、删除、查看未来任务或定时任务。"
     parameters: dict = Field(
         default_factory=lambda: {
             "type": "object",

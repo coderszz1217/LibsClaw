@@ -159,17 +159,7 @@ const getPermissionLabel = (permission?: string): string => {
       </template>
 
       <template #item.permission="{ item }">
-        <!-- Builtin tools: non-clickable badge -->
-        <v-chip
-          v-if="item.origin === 'builtin'"
-          size="small"
-          variant="tonal"
-          class="font-weight-medium text-medium-emphasis"
-        >
-          {{ tmTool('functionTools.table.permissionBuiltin') }}
-        </v-chip>
-        <!-- Other tools: clickable dropdown -->
-        <v-menu v-else location="bottom">
+        <v-menu location="bottom">
           <template v-slot:activator="{ props: menuProps }">
             <v-chip
               v-bind="menuProps"
@@ -202,9 +192,7 @@ const getPermissionLabel = (permission?: string): string => {
       </template>
 
       <template #item.actions="{ item }">
-        <span v-if="item.readonly" class="text-medium-emphasis">-</span>
         <v-switch
-          v-else
           :model-value="item.active"
           color="primary"
           density="compact"

@@ -51,9 +51,7 @@ async def _get_gui_component(context: ContextWrapper[AstrAgentContext]) -> Any:
 @dataclass
 class CuaScreenshotTool(FunctionTool):
     name: str = "astrbot_cua_screenshot"
-    description: str = (
-        "Capture a screenshot from the CUA sandbox and optionally send it to the user."
-    )
+    description: str = "截取 CUA 沙箱桌面截图，可返回给模型或发送给用户。"
     parameters: dict = field(
         default_factory=lambda: {
             "type": "object",
@@ -109,7 +107,7 @@ class CuaScreenshotTool(FunctionTool):
 @dataclass
 class CuaMouseClickTool(FunctionTool):
     name: str = "astrbot_cua_mouse_click"
-    description: str = "Click a coordinate in the CUA sandbox desktop."
+    description: str = "在 CUA 沙箱桌面指定坐标点击。"
     parameters: dict = field(
         default_factory=lambda: {
             "type": "object",
@@ -146,7 +144,7 @@ class CuaMouseClickTool(FunctionTool):
 @dataclass
 class CuaKeyboardTypeTool(FunctionTool):
     name: str = "astrbot_cua_keyboard_type"
-    description: str = "Type text into the CUA sandbox desktop."
+    description: str = "向 CUA 沙箱桌面输入文字。"
     parameters: dict = field(
         default_factory=lambda: {
             "type": "object",

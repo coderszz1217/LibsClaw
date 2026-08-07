@@ -25,7 +25,7 @@ def test_get_builtin_tool_by_class_returns_cached_instance():
     assert tool_by_class.name == "send_message_to_user"
 
 
-def test_builtin_tool_ignores_inactivated_llm_tools():
+def test_builtin_tool_respects_inactivated_llm_tools():
     manager = FunctionToolManager()
     sp.put(
         "inactivated_llm_tools",
@@ -36,7 +36,7 @@ def test_builtin_tool_ignores_inactivated_llm_tools():
 
     try:
         tool = manager.get_builtin_tool(SendMessageToUserTool)
-        assert tool.active is True
+        assert tool.active is False
     finally:
         sp.put("inactivated_llm_tools", [], scope="global", scope_id="global")
 

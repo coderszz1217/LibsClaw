@@ -178,11 +178,11 @@
         "configParseError": "Ошибка разбора конфигурации: {error}",
         "noAvailableConfig": "Конфигурация отсутствует",
         "toggleToolSuccess": "Статус инструмента изменен!",
-        "toggleToolReadonly": "Встроенные инструменты доступны только для чтения и не могут быть включены или выключены.",
+        "toggleToolReadonly": "Этот инструмент нельзя включить или выключить.",
         "toggleToolError": "Не удалось изменить статус: {error}",
         "updateToolPermissionSuccess": "Доступ к {name} обновлён",
         "updateToolPermissionFailed": "Не удалось обновить доступ к инструменту",
-        "updateToolPermissionBuiltin": "Встроенные инструменты не поддерживают настройку доступа.",
+        "updateToolPermissionBuiltin": "Этот инструмент не поддерживает отдельную настройку доступа.",
         "testError": "Ошибка теста связи: {error}"
     },
     "syncProvider": {

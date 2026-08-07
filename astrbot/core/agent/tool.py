@@ -204,6 +204,8 @@ class ToolSet:
         """Convert tools to OpenAI API function calling schema format."""
         result = []
         for tool in self.tools:
+            if hasattr(tool, "active") and not tool.active:
+                continue
             func_def = {"type": "function", "function": {"name": tool.name}}
             if tool.description:
                 func_def["function"]["description"] = tool.description
@@ -221,6 +223,8 @@ class ToolSet:
         """Convert tools to Anthropic API format."""
         result = []
         for tool in self.tools:
+            if hasattr(tool, "active") and not tool.active:
+                continue
             input_schema = {"type": "object"}
             if tool.parameters:
                 input_schema["properties"] = tool.parameters.get("properties", {})
@@ -317,6 +321,8 @@ class ToolSet:
 
         tools = []
         for tool in self.tools:
+            if hasattr(tool, "active") and not tool.active:
+                continue
             d: dict[str, Any] = {"name": tool.name}
             if tool.description:
                 d["description"] = tool.description

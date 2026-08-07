@@ -213,10 +213,6 @@ async def _quick_test_mcp_connection(config: dict) -> tuple[bool, str]:
 class _PermissionGuardedTool(FunctionTool):
     """Transparent proxy that checks per-tool permissions before delegating.
 
-    Only wraps non-builtin tools. Builtin tools are added to the tool set
-    without wrapping, so their existing hardcoded permission logic
-    (``check_admin_permission`` / ``_is_restricted_env``) is unaffected.
-
     The ``handler`` field is intentionally kept ``None`` so that
     ``FunctionToolExecutor._execute_local`` falls through to the
     ``is_override_call`` branch and invokes our ``call()`` instead of
@@ -435,6 +431,14 @@ class FunctionToolManager:
             return cached_tool
 
         builtin_tool = tool_cls()  # type: ignore
+        tool_name = get_builtin_tool_name(tool_cls) or builtin_tool.name
+        inactivated_llm_tools: list = sp.get(
+            "inactivated_llm_tools",
+            [],
+            scope="global",
+            scope_id="global",
+        )
+        builtin_tool.active = tool_name not in inactivated_llm_tools
         self.builtin_func_list[tool_cls] = builtin_tool
         return builtin_tool
 
@@ -444,15 +448,30 @@ class FunctionToolManager:
             self.get_builtin_tool(tool_cls) for tool_cls in iter_builtin_tool_classes()
         ]
 
+    def guard_tool(self, tool: FuncTool) -> FuncTool:
+        """Wrap a function tool with dashboard permission checks.
+
+        Args:
+            tool: Function tool to wrap.
+
+        Returns:
+            A permission-guarded function tool proxy.
+        """
+        return _PermissionGuardedTool(tool, self)
+
     def is_builtin_tool(self, name: str) -> bool:
         ensure_builtin_tools_loaded()
         return get_builtin_tool_class(name) is not None
 
     def _default_permission(self, tool_name: str) -> str:
-        """Compute the fallback permission for a non-builtin tool.
+        """Compute the fallback permission for a tool.
 
-        All non-builtin tools default to ``"member"`` (no restriction).
-        Builtin tools are never routed through this method."""
+        Args:
+            tool_name: Function tool name.
+
+        Returns:
+            The default permission level when no explicit setting exists.
+        """
         return "member"
 
     def _check_tool_permission(
@@ -462,10 +481,10 @@ class FunctionToolManager:
     ) -> str | None:
         """Return an error string if the caller lacks permission, or None.
 
-        Only non-builtin tools are guarded. Permission is resolved from
-        ``tool_permissions`` in SharedPreferences (``_default`` key). When
-        no explicit entry exists the tool inherits the fallback
-        ``_default_permission``."""
+        Permission is resolved from ``tool_permissions`` in SharedPreferences
+        (``_default`` key). When no explicit entry exists the tool inherits
+        the fallback ``_default_permission``.
+        """
         try:
             perms_raw = sp.get(
                 "tool_permissions", {}, scope="global", scope_id="global"
@@ -503,13 +522,12 @@ class FunctionToolManager:
         因此，后加载的 inactive 工具不会覆盖已激活的工具；
         同时，MCP 工具在需要时仍可覆盖被禁用的内置工具。
 
-        Non-builtin tools are wrapped with ``_PermissionGuardedTool`` so that
-        every invocation checks the per-tool permission configured via the
-        dashboard.
+        Tools are wrapped with ``_PermissionGuardedTool`` so that every
+        invocation checks the per-tool permission configured via the dashboard.
         """
         tool_set = ToolSet()
         for tool in self.func_list:
-            tool_set.add_tool(_PermissionGuardedTool(tool, self))
+            tool_set.add_tool(self.guard_tool(tool))
         return tool_set
 
     @staticmethod

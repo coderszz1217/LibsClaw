@@ -552,7 +552,9 @@ async def _baidu_search(
 ) -> list[SearchResult]:
     api_key = provider_settings.get("websearch_baidu_app_builder_key", "")
     if not api_key:
-        raise ValueError("Error: Baidu AI Search API key is not configured in LibsClaw.")
+        raise ValueError(
+            "Error: Baidu AI Search API key is not configured in LibsClaw."
+        )
 
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -588,10 +590,7 @@ async def _baidu_search(
 @pydantic_dataclass
 class TavilyWebSearchTool(FunctionTool[AstrAgentContext]):
     name: str = "web_search_tavily"
-    description: str = (
-        "A web search tool that uses Tavily to search the web for relevant content. "
-        "Ideal for gathering current information, news, and detailed web content analysis."
-    )
+    description: str = "用 Tavily 做网页搜索。"
     parameters: dict = Field(
         default_factory=lambda: {
             "type": "object",
@@ -671,7 +670,7 @@ class TavilyWebSearchTool(FunctionTool[AstrAgentContext]):
 @pydantic_dataclass
 class TavilyExtractWebPageTool(FunctionTool[AstrAgentContext]):
     name: str = "tavily_extract_web_page"
-    description: str = "Extract the content of a web page using Tavily."
+    description: str = "用 Tavily 抽取网页正文。"
     parameters: dict = Field(
         default_factory=lambda: {
             "type": "object",
@@ -718,10 +717,7 @@ class TavilyExtractWebPageTool(FunctionTool[AstrAgentContext]):
 @pydantic_dataclass
 class BochaWebSearchTool(FunctionTool[AstrAgentContext]):
     name: str = "web_search_bocha"
-    description: str = (
-        "A web search tool based on Bocha Search API, used to retrieve web pages "
-        "related to the user's query."
-    )
+    description: str = "用 Bocha Search API 搜索网页。"
     parameters: dict = Field(
         default_factory=lambda: {
             "type": "object",
@@ -782,7 +778,7 @@ class BochaWebSearchTool(FunctionTool[AstrAgentContext]):
 @pydantic_dataclass
 class BraveWebSearchTool(FunctionTool[AstrAgentContext]):
     name: str = "web_search_brave"
-    description: str = "A web search tool based on Brave Search API."
+    description: str = "用 Brave Search API 搜索网页。"
     parameters: dict = Field(
         default_factory=lambda: {
             "type": "object",
@@ -840,10 +836,7 @@ class BraveWebSearchTool(FunctionTool[AstrAgentContext]):
 @pydantic_dataclass
 class FirecrawlWebSearchTool(FunctionTool[AstrAgentContext]):
     name: str = "web_search_firecrawl"
-    description: str = (
-        "A web search tool based on Firecrawl Search API, used to retrieve web "
-        "pages related to the user's query."
-    )
+    description: str = "用 Firecrawl 搜索网页。"
     parameters: dict = Field(
         default_factory=lambda: {
             "type": "object",
@@ -894,7 +887,7 @@ class FirecrawlWebSearchTool(FunctionTool[AstrAgentContext]):
 @pydantic_dataclass
 class FirecrawlExtractWebPageTool(FunctionTool[AstrAgentContext]):
     name: str = "firecrawl_extract_web_page"
-    description: str = "Extract the content of a web page using Firecrawl."
+    description: str = "用 Firecrawl 抽取网页内容。"
     parameters: dict = Field(
         default_factory=lambda: {
             "type": "object",
@@ -958,10 +951,7 @@ class FirecrawlExtractWebPageTool(FunctionTool[AstrAgentContext]):
 @pydantic_dataclass
 class BaiduWebSearchTool(FunctionTool[AstrAgentContext]):
     name: str = "web_search_baidu"
-    description: str = (
-        "A web search tool based on Baidu AI Search. "
-        "Use this for real-time web retrieval when Baidu AI Search is configured."
-    )
+    description: str = "用百度 AI Search 搜索实时网页。"
     parameters: dict = Field(
         default_factory=lambda: {
             "type": "object",
@@ -1085,10 +1075,7 @@ class ExaWebSearchTool(FunctionTool[AstrAgentContext]):
     """Web search tool powered by the Exa Search API."""
 
     name: str = "web_search_exa"
-    description: str = (
-        "A web search tool powered by Exa, an AI-native search engine. "
-        "Supports keyword and semantic search with domain, date, and category filters."
-    )
+    description: str = "用 Exa 搜索，支持语义、关键词、域名、日期和类别过滤。"
     parameters: dict = Field(
         default_factory=lambda: {
             "type": "object",
@@ -1190,7 +1177,7 @@ class ExaGetContentsTool(FunctionTool[AstrAgentContext]):
     """Extract full page content from URLs using the Exa Contents API."""
 
     name: str = "exa_get_contents"
-    description: str = "Extract the content of a web page using Exa."
+    description: str = "用 Exa 抽取指定 URL 的正文内容。"
     parameters: dict = Field(
         default_factory=lambda: {
             "type": "object",

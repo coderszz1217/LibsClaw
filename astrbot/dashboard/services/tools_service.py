@@ -286,12 +286,7 @@ class ToolsService:
                     "name and permission (admin or member) are required"
                 )
 
-            if self.tool_mgr.is_builtin_tool(tool_name):
-                raise ToolsServiceError(
-                    "Builtin tools do not support per-tool permission configuration."
-                )
-
-            if not any(t.name == tool_name for t in self.tool_mgr.func_list):
+            if not self._tool_exists(tool_name):
                 raise ToolsServiceError(f"Tool '{tool_name}' not found")
 
             perms_store = sp.get(
@@ -330,11 +325,6 @@ class ToolsService:
 
             if not tool_name or action is None:
                 raise ToolsServiceError("Missing required parameters: name or activate")
-
-            if self.tool_mgr.is_builtin_tool(tool_name):
-                raise ToolsServiceError(
-                    "Builtin tools are read-only and cannot be toggled."
-                )
 
             if action:
                 try:
@@ -530,7 +520,6 @@ class ToolsService:
         if self.tool_mgr.is_builtin_tool(tool.name):
             origin = "builtin"
             origin_name = "LibsClaw Core"
-            readonly = True
             builtin_config_statuses = get_builtin_tool_config_statuses(
                 tool.name,
                 config_entries,
@@ -560,18 +549,28 @@ class ToolsService:
             "builtin_config_statuses": builtin_config_statuses,
             "builtin_config_tags": builtin_config_tags,
         }
-        if not readonly:
-            perms_store = sp.get(
-                "tool_permissions",
-                {},
-                scope="global",
-                scope_id="global",
-            )
-            defaults = (
-                perms_store.get("_default", {}) if isinstance(perms_store, dict) else {}
-            )
-            configured = tool.name in defaults
-            permission = defaults[tool.name] if configured else "member"
-            tool_info["permission"] = permission
-            tool_info["permission_configured"] = configured
+        perms_store = sp.get(
+            "tool_permissions",
+            {},
+            scope="global",
+            scope_id="global",
+        )
+        defaults = (
+            perms_store.get("_default", {}) if isinstance(perms_store, dict) else {}
+        )
+        configured = tool.name in defaults
+        permission = defaults[tool.name] if configured else "member"
+        tool_info["permission"] = permission
+        tool_info["permission_configured"] = configured
         return tool_info
+
+    def _tool_exists(self, tool_name: str) -> bool:
+        if any(t.name == tool_name for t in self.tool_mgr.func_list):
+            return True
+        return self._get_builtin_tool(tool_name) is not None
+
+    def _get_builtin_tool(self, tool_name: str):
+        for tool in self.tool_mgr.iter_builtin_tools():
+            if tool.name == tool_name:
+                return tool
+        return None

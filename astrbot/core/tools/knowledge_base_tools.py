@@ -427,12 +427,7 @@ async def retrieve_knowledge_base(
 @dataclass
 class KnowledgeBaseQueryTool(FunctionTool[AstrAgentContext]):
     name: str = "astr_kb_search"
-    description: str = (
-        "Query the knowledge base for facts or relevant context. "
-        "Use this tool when the user's question requires factual information, "
-        "definitions, background knowledge, or previously indexed content. "
-        "Only send short keywords or a concise question as the query."
-    )
+    description: str = "查询知识库相关内容。"
     parameters: dict = Field(
         default_factory=lambda: {
             "type": "object",
@@ -466,11 +461,7 @@ class KnowledgeBaseQueryTool(FunctionTool[AstrAgentContext]):
 @dataclass
 class KnowledgeBaseListPagesTool(FunctionTool[AstrAgentContext]):
     name: str = "astr_kb_list_pages"
-    description: str = (
-        "List Markdown Wiki pages and their exact paths in a knowledge base. "
-        "Use this before reading, editing, or deleting a page when its path is "
-        "not already known. The target must be selected for the current session."
-    )
+    description: str = "列出知识库中的 Markdown Wiki 页面。"
     parameters: dict = Field(
         default_factory=lambda: {
             "type": "object",
@@ -584,11 +575,7 @@ class KnowledgeBaseListPagesTool(FunctionTool[AstrAgentContext]):
 @dataclass
 class KnowledgeBaseReadPageTool(FunctionTool[AstrAgentContext]):
     name: str = "astr_kb_read_page"
-    description: str = (
-        "Read the complete Markdown content of one Wiki page by its exact path. "
-        "Use astr_kb_list_pages first if the path is unknown. The target must be "
-        "selected for the current session."
-    )
+    description: str = "读取指定知识库页面完整内容。"
     parameters: dict = Field(
         default_factory=lambda: {
             "type": "object",
@@ -667,13 +654,7 @@ class KnowledgeBaseReadPageTool(FunctionTool[AstrAgentContext]):
 @dataclass
 class KnowledgeBaseEditPageTool(FunctionTool[AstrAgentContext]):
     name: str = "astr_kb_edit_page"
-    description: str = (
-        "Edit an existing Markdown Wiki page and rebuild its keyword index, "
-        "knowledge graph links, and optional vectors. Prefer exact old_text to "
-        "replacement edits so the rest of the page remains unchanged. Use "
-        "full_content only when the user explicitly requests a complete "
-        "rewrite. No Embedding Provider is required."
-    )
+    description: str = "编辑已有知识库页面，并更新索引。"
     parameters: dict = Field(
         default_factory=lambda: {
             "type": "object",
@@ -844,12 +825,7 @@ class KnowledgeBaseEditPageTool(FunctionTool[AstrAgentContext]):
 @dataclass
 class KnowledgeBaseDeletePageTool(FunctionTool[AstrAgentContext]):
     name: str = "astr_kb_delete_page"
-    description: str = (
-        "Delete exactly one Markdown Wiki page and its derived chunks, graph node, "
-        "links, and optional vectors. Use only after the user explicitly "
-        "requests deletion and the exact path has been verified with list/read. "
-        "This tool cannot delete an entire knowledge base or a directory."
-    )
+    description: str = "删除指定知识库页面。"
     parameters: dict = Field(
         default_factory=lambda: {
             "type": "object",
@@ -964,18 +940,7 @@ class KnowledgeBaseDeletePageTool(FunctionTool[AstrAgentContext]):
 @dataclass
 class KnowledgeBaseWritePageTool(FunctionTool[AstrAgentContext]):
     name: str = "astr_kb_save_text"
-    description: str = (
-        "Save extracted web article content, notes, or other supplied text as a "
-        "Markdown Wiki page in a knowledge base. Use this after opening a link "
-        "with browser or OpenCLI when the user asks to save the content. "
-        "Before calling, analyze the complete source and populate summary, category, "
-        "entities, concepts, and relations. Use 'source' as a relation endpoint for "
-        "the article itself. The tool creates or enriches entity/concept pages and "
-        "persistent typed graph links automatically. "
-        "An Embedding Provider is NOT required: Markdown storage and keyword "
-        "indexing always work, and vector indexing is added only when configured. "
-        "Never ask the user for an embedding API key before using this tool."
-    )
+    description: str = "把文章、笔记或文本保存为知识库 Markdown 页面。"
     parameters: dict = Field(
         default_factory=lambda: {
             "type": "object",
@@ -1299,12 +1264,7 @@ class KnowledgeBaseWritePageTool(FunctionTool[AstrAgentContext]):
 @dataclass
 class KnowledgeBaseExportTool(FunctionTool[AstrAgentContext]):
     name: str = "astr_kb_export"
-    description: str = (
-        "Export one knowledge base as a ZIP attachment containing its Markdown "
-        "Wiki pages. Folder paths are preserved exactly relative to the knowledge "
-        "root. Use this when the user asks to download, export, or back up "
-        "a knowledge base. The ZIP is sent directly to the current conversation."
-    )
+    description: str = "导出知识库为 ZIP 附件。"
     parameters: dict = Field(
         default_factory=lambda: {
             "type": "object",
@@ -1374,12 +1334,7 @@ class KnowledgeBaseExportTool(FunctionTool[AstrAgentContext]):
 @dataclass
 class KnowledgeBaseImportAttachmentTool(FunctionTool[AstrAgentContext]):
     name: str = "astr_kb_import_attachment"
-    description: str = (
-        "Import a Markdown file or ZIP attachment from the current or quoted "
-        "message into a knowledge base while preserving its folder structure. "
-        "Use this only when the user explicitly asks to save or import "
-        "the attached knowledge files."
-    )
+    description: str = "从当前消息或引用消息的附件导入 Markdown 或 ZIP 到知识库。"
     parameters: dict = Field(
         default_factory=lambda: {
             "type": "object",

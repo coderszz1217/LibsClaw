@@ -81,7 +81,7 @@ async def handle_result(result: dict, event: AstrMessageEvent) -> ToolExecResult
 @dataclass
 class PythonTool(FunctionTool):
     name: str = "astrbot_execute_ipython"
-    description: str = f"Run codes in an IPython shell. Current OS: {_OS_NAME}."
+    description: str = f"在沙箱 IPython 环境执行 Python 代码。当前系统：{_OS_NAME}。"
     parameters: dict = field(default_factory=lambda: param_schema)
 
     async def call(
@@ -117,10 +117,7 @@ class PythonTool(FunctionTool):
 @dataclass
 class LocalPythonTool(FunctionTool):
     name: str = "astrbot_execute_python"
-    description: str = (
-        f"Execute codes in a Python environment. Current OS: {_OS_NAME}. "
-        "Use system-compatible commands."
-    )
+    description: str = f"在本地 Python 环境执行 Python 代码。当前系统：{_OS_NAME}。"
 
     parameters: dict = field(default_factory=lambda: param_schema)
 

@@ -178,11 +178,11 @@
     "configParseError": "Configuration parse error: {error}",
     "noAvailableConfig": "No available configuration",
     "toggleToolSuccess": "Tool status toggled successfully!",
-    "toggleToolReadonly": "Builtin tools are read-only and cannot be enabled or disabled.",
+    "toggleToolReadonly": "This tool cannot be enabled or disabled.",
     "toggleToolError": "Failed to toggle tool status: {error}",
     "updateToolPermissionSuccess": "Permission for {name} updated",
     "updateToolPermissionFailed": "Failed to update tool permission",
-    "updateToolPermissionBuiltin": "Builtin tools do not support per-tool permission configuration.",
+    "updateToolPermissionBuiltin": "This tool does not support per-tool permission configuration.",
     "testError": "Test connection failed: {error}"
   }
 }

@@ -73,7 +73,7 @@ class NeoSkillToolBase(FunctionTool):
 @dataclass
 class GetExecutionHistoryTool(NeoSkillToolBase):
     name: str = "astrbot_get_execution_history"
-    description: str = "Get execution history from current sandbox."
+    description: str = "查看当前沙箱执行历史。"
     parameters: dict = field(
         default_factory=lambda: {
             "type": "object",
@@ -120,7 +120,7 @@ class GetExecutionHistoryTool(NeoSkillToolBase):
 @dataclass
 class AnnotateExecutionTool(NeoSkillToolBase):
     name: str = "astrbot_annotate_execution"
-    description: str = "Annotate one execution history record."
+    description: str = "给某条执行历史添加描述、标签或备注。"
     parameters: dict = field(
         default_factory=lambda: {
             "type": "object",
@@ -158,10 +158,7 @@ class AnnotateExecutionTool(NeoSkillToolBase):
 @dataclass
 class CreateSkillPayloadTool(NeoSkillToolBase):
     name: str = "astrbot_create_skill_payload"
-    description: str = (
-        "Step 1/3 for Neo skill authoring: create immutable payload content and return payload_ref. "
-        "Use this to store skill_markdown and structured metadata; do NOT write local skill folders directly."
-    )
+    description: str = "创建 Neo skill 的不可变 payload。"
     parameters: dict = field(
         default_factory=lambda: {
             "type": "object",
@@ -206,7 +203,7 @@ class CreateSkillPayloadTool(NeoSkillToolBase):
 @dataclass
 class GetSkillPayloadTool(NeoSkillToolBase):
     name: str = "astrbot_get_skill_payload"
-    description: str = "Get one skill payload by payload_ref."
+    description: str = "按 payload_ref 获取 skill payload。"
     parameters: dict = field(
         default_factory=lambda: {
             "type": "object",
@@ -233,10 +230,7 @@ class GetSkillPayloadTool(NeoSkillToolBase):
 @dataclass
 class CreateSkillCandidateTool(NeoSkillToolBase):
     name: str = "astrbot_create_skill_candidate"
-    description: str = (
-        "Step 2/3 for Neo skill authoring: create a candidate by binding execution evidence "
-        "(source_execution_ids) with skill identity (skill_key) and optional payload_ref."
-    )
+    description: str = "基于执行证据创建 skill 候选。"
     parameters: dict = field(
         default_factory=lambda: {
             "type": "object",
@@ -287,7 +281,7 @@ class CreateSkillCandidateTool(NeoSkillToolBase):
 @dataclass
 class ListSkillCandidatesTool(NeoSkillToolBase):
     name: str = "astrbot_list_skill_candidates"
-    description: str = "List skill candidates."
+    description: str = "列出 skill 候选。"
     parameters: dict = field(
         default_factory=lambda: {
             "type": "object",
@@ -325,7 +319,7 @@ class ListSkillCandidatesTool(NeoSkillToolBase):
 @dataclass
 class EvaluateSkillCandidateTool(NeoSkillToolBase):
     name: str = "astrbot_evaluate_skill_candidate"
-    description: str = "Evaluate a skill candidate."
+    description: str = "评估某个 skill 候选。"
     parameters: dict = field(
         default_factory=lambda: {
             "type": "object",
@@ -366,10 +360,7 @@ class EvaluateSkillCandidateTool(NeoSkillToolBase):
 @dataclass
 class PromoteSkillCandidateTool(NeoSkillToolBase):
     name: str = "astrbot_promote_skill_candidate"
-    description: str = (
-        "Step 3/3 for Neo skill authoring: promote candidate to canary/stable release. "
-        "If stage=stable and sync_to_local=true, payload.skill_markdown is synced to local SKILL.md automatically."
-    )
+    description: str = "把候选提升为 canary 或 stable 发布。"
     parameters: dict = field(
         default_factory=lambda: {
             "type": "object",
@@ -437,7 +428,7 @@ class PromoteSkillCandidateTool(NeoSkillToolBase):
 @dataclass
 class ListSkillReleasesTool(NeoSkillToolBase):
     name: str = "astrbot_list_skill_releases"
-    description: str = "List skill releases."
+    description: str = "列出 skill 发布版本。"
     parameters: dict = field(
         default_factory=lambda: {
             "type": "object",
@@ -478,7 +469,7 @@ class ListSkillReleasesTool(NeoSkillToolBase):
 @dataclass
 class RollbackSkillReleaseTool(NeoSkillToolBase):
     name: str = "astrbot_rollback_skill_release"
-    description: str = "Rollback one skill release."
+    description: str = "回滚某个 skill 发布。"
     parameters: dict = field(
         default_factory=lambda: {
             "type": "object",
@@ -505,9 +496,7 @@ class RollbackSkillReleaseTool(NeoSkillToolBase):
 @dataclass
 class SyncSkillReleaseTool(NeoSkillToolBase):
     name: str = "astrbot_sync_skill_release"
-    description: str = (
-        "Sync stable Neo release payload to local SKILL.md and update mapping metadata."
-    )
+    description: str = "把 stable Neo release 同步到本地 SKILL.md。"
     parameters: dict = field(
         default_factory=lambda: {
             "type": "object",

@@ -466,6 +466,12 @@
         "description": "Bot Name",
         "hint": "Bot name"
       },
+      "note": {
+        "description": "Note"
+      },
+      "expires_at": {
+        "description": "Expiration Time"
+      },
       "is_sandbox": {
         "description": "Sandbox Mode"
       },

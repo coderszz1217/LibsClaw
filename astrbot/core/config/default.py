@@ -779,6 +779,12 @@ CONFIG_METADATA_2 = {
                         "type": "string",
                         "hint": "机器人名称",
                     },
+                    "note": {
+                        "description": "备注",
+                    },
+                    "expires_at": {
+                        "description": "到期时间",
+                    },
                     "type": {
                         "description": "适配器类型",
                         "type": "string",

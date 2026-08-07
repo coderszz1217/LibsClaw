@@ -75,3 +75,33 @@ def test_google_schema_fills_missing_array_items_with_string_schema():
 
     assert source_uuids["type"] == "array"
     assert source_uuids["items"] == {"type": "string"}
+
+
+def test_tool_schemas_skip_inactive_tools():
+    tool_module = load_tool_module()
+    FunctionTool = tool_module.FunctionTool
+    ToolSet = tool_module.ToolSet
+
+    active_tool = FunctionTool(
+        name="active_tool",
+        description="Active tool.",
+        parameters={"type": "object", "properties": {}},
+    )
+    inactive_tool = FunctionTool(
+        name="inactive_tool",
+        description="Inactive tool.",
+        parameters={"type": "object", "properties": {}},
+    )
+    inactive_tool.active = False
+
+    tool_set = ToolSet([active_tool, inactive_tool])
+
+    openai_names = [tool["function"]["name"] for tool in tool_set.openai_schema()]
+    anthropic_names = [tool["name"] for tool in tool_set.anthropic_schema()]
+    google_names = [
+        tool["name"] for tool in tool_set.google_schema()["function_declarations"]
+    ]
+
+    assert openai_names == ["active_tool"]
+    assert anthropic_names == ["active_tool"]
+    assert google_names == ["active_tool"]

@@ -468,6 +468,12 @@
         "description": "机器人名称",
         "hint": "机器人名称"
       },
+      "note": {
+        "description": "备注"
+      },
+      "expires_at": {
+        "description": "到期时间"
+      },
       "is_sandbox": {
         "description": "沙箱模式"
       },

@@ -48,14 +48,10 @@ export function useToolActions(
    */
   const toggleTool = async (
     tool: ToolItem,
-    readonlyMessage: string,
+    _readonlyMessage: string,
     successMessage: string,
     errorMessage: string
   ) => {
-    if (tool.readonly) {
-      toast(readonlyMessage, 'info');
-      return;
-    }
     const previous = tool.active;
     tool.active = !tool.active;
     try {
@@ -84,13 +80,9 @@ export function useToolActions(
     tool: ToolItem,
     permission: 'admin' | 'member',
     successMessage: string,
-    builtinMessage: string,
+    _builtinMessage: string,
     errorMessage: string
   ) => {
-    if (tool.origin === 'builtin') {
-      toast(builtinMessage, 'info');
-      return;
-    }
     try {
       const res = await toolApi.setPermission(tool.name, permission);
       if (res.data.status === 'ok') {

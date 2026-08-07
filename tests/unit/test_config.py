@@ -2,11 +2,12 @@
 
 import json
 import os
+from pathlib import Path
 
 import pytest
 
 from astrbot.core.config.astrbot_config import AstrBotConfig, RateLimitStrategy
-from astrbot.core.config.default import DEFAULT_VALUE_MAP
+from astrbot.core.config.default import CONFIG_METADATA_2, DEFAULT_VALUE_MAP
 from astrbot.core.config.i18n_utils import ConfigMetadataI18n
 from astrbot.core.utils.auth_password import (
     DEFAULT_DASHBOARD_PASSWORD,
@@ -697,6 +698,40 @@ class TestConfigSchemaToDefault:
 
 class TestConfigMetadataI18n:
     """Tests for i18n utils."""
+
+    def test_platform_note_and_expires_at_descriptions(self):
+        """Test platform note and expiration descriptions across locales."""
+        metadata = ConfigMetadataI18n.convert_to_i18n_keys(CONFIG_METADATA_2)
+        platform_items = metadata["platform_group"]["metadata"]["platform"]["items"]
+
+        assert (
+            platform_items["note"]["description"]
+            == "platform_group.platform.note.description"
+        )
+        assert (
+            platform_items["expires_at"]["description"]
+            == "platform_group.platform.expires_at.description"
+        )
+
+        locale_dir = Path(__file__).parents[2] / "dashboard/src/i18n/locales"
+        expected_descriptions = {
+            "zh-CN": {"note": "备注", "expires_at": "到期时间"},
+            "en-US": {"note": "Note", "expires_at": "Expiration Time"},
+            "ru-RU": {"note": "Примечание", "expires_at": "Время истечения"},
+        }
+        for locale, expected in expected_descriptions.items():
+            with (locale_dir / locale / "features/config-metadata.json").open(
+                encoding="utf-8"
+            ) as locale_file:
+                platform_translations = json.load(locale_file)["platform_group"][
+                    "platform"
+                ]
+
+            assert platform_translations["note"]["description"] == expected["note"]
+            assert (
+                platform_translations["expires_at"]["description"]
+                == expected["expires_at"]
+            )
 
     def test_get_i18n_key(self):
         """Test generating i18n key."""

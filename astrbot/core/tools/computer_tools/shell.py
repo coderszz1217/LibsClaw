@@ -55,7 +55,7 @@ def _redirect_background_stdout_command(
 @dataclass
 class ExecuteShellTool(FunctionTool):
     name: str = "astrbot_execute_shell"
-    description: str = "Execute a command in the shell."
+    description: str = "执行 shell 命令。"
     parameters: dict = field(
         default_factory=lambda: {
             "type": "object",

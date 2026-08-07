@@ -38,7 +38,7 @@ async def _get_browser_component(context: ContextWrapper[AstrAgentContext]) -> A
 @dataclass
 class BrowserExecTool(FunctionTool):
     name: str = "astrbot_execute_browser"
-    description: str = "Execute one browser automation command in the sandbox."
+    description: str = "在沙箱浏览器中执行一条浏览器自动化命令。"
     parameters: dict = field(
         default_factory=lambda: {
             "type": "object",
@@ -96,7 +96,7 @@ class BrowserExecTool(FunctionTool):
 @dataclass
 class BrowserBatchExecTool(FunctionTool):
     name: str = "astrbot_execute_browser_batch"
-    description: str = "Execute a browser command batch in the sandbox."
+    description: str = "批量执行多条浏览器自动化命令。"
     parameters: dict = field(
         default_factory=lambda: {
             "type": "object",
@@ -161,7 +161,7 @@ class BrowserBatchExecTool(FunctionTool):
 @dataclass
 class RunBrowserSkillTool(FunctionTool):
     name: str = "astrbot_run_browser_skill"
-    description: str = "Run a released browser skill in the sandbox by skill_key."
+    description: str = "运行已发布的浏览器技能。"
     parameters: dict = field(
         default_factory=lambda: {
             "type": "object",

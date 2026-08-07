@@ -296,7 +296,7 @@ def _decode_escaped_text(value: str) -> str:
 @dataclass
 class FileReadTool(FunctionTool):
     name: str = "astrbot_file_read_tool"
-    description: str = "read file content. Supports text, image, and PDF (text extraction), docx and epub files."
+    description: str = "读取文件内容，支持文本、图片、PDF、docx、epub 等。"
     parameters: dict = field(
         default_factory=lambda: {
             "type": "object",
@@ -393,7 +393,7 @@ class FileReadTool(FunctionTool):
 @dataclass
 class FileWriteTool(FunctionTool):
     name: str = "astrbot_file_write_tool"
-    description: str = "Write UTF-8 text content to a file."
+    description: str = "向文件写入 UTF-8 文本。"
     parameters: dict = field(
         default_factory=lambda: {
             "type": "object",
@@ -465,7 +465,7 @@ class FileWriteTool(FunctionTool):
 @dataclass
 class FileEditTool(FunctionTool):
     name: str = "astrbot_file_edit_tool"
-    description: str = "Editing files."
+    description: str = "按精确文本替换方式编辑文件。"
     parameters: dict = field(
         default_factory=lambda: {
             "type": "object",
@@ -556,7 +556,7 @@ class FileEditTool(FunctionTool):
 @dataclass
 class GrepTool(FunctionTool):
     name: str = "astrbot_grep_tool"
-    description: str = "Search and read file contents using ripgrep."
+    description: str = "用 ripgrep 搜索文件内容。"
     parameters: dict = field(
         default_factory=lambda: {
             "type": "object",
@@ -792,12 +792,7 @@ class GrepTool(FunctionTool):
 @dataclass
 class FileUploadTool(FunctionTool):
     name: str = "astrbot_upload_file"
-    description: str = (
-        "Transfer a file FROM the host machine INTO the sandbox so that sandbox "
-        "code can access it. Use this when the user sends/attaches a file and you "
-        "need to process it inside the sandbox. The local_path must point to an "
-        "existing file on the host filesystem."
-    )
+    description: str = "把宿主机文件上传到沙箱，让沙箱代码可以访问它。"
     parameters: dict = field(
         default_factory=lambda: {
             "type": "object",
@@ -858,11 +853,7 @@ class FileUploadTool(FunctionTool):
 @dataclass
 class FileDownloadTool(FunctionTool):
     name: str = "astrbot_download_file"
-    description: str = (
-        "Transfer a file FROM the sandbox OUT to the host and optionally send it "
-        "to the user. Use this ONLY when the user asks to retrieve/export a file "
-        "that was created or modified inside the sandbox."
-    )
+    description: str = "把沙箱里的文件下载回宿主机，并可发送给用户。"
     parameters: dict = field(
         default_factory=lambda: {
             "type": "object",
